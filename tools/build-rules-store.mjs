@@ -39,7 +39,7 @@
  * only its `params` array is replaced.
  */
 
-import { readFileSync, writeFileSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, appendFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -712,6 +712,18 @@ if (isMain) {
       console.log(
         `[rules-store] #1344: orphaned facts (published by neither channel): ${orphansBefore} -> ${orphansAfter}`
       );
+      // T3 (auto-ingest-rules.yml): the workflow runs this mode after promote and
+      // land-scoped precisely because `parseRemoveparamRules`'s design correction
+      // C1 folds a host-anchored name back into promote's global candidate pool
+      // on every run, by design (run 35921813206 reproduced this — 62 relocated
+      // params came back). `relocated.length > 0` is this run's own "did the
+      // state move" signal, mirroring land-scoped.mjs's `changed` output, so the
+      // workflow's combined work-decision step can route on it without assuming
+      // the pipeline's own `noop` (which measures promote's merge, not this
+      // relocation) already covers it.
+      if (process.env.GITHUB_OUTPUT) {
+        appendFileSync(process.env.GITHUB_OUTPUT, `changed=${relocated.length > 0}\n`);
+      }
     } else if (process.argv.includes("--check")) {
       const drifted = runCheck();
       if (drifted.length > 0) {

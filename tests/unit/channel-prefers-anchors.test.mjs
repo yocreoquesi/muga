@@ -65,6 +65,7 @@ import { dirname, join } from "node:path";
 import {
   ACTIONS,
   GLOBAL_SCOPE,
+  emitParams,
   emitScoped,
   makeEntry,
   parseStore,
@@ -602,5 +603,65 @@ describe("#1344 — AFFILIATE_PARAM_GUARD / REMOTE_PARAM_DENYLIST members are ne
     );
     const leaked = params.params.filter((p) => forbidden.has(p.toLowerCase()));
     assert.deepEqual(leaked, [], `guard/denylist member(s) in the published global list: ${leaked.join(", ")}`);
+  });
+});
+
+// ── T3 — re-running --prefer-anchors undoes the ingest circularity ───────
+//
+// `parseRemoveparamRules`'s design correction C1 folds a host-anchored name
+// back into promote's GLOBAL candidate pool on every run, by design. So a
+// param this module already relocated (out of `params[]`, anchored in
+// `entries[]`, published via `scopedFacts[]`) comes right back the next time
+// `promote-rules.mjs` merges upstream's candidates — `withGlobalParams` below
+// stands in for exactly that merge. Run 35921813206 reproduced this for real:
+// promote re-added all 62 of #1344's relocations and the unit test gate
+// failed. `computeAnchorPreference` derives its candidates from the store on
+// every run, never a hardcoded list, so simply running it again — which is
+// what auto-ingest-rules.yml's new `--prefer-anchors` step does after
+// promote and land-scoped — relocates the param right back out.
+
+describe("T3 (#1344) — a param promote re-globalizes is relocated back out on the next run", () => {
+  test("re-adding a relocated, host-anchored param to the global list and re-running relocates it out again", () => {
+    const param = "igsh";
+    const host = "instagram.com";
+
+    // The post-relocation state: `param` is anchored and scoped, not global.
+    const relocatedStore = withScopedFacts(baseStore([], { [param]: [host] }), [
+      { scope: host, param, action: ACTIONS.STRIP },
+    ]);
+    assert.ok(
+      !emitParams(relocatedStore).includes(param),
+      "fixture setup: the param must start OUT of the global list"
+    );
+
+    // The bug: promote's merge re-adds it because C1 offers it as a candidate
+    // again — modeled here as withGlobalParams over the untouched entries.
+    const reGlobalizedStore = withGlobalParams(relocatedStore, [
+      ...emitParams(relocatedStore),
+      param,
+    ]);
+    assert.ok(
+      emitParams(reGlobalizedStore).includes(param),
+      "reproduces run 35921813206: the param is back in the global list"
+    );
+
+    // The fix: re-running --prefer-anchors (computeAnchorPreference) sees the
+    // param is still host-anchored and not TRACKING_PARAMS/NEVER_RELOCATE, so
+    // it relocates it back out, exactly as it would a first-time candidate.
+    const result = computeAnchorPreference(reGlobalizedStore, FIXTURE_PARAMS_TEXT);
+
+    assert.deepEqual(result.relocated, [param]);
+    assert.ok(
+      !emitParams(result.store).includes(param),
+      "the param must be out of the global list again after --prefer-anchors"
+    );
+    assert.equal(result.orphansAfter, result.orphansBefore, "orphans must not rise");
+    assert.equal(result.orphansAfter, 0);
+
+    // Idempotent: running it a second time on the already-fixed store is a
+    // true no-op, matching runPreferAnchors's "writes nothing" contract.
+    const again = computeAnchorPreference(result.store, FIXTURE_PARAMS_TEXT);
+    assert.deepEqual(again.relocated, []);
+    assert.deepEqual(again.store, result.store);
   });
 });

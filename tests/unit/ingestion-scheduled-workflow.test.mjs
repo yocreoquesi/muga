@@ -438,6 +438,102 @@ describe("host-scoped landing is part of the weekly job (#1229)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// T3 [RED->GREEN] — the weekly run must preserve #1344's relocation
+//
+// `parseRemoveparamRules`'s design correction C1 folds a host-anchored
+// removeparam name back into promote's GLOBAL candidate pool on every run, BY
+// DESIGN — so `promote-rules.mjs` re-adds a param #1344 already relocated the
+// very next time upstream still reports it, which is always. Run 35921813206
+// reproduced exactly this: the pipeline re-added all 62 of #1344's
+// relocations and `npm test` failed on channel-prefers-anchors.test.mjs.
+//
+// `node tools/build-rules-store.mjs --prefer-anchors` (already shipped,
+// #1344) derives its candidates live from the store on every run, so
+// re-running it after promote and land-scoped relocates anything either just
+// put back, undoing the circularity every week instead of once by hand.
+// ---------------------------------------------------------------------------
+describe("T3 (#1344) — auto-ingest preserves the anchor relocation across runs", () => {
+  test("workflow runs --prefer-anchors after the pipeline", () => {
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /node\s+tools\/build-rules-store\.mjs\s+--prefer-anchors/,
+      "auto-ingest-rules.yml must re-run --prefer-anchors so a param the pipeline just " +
+        "re-globalized is relocated back out before the gates and the publish step run"
+    );
+  });
+
+  test("--prefer-anchors runs AFTER land-scoped and BEFORE the test gate and the publish step", () => {
+    const content = readWorkflow();
+    const landScopedIdx = content.indexOf("land-scoped.mjs");
+    const preferAnchorsIdx = content.indexOf("--prefer-anchors");
+    const npmTestIdx = content.indexOf("npm test");
+    const signRulesIdx = content.indexOf("sign-rules.mjs");
+
+    assert.ok(landScopedIdx !== -1, "workflow must include the land-scoped step");
+    assert.ok(preferAnchorsIdx !== -1, "workflow must include a --prefer-anchors step");
+    assert.ok(npmTestIdx !== -1, "workflow must include 'npm test' gate step");
+    assert.ok(signRulesIdx !== -1, "workflow must include the sign-rules.mjs publish step");
+
+    assert.ok(
+      landScopedIdx < preferAnchorsIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run AFTER land-scoped (pos ${landScopedIdx}) ` +
+        "so it sees whatever facts landing just added"
+    );
+    assert.ok(
+      preferAnchorsIdx < npmTestIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run BEFORE the 'npm test' gate ` +
+        `(pos ${npmTestIdx}) — that gate is exactly what run 35921813206 failed`
+    );
+    assert.ok(
+      preferAnchorsIdx < signRulesIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run BEFORE sign-rules.mjs ` +
+        `(pos ${signRulesIdx}) so the signed payload reflects the relocation`
+    );
+  });
+
+  test("--prefer-anchors is NOT gated on the pipeline's global noop signal", () => {
+    // The trap this pins, mirroring the land-scoped test above: the exact
+    // failure mode is a promote run that reports non-noop (its own merge
+    // changed the global list) while still ending up wrong, so gating this
+    // step on that signal would skip the one run that most needs it.
+    const content = readWorkflow();
+    const lines = content.split("\n");
+    const idx = lines.findIndex((l) => /--prefer-anchors/.test(l));
+    assert.ok(idx > 0, "--prefer-anchors step not found");
+
+    let nearestIf = "";
+    for (let i = idx; i >= 0 && i > idx - 12; i--) {
+      if (/^\s*if:/.test(lines[i])) { nearestIf = lines[i]; break; }
+    }
+    assert.ok(nearestIf, "--prefer-anchors step must carry an explicit if:");
+    assert.ok(
+      !/outputs\.noop/.test(nearestIf),
+      `--prefer-anchors must not be gated on the global noop signal. Found: "${nearestIf}"`
+    );
+    assert.match(
+      nearestIf,
+      /steps\.pipeline\.conclusion\s*==\s*['"]success['"]/,
+      "--prefer-anchors runs whenever the pipeline succeeded, noop or not"
+    );
+  });
+
+  test("the combined work signal also reads the prefer-anchors changed output", () => {
+    // A run whose net params[] is unchanged must not publish a spurious new
+    // version — `runPreferAnchors` already writes nothing when nothing
+    // relocates, so its own `changed` output is a real "did the state move"
+    // signal, not "did the step run". The combined gate must consult it,
+    // exactly as it already does for the scoped path.
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /steps\.prefer_anchors\.outputs\.changed/,
+      "must read the #1344 relocation signal"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // T-20 [RED] — quarantine review summary step (ADR-7)
 // ---------------------------------------------------------------------------
 describe("T-20 — quarantine review summary step", () => {
