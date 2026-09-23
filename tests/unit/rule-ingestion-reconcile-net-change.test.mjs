@@ -20,13 +20,31 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   normalizeParamsForCompare,
   computeNetChange,
   withVersion,
+  toRepoRelativePath,
   runReconcile,
+  DEFAULT_PARAMS_PATH,
 } from "../../tools/rule-ingestion/reconcile-net-change.mjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CLI_PATH = join(__dirname, "..", "..", "tools", "rule-ingestion", "reconcile-net-change.mjs");
+
+// ── toRepoRelativePath ─────────────────────────────────────────────────
+
+describe("toRepoRelativePath", () => {
+  test("the real DEFAULT_PARAMS_PATH derives to the forward-slashed repo-relative path", () => {
+    assert.equal(toRepoRelativePath(DEFAULT_PARAMS_PATH), "tools/rules-source/params.json");
+  });
+});
 
 // ── normalizeParamsForCompare ─────────────────────────────────────────
 
@@ -159,19 +177,25 @@ describe("withVersion", () => {
 
 function harness({ headParamsText, currentParamsText, headStoreText = "s\n", currentStoreText = "s\n" }) {
   const writes = [];
-  let restored = false;
+  let restoredPaths = null;
   const result = runReconcile({
     paramsPath: "unused-params-path",
     storePath: "unused-store-path",
+    // Explicit, not derived: this fixture's paths are bare fixture names, not
+    // real repo-relative paths, so toRepoRelativePath's default derivation
+    // would produce nonsense here — exactly the "take it as a parameter"
+    // escape hatch it documents.
+    headParamsPath: "tools/rules-source/params.json",
+    headStorePath: "tools/rules-source/rules.json",
     readFile: (path) => (path === "unused-params-path" ? currentParamsText : currentStoreText),
     writeFile: (path, text) => writes.push({ path, text }),
     readHead: (relativePath) =>
       relativePath.endsWith("params.json") ? headParamsText : headStoreText,
-    restore: () => {
-      restored = true;
+    restore: (relativePaths) => {
+      restoredPaths = relativePaths;
     },
   });
-  return { result, writes, restored };
+  return { result, writes, restoredPaths };
 }
 
 describe("runReconcile", () => {
@@ -182,11 +206,15 @@ describe("runReconcile", () => {
     const headParamsText = JSON.stringify({ version: 17, published: "2026-09-20T00:00:00.000Z", params: ["a"], scoped: [{ param: "igsh", hosts: ["instagram.com"] }] });
     const currentParamsText = JSON.stringify({ version: 19, published: "2026-09-27T00:00:00.000Z", params: ["a"], scoped: [{ param: "igsh", hosts: ["instagram.com"] }] });
 
-    const { result, writes, restored } = harness({ headParamsText, currentParamsText });
+    const { result, writes, restoredPaths } = harness({ headParamsText, currentParamsText });
 
     assert.deepEqual(result, { changed: false });
     assert.deepEqual(writes, [], "must not write params.json in the net-unchanged case");
-    assert.equal(restored, true, "must restore tools/rules-source to HEAD");
+    assert.deepEqual(
+      restoredPaths,
+      ["tools/rules-source/params.json", "tools/rules-source/rules.json"],
+      "must restore EXACTLY the two compared files, never a wider directory checkout"
+    );
   });
 
   test("net-changed with a STACKED double bump: collapses to exactly HEAD version + 1", () => {
@@ -202,10 +230,10 @@ describe("runReconcile", () => {
       2
     );
 
-    const { result, writes, restored } = harness({ headParamsText, currentParamsText });
+    const { result, writes, restoredPaths } = harness({ headParamsText, currentParamsText });
 
     assert.deepEqual(result, { changed: true, version: 16 });
-    assert.equal(restored, false);
+    assert.equal(restoredPaths, null, "must not restore when the net content genuinely changed");
     assert.equal(writes.length, 1);
     assert.equal(writes[0].path, "unused-params-path");
     assert.match(writes[0].text, /"version": 16,/);
@@ -216,17 +244,17 @@ describe("runReconcile", () => {
     const headParamsText = JSON.stringify({ version: 15, published: "x", params: ["a"] });
     const currentParamsText = JSON.stringify({ version: 16, published: "y", params: ["a", "b"] });
 
-    const { result, writes, restored } = harness({ headParamsText, currentParamsText });
+    const { result, writes, restoredPaths } = harness({ headParamsText, currentParamsText });
 
     assert.deepEqual(result, { changed: true, version: 16 });
-    assert.equal(restored, false);
+    assert.equal(restoredPaths, null);
     assert.deepEqual(writes, [], "already correct — nothing to rewrite");
   });
 
   test("net-changed via the STORE alone (params[]/scoped[] identical, rules.json differs)", () => {
     const paramsText = JSON.stringify({ version: 15, published: "x", params: ["a"] });
 
-    const { result, restored } = harness({
+    const { result, restoredPaths } = harness({
       headParamsText: paramsText,
       currentParamsText: JSON.stringify({ version: 16, published: "y", params: ["a"] }),
       headStoreText: "before\n",
@@ -234,6 +262,123 @@ describe("runReconcile", () => {
     });
 
     assert.deepEqual(result, { changed: true, version: 16 });
-    assert.equal(restored, false);
+    assert.equal(restoredPaths, null);
+  });
+});
+
+// ── CLI: real `node reconcile-net-change.mjs` subprocess, real `git` ──────
+//
+// The CLI resolves REPO_ROOT and its default paths from the SCRIPT'S OWN
+// location (`import.meta.url`), not from `process.cwd()` or an argument —
+// so it cannot be redirected at a fixture just by chdir'ing into one. What
+// DOES work: copy the script itself into a throwaway git repo laid out with
+// the same `tools/rules-source/` + `tools/rule-ingestion/` shape, so its own
+// `__dirname`-derived REPO_ROOT resolves to the fixture, and run it there —
+// a real `node` process, a real `git` repo, `GITHUB_OUTPUT` a real temp file.
+// Never the real repo's committed tree.
+
+function makeCliFixture() {
+  const repoDir = mkdtempSync(join(tmpdir(), "reconcile-cli-fixture-"));
+  const run = (args, extraEnv = {}) =>
+    spawnSync("git", args, { cwd: repoDir, encoding: "utf8", ...extraEnv });
+
+  run(["init", "-q"]);
+  run(["config", "user.email", "fixture@local.test"]);
+  run(["config", "user.name", "Fixture"]);
+
+  mkdirSync(join(repoDir, "tools", "rules-source"), { recursive: true });
+  mkdirSync(join(repoDir, "tools", "rule-ingestion"), { recursive: true });
+  writeFileSync(
+    join(repoDir, "tools", "rule-ingestion", "reconcile-net-change.mjs"),
+    readFileSync(CLI_PATH, "utf8"),
+    "utf8"
+  );
+
+  return { repoDir, run };
+}
+
+function writeAndCommit(repoDir, run, { version, published, params, message }) {
+  writeFileSync(
+    join(repoDir, "tools", "rules-source", "params.json"),
+    JSON.stringify({ version, published, params }, null, 2) + "\n",
+    "utf8"
+  );
+  writeFileSync(
+    join(repoDir, "tools", "rules-source", "rules.json"),
+    '{"schemaVersion":1,"entries":[]}\n',
+    "utf8"
+  );
+  run(["add", "-A"]);
+  run(["commit", "-q", "-m", message]);
+}
+
+function runCli(repoDir, githubOutputPath) {
+  return spawnSync(
+    process.execPath,
+    [join(repoDir, "tools", "rule-ingestion", "reconcile-net-change.mjs")],
+    {
+      cwd: repoDir,
+      encoding: "utf8",
+      env: { ...process.env, GITHUB_OUTPUT: githubOutputPath },
+    }
+  );
+}
+
+describe("CLI (real subprocess, real git, throwaway fixture repo)", () => {
+  test("net-unchanged: exits 0, emits changed=false, restores the working tree", () => {
+    const { repoDir, run } = makeCliFixture();
+    writeAndCommit(repoDir, run, {
+      version: 5,
+      published: "2026-09-01T00:00:00.000Z",
+      params: ["a", "b"],
+      message: "committed",
+    });
+
+    // Simulate the exact T3.1 symptom: version/published moved (a stacked
+    // bump), content did not.
+    writeFileSync(
+      join(repoDir, "tools", "rules-source", "params.json"),
+      JSON.stringify({ version: 7, published: "2026-09-08T00:00:00.000Z", params: ["a", "b"] }, null, 2) + "\n",
+      "utf8"
+    );
+
+    const githubOutputPath = join(repoDir, "github-output.txt");
+    const proc = runCli(repoDir, githubOutputPath);
+
+    assert.equal(proc.status, 0, proc.stderr);
+    assert.match(proc.stdout, /net content identical to HEAD/);
+    assert.ok(existsSync(githubOutputPath));
+    assert.equal(readFileSync(githubOutputPath, "utf8"), "changed=false\n");
+
+    const restored = JSON.parse(readFileSync(join(repoDir, "tools", "rules-source", "params.json"), "utf8"));
+    assert.equal(restored.version, 5, "must be restored to HEAD's committed version");
+  });
+
+  test("net-changed: exits 0, emits changed=true, writes exactly HEAD version + 1", () => {
+    const { repoDir, run } = makeCliFixture();
+    writeAndCommit(repoDir, run, {
+      version: 5,
+      published: "2026-09-01T00:00:00.000Z",
+      params: ["a"],
+      message: "committed",
+    });
+
+    // A genuinely new param, with a stacked double bump on top (5 -> 7).
+    writeFileSync(
+      join(repoDir, "tools", "rules-source", "params.json"),
+      JSON.stringify({ version: 7, published: "2026-09-08T00:00:00.000Z", params: ["a", "b"] }, null, 2) + "\n",
+      "utf8"
+    );
+
+    const githubOutputPath = join(repoDir, "github-output.txt");
+    const proc = runCli(repoDir, githubOutputPath);
+
+    assert.equal(proc.status, 0, proc.stderr);
+    assert.match(proc.stdout, /version set to 6/);
+    assert.equal(readFileSync(githubOutputPath, "utf8"), "changed=true\n");
+
+    const written = JSON.parse(readFileSync(join(repoDir, "tools", "rules-source", "params.json"), "utf8"));
+    assert.equal(written.version, 6, "a single bump over HEAD's 5, not the stacked 7");
+    assert.deepEqual(written.params, ["a", "b"]);
   });
 });

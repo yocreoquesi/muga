@@ -26,11 +26,14 @@
  * against what `HEAD` — the branch this run started from — actually has
  * committed.
  *
- *   - Identical: nothing publishable moved. Restores both files to HEAD's
- *     exact committed bytes (discarding whatever version bumps the pipeline,
- *     land-scoped or prefer-anchors made along the way) and reports
- *     `changed: false`, so the workflow's combined signal stays quiet and no
- *     version is spent, no signature is produced, no PR opens.
+ *   - Identical: nothing publishable moved. Restores EXACTLY the two compared
+ *     files (`params.json`, `rules.json` — never a wider `git checkout` of the
+ *     whole `tools/rules-source` directory, which could silently restore some
+ *     OTHER file this tool never looked at) to HEAD's exact committed bytes
+ *     (discarding whatever version bumps the pipeline, land-scoped or
+ *     prefer-anchors made along the way) and reports `changed: false`, so the
+ *     workflow's combined signal stays quiet and no version is spent, no
+ *     signature is produced, no PR opens.
  *   - Different: something real changed. The version is set to EXACTLY
  *     `HEAD`'s version + 1 — a single bump, not one per step that happened to
  *     write this run — and `changed: true` is reported.
@@ -44,7 +47,7 @@
 
 import { readFileSync, writeFileSync, renameSync, appendFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -53,12 +56,23 @@ const REPO_ROOT = resolve(__dirname, "..", "..");
 export const DEFAULT_PARAMS_PATH = resolve(REPO_ROOT, "tools", "rules-source", "params.json");
 export const DEFAULT_STORE_PATH = resolve(REPO_ROOT, "tools", "rules-source", "rules.json");
 
-/** Paths as `git show HEAD:<path>` expects them — always forward-slashed. */
-const RELATIVE_PARAMS_PATH = "tools/rules-source/params.json";
-const RELATIVE_STORE_PATH = "tools/rules-source/rules.json";
-
-/** What `git checkout --` restores when nothing net changed. */
-const RESTORE_PATH_SPEC = "tools/rules-source";
+/**
+ * An absolute path, as `git show HEAD:<path>` / `git checkout -- <path>`
+ * expect it: relative to the repo root, forward-slashed even on Windows.
+ *
+ * Derived from whatever path the caller actually passed, rather than a fixed
+ * constant — a caller overriding `paramsPath`/`storePath` (a test fixture, a
+ * differently-laid-out checkout) would otherwise silently have its HEAD
+ * lookup and its restore keep pointing at the PRODUCTION paths, comparing and
+ * restoring the wrong files without either failing loudly or doing what the
+ * caller asked.
+ *
+ * @param {string} absolutePath
+ * @returns {string}
+ */
+export function toRepoRelativePath(absolutePath) {
+  return relative(REPO_ROOT, absolutePath).split(sep).join("/");
+}
 
 /**
  * Drops the signing-flow fields so two params.json snapshots compare on
@@ -136,15 +150,24 @@ export function withVersion(paramsText, version) {
  * @param {object} [opts]
  * @param {string} [opts.paramsPath]
  * @param {string} [opts.storePath]
+ * @param {string} [opts.headParamsPath] Relative-to-repo-root path `git show`/
+ *   `git checkout` use for `paramsPath`. Defaults to `paramsPath` made
+ *   relative — override only when `paramsPath` itself is not a real path
+ *   under this checkout (e.g. a bare fixture name in a test).
+ * @param {string} [opts.headStorePath] Same, for `storePath`.
  * @param {(path: string) => string} [opts.readFile] Reads a working-tree file.
  * @param {(path: string, text: string) => void} [opts.writeFile] Writes a working-tree file.
  * @param {(relativePath: string) => string} [opts.readHead] Reads `HEAD:<relativePath>`.
- * @param {() => void} [opts.restore] Restores the working tree's rules-source files to HEAD.
+ * @param {(relativePaths: string[]) => void} [opts.restore] Restores EXACTLY
+ *   the given repo-relative paths to their HEAD content — never a wider
+ *   directory checkout.
  * @returns {{changed: boolean, version?: number}}
  */
 export function runReconcile({
   paramsPath = DEFAULT_PARAMS_PATH,
   storePath = DEFAULT_STORE_PATH,
+  headParamsPath = toRepoRelativePath(paramsPath),
+  headStorePath = toRepoRelativePath(storePath),
   readFile = (path) => readFileSync(path, "utf8"),
   writeFile = (path, text) => {
     writeFileSync(`${path}.tmp`, text, "utf8");
@@ -152,12 +175,12 @@ export function runReconcile({
   },
   readHead = (relativePath) =>
     execFileSync("git", ["show", `HEAD:${relativePath}`], { cwd: REPO_ROOT, encoding: "utf8" }),
-  restore = () => {
-    execFileSync("git", ["checkout", "--", RESTORE_PATH_SPEC], { cwd: REPO_ROOT });
+  restore = (relativePaths) => {
+    execFileSync("git", ["checkout", "--", ...relativePaths], { cwd: REPO_ROOT });
   },
 } = {}) {
-  const headParamsText = readHead(RELATIVE_PARAMS_PATH);
-  const headStoreText = readHead(RELATIVE_STORE_PATH);
+  const headParamsText = readHead(headParamsPath);
+  const headStoreText = readHead(headStorePath);
   const currentParamsText = readFile(paramsPath);
   const currentStoreText = readFile(storePath);
 
@@ -169,7 +192,10 @@ export function runReconcile({
   });
 
   if (!changed) {
-    restore();
+    // EXACTLY the two files this tool compared — never a directory checkout,
+    // which could silently restore some other file under tools/rules-source
+    // that neither `computeNetChange` nor anything else here inspected.
+    restore([headParamsPath, headStorePath]);
     return { changed: false };
   }
 
@@ -199,7 +225,7 @@ if (isMain) {
     } else {
       console.log(
         "[reconcile-net-change] net content identical to HEAD (ignoring version/published/sig) " +
-          "— restored tools/rules-source to HEAD, nothing to publish this run"
+          "— restored params.json and rules.json to HEAD, nothing to publish this run"
       );
     }
     if (process.env.GITHUB_OUTPUT) {

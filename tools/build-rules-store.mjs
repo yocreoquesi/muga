@@ -717,10 +717,17 @@ if (isMain) {
       // C1 folds a host-anchored name back into promote's global candidate pool
       // on every run, by design (run 35921813206 reproduced this — 62 relocated
       // params came back). `relocated.length > 0` is this run's own "did the
-      // state move" signal, mirroring land-scoped.mjs's `changed` output, so the
-      // workflow's combined work-decision step can route on it without assuming
-      // the pipeline's own `noop` (which measures promote's merge, not this
-      // relocation) already covers it.
+      // state move" signal, mirroring land-scoped.mjs's `changed` output.
+      //
+      // T3.1 (steady-state churn, corrected): the workflow's combined
+      // work-decision step does NOT route on this signal — `ANY` is assigned
+      // from `reconcile-net-change.mjs`'s `changed` output alone. This signal
+      // reads `true` EVERY week once #1344's candidates exist at all (promote
+      // keeps re-adding them, this step keeps taking them back out), so it
+      // MUST NOT be OR'd back into `ANY`: doing so reintroduces the exact
+      // steady-state churn `reconcile-net-change.mjs` exists to fix, since a
+      // week with zero net content change would still read `changed:true` here
+      // forever. It remains logged for observability only.
       if (process.env.GITHUB_OUTPUT) {
         appendFileSync(process.env.GITHUB_OUTPUT, `changed=${relocated.length > 0}\n`);
       }

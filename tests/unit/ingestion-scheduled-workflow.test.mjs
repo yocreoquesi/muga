@@ -465,15 +465,24 @@ describe("T3 (#1344) — auto-ingest preserves the anchor relocation across runs
 
   test("--prefer-anchors runs AFTER land-scoped and BEFORE the test gate and the publish step", () => {
     const content = readWorkflow();
-    const landScopedIdx = content.indexOf("land-scoped.mjs");
-    const preferAnchorsIdx = content.indexOf("--prefer-anchors");
-    const npmTestIdx = content.indexOf("npm test");
-    const signRulesIdx = content.indexOf("sign-rules.mjs");
+    // Match the actual run: lines, not any prose mention — a forward
+    // reference in a comment above the real step (or a step's own docblock
+    // mentioning a LATER step by name, as this file does) would otherwise
+    // skew bare `indexOf` results.
+    const landScopedMatch = content.match(/run:\s*node\s+tools\/rule-ingestion\/land-scoped\.mjs\b/);
+    const preferAnchorsMatch = content.match(/run:\s*node\s+tools\/build-rules-store\.mjs\s+--prefer-anchors/);
+    const npmTestMatch = content.match(/run:\s*npm test\b/);
+    const signRulesMatch = content.match(/run:\s*node\s+tools\/sign-rules\.mjs\b/);
 
-    assert.ok(landScopedIdx !== -1, "workflow must include the land-scoped step");
-    assert.ok(preferAnchorsIdx !== -1, "workflow must include a --prefer-anchors step");
-    assert.ok(npmTestIdx !== -1, "workflow must include 'npm test' gate step");
-    assert.ok(signRulesIdx !== -1, "workflow must include the sign-rules.mjs publish step");
+    assert.ok(landScopedMatch, "workflow must include the land-scoped step's run: line");
+    assert.ok(preferAnchorsMatch, "workflow must include the --prefer-anchors step's run: line");
+    assert.ok(npmTestMatch, "workflow must include the 'npm test' gate step's run: line");
+    assert.ok(signRulesMatch, "workflow must include the sign-rules.mjs publish step's run: line");
+
+    const landScopedIdx = landScopedMatch.index;
+    const preferAnchorsIdx = preferAnchorsMatch.index;
+    const npmTestIdx = npmTestMatch.index;
+    const signRulesIdx = signRulesMatch.index;
 
     assert.ok(
       landScopedIdx < preferAnchorsIdx,
@@ -624,7 +633,12 @@ describe("T3.1 (#1344) — steady-state churn guard (reconcile-net-change)", () 
     // reads false every single week in steady state.
     const content = readWorkflow();
     const decideBlockMatch = content.match(
-      /- name: Decide whether this run has work to commit[\s\S]*?(?=\n {6}- name:|\Z)/
+      // `\Z` is a Perl/PCRE end-of-input anchor, not a JS RegExp one — in JS
+      // it matches the LITERAL character "Z", so a workflow ending in a step
+      // literally named "...Z" would have silently truncated this match.
+      // `(?![\s\S])` is the JS equivalent of end-of-input (no char, of any
+      // kind including newline, follows).
+      /- name: Decide whether this run has work to commit[\s\S]*?(?=\n {6}- name:|(?![\s\S]))/
     );
     assert.ok(decideBlockMatch, "could not locate the work-decision step's block");
     const block = decideBlockMatch[0];
