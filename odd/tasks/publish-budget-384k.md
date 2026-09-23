@@ -43,7 +43,7 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   params.json to version 14, regenerate projections, and update the tests that
   pinned the 50 KB saturation to the measured post-raise state.
   Route: delegated (writer; 2+ non-trivial files).
-- [ ] T2 Run `--prefer-anchors` (#1344), verify orphans do not rise and the
+- [x] T2 Run `--prefer-anchors` (#1344), verify orphans do not rise and the
   scoped DNR rules stay within 2000, update tests to the relocated state.
   Route: delegated (same writer).
 
@@ -93,7 +93,45 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
     finding alongside the historical 50 KB saturation evidence.
   Checks green: `npm test` (7975 pass, 1 pre-existing skip), `npm run
   check:rules-store`, `npm run lint:js`, `npm run typecheck`.
-  Commit: (recorded after commit — see below).
+  Commit: 0aa2317.
+- 2026-09-23: T2 closed. Ran `node tools/build-rules-store.mjs
+  --prefer-anchors`: relocated 62 params (see full list in the CLI output /
+  final report), 0 deferred, orphans 0 -> 0, 338518 bytes left in the 384 KB
+  budget. `tools/rules-source/params.json` version bumped 14 -> 15 (one
+  content-changing bump for this commit's own params[] change, on top of
+  T1's own 13 -> 14 bump for its scoped[] change — two genuine payload
+  changes across two commits, each following the tool's own documented
+  "bump on a change to params[]/scoped[]" rule, not a single change bumped
+  twice).
+  Verified: all ten #1228 params (igsh mibextid smid campaign crid igshid
+  n_cid ocid share_id trk) are out of the global list and present as scoped
+  facts. `npm run compile:rules` + `npm run build:dnr` produced only
+  CRLF-only noise (empty under `--ignore-cr-at-eol`) on
+  src/rules/{rules-manifest,tracking-params,wrapper-dnr-rules}.json —
+  reverted via `git checkout`, since those three derive from the BUNDLED
+  `TRACKING_PARAMS`, not the remote channel this change touches. Measured
+  the generated scoped DNR rule groups (`buildScopedDnrRules` over the
+  published `scoped` section): 459 groups, well within
+  `DNR_SCOPED_PARAMS_MAX_RULES` = 2000.
+  Updated `tests/unit/channel-prefers-anchors.test.mjs` again for the
+  applied (not just dry-run) state: the "62 candidates" test now asserts a
+  safe idempotent no-op re-run (0/0/0); the "ten params" naive-eviction test
+  reconstructs the pre-relocation global list (the ten no longer appear in
+  the real committed global list at all) and remeasures under the synthetic
+  50 KB ceiling — 13 unrelated params evicted (was 14 pre-relocation; the
+  real global list is now 62 entries shorter, which shifts the exact byte
+  cutoff); the "ten host-anchored params" describe block now asserts they
+  are out of global, present as scoped, and a no-op on a fresh run.
+  Checks green again: `npm test` (7985 pass, 1 pre-existing skip), `npm run
+  check:rules-store`, `npm run lint:js`, `npm run typecheck`, `npm run
+  compile:rules` + `npm run build:dnr` (no unexpected diff).
+  Commit: 8bbfa6c.
+
+## Next step
+
+Both tasks closed and both checks lists green. Nothing outstanding for this
+feature; #1344 is closed by this relocation. Delivery (push, PR) is the
+user's decision under ordinary repository policy — not done by this agent.
 
 ## Related
 

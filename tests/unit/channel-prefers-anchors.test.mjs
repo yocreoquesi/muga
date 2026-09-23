@@ -43,13 +43,17 @@
  * 2026-09-23: the publish budget raised to 384 KB (see
  * `PUBLISH_PAYLOAD_BUDGET_BYTES`'s own docblock — release, then adoption,
  * then this number) gave the mechanism the headroom the 50 KB ceiling never
- * had: against the real committed store, all 62 candidates now relocate
- * cleanly, with room to spare and the orphan count untouched. The
- * saturation scenario above is no longer today's truth, but the invariant it
- * protects still matters whenever a future backlog grows to fill whatever
- * budget is current — so the "unprotected relocation evicts a neighbour"
- * evidence below is reproduced against a synthetic saturated budget instead
- * of the (now roomy) real one.
+ * had, and `node tools/build-rules-store.mjs --prefer-anchors` has applied
+ * it: against the real committed store, all 62 candidates relocated
+ * cleanly, with room to spare and the orphan count untouched (still 0). The
+ * saturation scenario above is no longer today's truth — none of the 62 is
+ * even a candidate any more, since none is a global param to begin with —
+ * but the invariant it protects still matters whenever a future backlog
+ * grows to fill whatever budget is current. So the "unprotected relocation
+ * evicts a neighbour" evidence below is reproduced against a synthetic
+ * saturated 50 KB ceiling, reconstructing the pre-relocation global list for
+ * the ten it names, rather than depending on the (now roomy, and now
+ * post-relocation) real budget and store.
  */
 
 import { test, describe } from "node:test";
@@ -138,46 +142,38 @@ describe("#1344 — the orphan count must never rise", () => {
     assert.equal(result.orphansBefore, independent);
   });
 
-  test("today, every one of the 62 qualifying candidates relocates — the 384 KB budget has room for all of them", () => {
-    // The concrete, current finding: raising the publish budget to 384 KB
-    // (2026-09-23, once v3.1.0 had the fleet) gave the mechanism enough
-    // headroom that every qualifying candidate's own record fits AND none
-    // of them evicts an already-published neighbour. This pins that finding
-    // so a future change to the store, the budget, or the mechanism has to
-    // re-examine it rather than silently drift.
+  test("#1344 has been applied: re-running against the real committed store is a safe no-op", () => {
+    // The concrete, current finding: `node tools/build-rules-store.mjs
+    // --prefer-anchors` has already relocated all 62 qualifying candidates
+    // (2026-09-23, against the 384 KB budget). None of them is a global
+    // param any more, so none qualifies as a candidate on a fresh run —
+    // exactly the idempotence `runPreferAnchors`'s own docblock promises.
+    // This pins that finding so a future change to the store, the budget,
+    // or the mechanism has to re-examine it rather than silently drift.
     const store = loadRealStore();
     const result = computeAnchorPreference(store, realParamsText());
 
-    assert.equal(
-      result.relocated.length,
-      62,
-      `expected all 62 qualifying candidates to relocate against the real store's current 384 KB ` +
-        `headroom, got ${result.relocated.length}: ` + result.relocated.join(", ")
-    );
+    assert.deepEqual(result.relocated, []);
     assert.deepEqual(result.stayedGlobalForBudget, []);
+    assert.equal(result.orphansBefore, 0);
     assert.equal(result.orphansAfter, result.orphansBefore);
   });
 
-  test("relocating just the ten #1228 params, unprotected, under a saturated 50 KB budget WOULD have evicted 14 unrelated params (16 facts)", () => {
+  test("relocating just the ten #1228 params, unprotected, under a saturated 50 KB budget WOULD have evicted 13 unrelated params", () => {
     // Direct evidence for the docblock's claim, computed independently of
     // computeAnchorPreference's admission logic (this simulates the naive,
     // unprotected relocation the first version of this fix shipped, and
     // shows exactly why it was wrong). The real committed store no longer
-    // saturates the current 384 KB budget (see the "orphan count must never
-    // rise" test above), so this test recreates the saturation the
-    // invariant exists for with a fixed, budget-independent ceiling — the
-    // same 50 KB the channel published under before v3.1.0 had the fleet —
-    // rather than the (now roomy) real `PUBLISH_PAYLOAD_BUDGET_BYTES`.
+    // saturates the current 384 KB budget, AND the ten named below have
+    // themselves already relocated (they are no longer in the published
+    // global list at all) — so this test reconstructs the pre-relocation
+    // shape it needs: the ten put BACK into the global list (as they stood
+    // before #1344 relocated them), fit against a fixed, budget-independent
+    // 50 KB ceiling — the same size the channel published under before
+    // v3.1.0 had the fleet — rather than the (now roomy) real
+    // `PUBLISH_PAYLOAD_BUDGET_BYTES`.
     const store = loadRealStore();
     const current = JSON.parse(realParamsText());
-    const globalParams = current.params;
-    // The FULL pool the real mechanism draws from (`emitScoped`, ~1068
-    // facts) — not `current.scoped` (the published subset). Using the
-    // smaller one here would silently hide the eviction this test exists to
-    // demonstrate.
-    const scoped = emitScoped(store);
-    const SATURATED_BUDGET = 50 * 1024;
-
     const TEN = [
       "igsh",
       "mibextid",
@@ -190,6 +186,17 @@ describe("#1344 — the orphan count must never rise", () => {
       "share_id",
       "trk",
     ];
+    assert.ok(
+      TEN.every((p) => !current.params.includes(p)),
+      "fixture assumption: the ten have already relocated out of the published global list"
+    );
+    const globalParams = [...current.params, ...TEN];
+    // The FULL pool the real mechanism draws from (`emitScoped`, ~1068
+    // facts) — not `current.scoped` (the published subset). Using the
+    // smaller one here would silently hide the eviction this test exists to
+    // demonstrate.
+    const scoped = emitScoped(store);
+    const SATURATED_BUDGET = 50 * 1024;
 
     function fit(params) {
       const bare = { ...current, params };
@@ -216,22 +223,20 @@ describe("#1344 — the orphan count must never rise", () => {
     const evicted = [...before].filter((p) => !after.has(p) && !TEN.includes(p));
     assert.equal(
       evicted.length,
-      14,
-      `expected 14 unrelated params evicted under a saturated 50 KB budget, got ${evicted.length}: ` +
+      13,
+      `expected 13 unrelated params evicted under a saturated 50 KB budget, got ${evicted.length}: ` +
         evicted.sort().join(", ")
     );
   });
 });
 
-// ── The ten named params: now free to relocate ────────────────────────────
+// ── The ten named params: relocated ───────────────────────────────────────
 //
 // #1342 could not reach these ten under the old 50 KB budget (every
 // candidate deferred to protect a neighbour). The 384 KB budget removed that
-// ceiling: `computeAnchorPreference` now reports all ten as relocating. The
-// actual relocation (writing that back to the store) is #1344's own commit —
-// at this point in the sequence the store is untouched, so the committed
-// global list still carries them, and the assertions below check the dry-run
-// decision, not yet the applied one.
+// ceiling, and `node tools/build-rules-store.mjs --prefer-anchors` has
+// applied the relocation: each of the ten left the published global list and
+// now strips only at the hosts `domain-rules.json` anchors it to.
 
 describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
   const TEN = [
@@ -249,25 +254,31 @@ describe("#1344 — the ten host-anchored params #1342 could not reach", () => {
 
   const params = JSON.parse(readFileSync(PARAMS_PATH, "utf8"));
   const globalSet = new Set(params.params);
+  const scopedParamSet = new Set((params.scoped ?? []).map((f) => f.param));
 
   for (const param of TEN) {
-    test(`"${param}" is reported as ready to relocate, not silently left unexplained`, () => {
-      const store = loadRealStore();
-      const result = computeAnchorPreference(store, realParamsText());
+    test(`"${param}" is no longer a global entry — it left the published global list`, () => {
       assert.ok(
-        result.relocated.includes(param),
-        `"${param}" is neither relocated nor reported as deferred — the mechanism must account ` +
-          "for every qualifying candidate one way or the other"
+        !globalSet.has(param),
+        `"${param}" is still in the published global list — the relocation was not applied`
       );
     });
 
-    test(`"${param}" still strips everywhere today — the relocation has not been applied to the committed store yet`, () => {
-      // The store has not had `--prefer-anchors` run against it yet, so the
-      // committed global list is unchanged: the param has not lost
-      // coverage, it just has not moved yet.
+    test(`"${param}" still strips somewhere — it publishes as a scoped fact instead`, () => {
+      // The property that actually matters: it never lost coverage, it just
+      // moved from the blanket global rule to its own anchors.
       assert.ok(
-        globalSet.has(param),
-        `"${param}" left the published global list without the relocation having been applied`
+        scopedParamSet.has(param),
+        `"${param}" left the global list without publishing as a scoped fact — it strips nowhere`
+      );
+    });
+
+    test(`"${param}" is a no-op candidate on a fresh run — already relocated, not re-offered`, () => {
+      const store = loadRealStore();
+      const result = computeAnchorPreference(store, realParamsText());
+      assert.ok(
+        !result.relocated.includes(param) && !result.stayedGlobalForBudget.includes(param),
+        `"${param}" was re-offered by a fresh run — it should no longer be a global param at all`
       );
     });
   }
