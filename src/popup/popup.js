@@ -6,7 +6,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { loadCleaningContext, cleanForPreview } from "../lib/cleaning-context.js";
-import { getPrefs, sessionStorage, getDomainStats, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, sessionStorage, getRemoteParams } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
@@ -371,7 +371,7 @@ async function init() {
 
   await showUrlPreview(prefs, lang);
   await showHistory(prefs, lang);
-  await showDomainStats(prefs, lang);
+  // Domain-stats panel moved to Settings' Activity section (#1350).
   await showSuspiciousParams(prefs, lang);
   await showRecentActivity(lang);
 
@@ -914,55 +914,6 @@ function formatStat(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
-}
-
-/** Renders the per-domain tracker stats panel. */
-async function showDomainStats(prefs, lang) {
-  if (!prefs.domainStats) return;
-
-  const section = document.getElementById("domain-stats");
-  const list = document.getElementById("domain-stats-list");
-
-  const allStats = await getDomainStats();
-  const entries = Object.entries(allStats)
-    .sort((a, b) => b[1].params - a[1].params)
-    .slice(0, 10);
-
-  if (entries.length === 0) {
-    // Show section with empty-state message so users know the panel exists
-    section.hidden = false;
-    const emptyEl = document.createElement("p");
-    emptyEl.className = "domain-stats-empty";
-    emptyEl.textContent = t("domain_stats_empty", lang);
-    list.appendChild(emptyEl);
-    return;
-  }
-
-  section.hidden = false;
-  const summary = section.querySelector("summary");
-  if (summary) summary.setAttribute("aria-label", t("domain_stats_label", lang));
-
-  for (const [domain, data] of entries) {
-    const row = document.createElement("div");
-    row.className = "domain-stats-row";
-
-    const nameEl = document.createElement("span");
-    nameEl.className = "domain-stats-name";
-    nameEl.textContent = domain;
-
-    const paramsEl = document.createElement("span");
-    paramsEl.className = "domain-stats-params";
-    paramsEl.textContent = `${data.params} ${t("domain_stats_params", lang)}`;
-
-    const urlsEl = document.createElement("span");
-    urlsEl.className = "domain-stats-urls";
-    urlsEl.textContent = `${data.urls} ${t("domain_stats_urls", lang)}`;
-
-    row.appendChild(nameEl);
-    row.appendChild(paramsEl);
-    row.appendChild(urlsEl);
-    list.appendChild(row);
-  }
 }
 
 /**

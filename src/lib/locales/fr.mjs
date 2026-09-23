@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Confidentialité",
   section_display: "Affichage",
   section_user_custom_rules: "Vos paramètres supprimés localement",
+  section_activity: "Activité",
   user_custom_rules_hint: "Paramètres que vous avez ajoutés avec « Supprimer localement » dans la fenêtre contextuelle. MUGA les supprime sur tous les sites. Retirez ceux que vous ne souhaitez plus supprimer.",
   row_canonical_extractor_label: "Trouver la vraie destination quand un wrapper la cache",
   row_canonical_extractor_hint: "Lorsqu'un wrapper masque sa destination, MUGA lit le lien canonique de la page pour trouver la vraie destination avant d'abandonner.",

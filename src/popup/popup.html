@@ -63,10 +63,9 @@
     Nothing cleaned yet. Open a link with tracking on it and these counters start moving.
   </p>
 
-  <details class="domain-stats" id="domain-stats" hidden>
-    <summary data-i18n="domain_stats_label">Where the most noise comes from</summary>
-    <div id="domain-stats-list"></div>
-  </details>
+  <!-- Domain-stats panel moved to Settings' Activity section (#1350,
+       ADR-0011 Decision 3): a ranked table over time is a record, not a
+       two-second glance. See src/options/options.html #section-activity. -->
 
   <!-- Suspicious params section (#446, B16). Surfaces both the entropy
        heuristic flags (B15, this page) AND the cross-site frequency

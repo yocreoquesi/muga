@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Privacy",
   section_display: "Display",
   section_user_custom_rules: "Your locally-stripped params",
+  section_activity: "Activity",
   user_custom_rules_hint: "Params you promoted with \"Strip locally\" in the popup. MUGA strips these on every site. Remove any you no longer want stripped.",
   row_canonical_extractor_label: "Find the real destination when a wrapper hides it",
   row_canonical_extractor_hint: "When a wrapper hides its destination, MUGA reads the page's canonical link to find the real target before giving up.",

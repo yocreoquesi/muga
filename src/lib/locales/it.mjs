@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Privacy",
   section_display: "Visualizzazione",
   section_user_custom_rules: "I tuoi parametri rimossi localmente",
+  section_activity: "Attività",
   user_custom_rules_hint: "Parametri che hai aggiunto con «Rimuovi localmente» nella finestra popup. MUGA li rimuove su ogni sito. Rimuovi quelli che non vuoi più eliminare.",
   row_canonical_extractor_label: "Trova la destinazione reale quando un wrapper la nasconde",
   row_canonical_extractor_hint: "Quando un wrapper nasconde la sua destinazione, MUGA legge il link canonico della pagina per trovare la destinazione reale prima di arrendersi.",

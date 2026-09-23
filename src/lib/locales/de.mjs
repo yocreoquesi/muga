@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Datenschutz",
   section_display: "Anzeige",
   section_user_custom_rules: "Ihre lokal entfernten Parameter",
+  section_activity: "Aktivität",
   user_custom_rules_hint: "Parameter, die Sie im Popup mit „Lokal entfernen“ hinzugefügt haben. MUGA entfernt sie auf jeder Website. Entfernen Sie alle, die nicht mehr entfernt werden sollen.",
   row_canonical_extractor_label: "Das echte Ziel finden, wenn ein Wrapper es verbirgt",
   row_canonical_extractor_hint: "Wenn ein Wrapper sein Ziel verbirgt, liest MUGA den kanonischen Link der Seite, um das echte Ziel zu finden, bevor es aufgibt.",

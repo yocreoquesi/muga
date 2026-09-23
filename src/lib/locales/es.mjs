@@ -308,6 +308,7 @@ export default Object.freeze({
   section_privacy_controls: "Privacidad",
   section_display: "Visualización",
   section_user_custom_rules: "Tus parámetros eliminados localmente",
+  section_activity: "Actividad",
   user_custom_rules_hint: "Parámetros que promoviste con «Eliminar localmente» en la ventana emergente. MUGA los elimina en todos los sitios. Quita los que ya no quieras eliminar.",
   row_canonical_extractor_label: "Encontrar el destino real cuando un envoltorio lo oculta",
   row_canonical_extractor_hint: "Cuando un envoltorio oculta su destino, MUGA lee el enlace canónico de la página para encontrar el destino real antes de rendirse.",
