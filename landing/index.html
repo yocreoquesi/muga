@@ -1072,8 +1072,28 @@
       });
     }
 
-    tool.addEventListener('focusin', bootstrap);
-    tool.addEventListener('pointerdown', bootstrap);
+    // Eager start when `?url=` is present (#1356). `/clean` now redirects
+    // here keeping the query string (landing/_redirects), and #1333's ?url=
+    // share link only works if the tool actually initializes: the lazy path
+    // above never fires until a focusin/pointerdown, so a visitor who just
+    // reads the already-cleaned result and leaves would land on an empty
+    // tool that never ran. Goes through the exact same bootstrap()/
+    // startTool() machinery a real interaction uses, so there is still only
+    // one load path; the lazy listeners are simply skipped rather than
+    // added and immediately removed. A malformed or absent search string
+    // falls through to the lazy path instead of throwing, matching web/
+    // ui.js's own prefill guard.
+    var hasSharedUrl = false;
+    try {
+      hasSharedUrl = new URLSearchParams(window.location.search || '').has('url');
+    } catch (e) { hasSharedUrl = false; }
+
+    if (hasSharedUrl) {
+      bootstrap();
+    } else {
+      tool.addEventListener('focusin', bootstrap);
+      tool.addEventListener('pointerdown', bootstrap);
+    }
 
     // Single-line input: Enter triggers Clean, matching the button. Landing-
     // only; web/ui.js (shared with /clean) is untouched. Focusing the input to
