@@ -438,6 +438,236 @@ describe("host-scoped landing is part of the weekly job (#1229)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// T3 [RED->GREEN] — the weekly run must preserve #1344's relocation
+//
+// `parseRemoveparamRules`'s design correction C1 folds a host-anchored
+// removeparam name back into promote's GLOBAL candidate pool on every run, BY
+// DESIGN — so `promote-rules.mjs` re-adds a param #1344 already relocated the
+// very next time upstream still reports it, which is always. Run 35921813206
+// reproduced exactly this: the pipeline re-added all 62 of #1344's
+// relocations and `npm test` failed on channel-prefers-anchors.test.mjs.
+//
+// `node tools/build-rules-store.mjs --prefer-anchors` (already shipped,
+// #1344) derives its candidates live from the store on every run, so
+// re-running it after promote and land-scoped relocates anything either just
+// put back, undoing the circularity every week instead of once by hand.
+// ---------------------------------------------------------------------------
+describe("T3 (#1344) — auto-ingest preserves the anchor relocation across runs", () => {
+  test("workflow runs --prefer-anchors after the pipeline", () => {
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /node\s+tools\/build-rules-store\.mjs\s+--prefer-anchors/,
+      "auto-ingest-rules.yml must re-run --prefer-anchors so a param the pipeline just " +
+        "re-globalized is relocated back out before the gates and the publish step run"
+    );
+  });
+
+  test("--prefer-anchors runs AFTER land-scoped and BEFORE the test gate and the publish step", () => {
+    const content = readWorkflow();
+    // Match the actual run: lines, not any prose mention — a forward
+    // reference in a comment above the real step (or a step's own docblock
+    // mentioning a LATER step by name, as this file does) would otherwise
+    // skew bare `indexOf` results.
+    const landScopedMatch = content.match(/run:\s*node\s+tools\/rule-ingestion\/land-scoped\.mjs\b/);
+    const preferAnchorsMatch = content.match(/run:\s*node\s+tools\/build-rules-store\.mjs\s+--prefer-anchors/);
+    const npmTestMatch = content.match(/run:\s*npm test\b/);
+    const signRulesMatch = content.match(/run:\s*node\s+tools\/sign-rules\.mjs\b/);
+
+    assert.ok(landScopedMatch, "workflow must include the land-scoped step's run: line");
+    assert.ok(preferAnchorsMatch, "workflow must include the --prefer-anchors step's run: line");
+    assert.ok(npmTestMatch, "workflow must include the 'npm test' gate step's run: line");
+    assert.ok(signRulesMatch, "workflow must include the sign-rules.mjs publish step's run: line");
+
+    const landScopedIdx = landScopedMatch.index;
+    const preferAnchorsIdx = preferAnchorsMatch.index;
+    const npmTestIdx = npmTestMatch.index;
+    const signRulesIdx = signRulesMatch.index;
+
+    assert.ok(
+      landScopedIdx < preferAnchorsIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run AFTER land-scoped (pos ${landScopedIdx}) ` +
+        "so it sees whatever facts landing just added"
+    );
+    assert.ok(
+      preferAnchorsIdx < npmTestIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run BEFORE the 'npm test' gate ` +
+        `(pos ${npmTestIdx}) — that gate is exactly what run 35921813206 failed`
+    );
+    assert.ok(
+      preferAnchorsIdx < signRulesIdx,
+      `--prefer-anchors (pos ${preferAnchorsIdx}) must run BEFORE sign-rules.mjs ` +
+        `(pos ${signRulesIdx}) so the signed payload reflects the relocation`
+    );
+  });
+
+  test("--prefer-anchors is NOT gated on the pipeline's global noop signal", () => {
+    // The trap this pins, mirroring the land-scoped test above: the exact
+    // failure mode is a promote run that reports non-noop (its own merge
+    // changed the global list) while still ending up wrong, so gating this
+    // step on that signal would skip the one run that most needs it.
+    const content = readWorkflow();
+    const lines = content.split("\n");
+    const idx = lines.findIndex((l) => /--prefer-anchors/.test(l));
+    assert.ok(idx > 0, "--prefer-anchors step not found");
+
+    let nearestIf = "";
+    for (let i = idx; i >= 0 && i > idx - 12; i--) {
+      if (/^\s*if:/.test(lines[i])) { nearestIf = lines[i]; break; }
+    }
+    assert.ok(nearestIf, "--prefer-anchors step must carry an explicit if:");
+    assert.ok(
+      !/outputs\.noop/.test(nearestIf),
+      `--prefer-anchors must not be gated on the global noop signal. Found: "${nearestIf}"`
+    );
+    assert.match(
+      nearestIf,
+      /steps\.pipeline\.conclusion\s*==\s*['"]success['"]/,
+      "--prefer-anchors runs whenever the pipeline succeeded, noop or not"
+    );
+  });
+
+  test("the workflow reads the prefer-anchors changed output", () => {
+    // `--prefer-anchors`'s own `changed` output is informational (T3.1: in
+    // steady state it reads `true` every week, since promote re-offers the
+    // same relocated params every run — see the T3.1 describe block below for
+    // the signal that actually decides whether this run publishes).
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /steps\.prefer_anchors\.outputs\.changed/,
+      "must read the #1344 relocation signal"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T3.1 [RED->GREEN] — steady-state churn guard (#1344)
+//
+// Measured directly (scratch worktree, week-1/week-2 repro): once #1344's
+// candidates are relocated, EVERY subsequent weekly run repeats the exact
+// same cycle — promote re-adds the same params (`noop: false`, because C1
+// makes them look new against the CURRENT committed list), then
+// `--prefer-anchors` relocates them back out (`changed: true`, for the same
+// reason in reverse) — while params[]/scoped[]/the whole store stay
+// byte-identical to what is already committed. Neither raw signal can see
+// that a genuine no-op happened, so gating `any` on either (as the first cut
+// of T3 did) would sign, publish and auto-merge a new version EVERY week with
+// no content change at all.
+//
+// `reconcile-net-change.mjs` is the fix: it compares the run's net effect
+// against `HEAD` (ignoring `version`/`published`/`sig`) and either restores
+// the working tree (nothing published) or collapses a stacked version bump
+// to exactly one (something genuinely published). `any` must read ITS signal,
+// not the raw pipeline/prefer-anchors ones.
+// ---------------------------------------------------------------------------
+describe("T3.1 (#1344) — steady-state churn guard (reconcile-net-change)", () => {
+  test("workflow runs reconcile-net-change.mjs after --prefer-anchors", () => {
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /node\s+tools\/rule-ingestion\/reconcile-net-change\.mjs/,
+      "auto-ingest-rules.yml must run reconcile-net-change.mjs to guard against #1344 churn"
+    );
+  });
+
+  test("reconcile runs AFTER --prefer-anchors and BEFORE the work-decision step", () => {
+    const content = readWorkflow();
+    // Match the actual run: lines, not any prose mention, so a forward
+    // reference in a comment above the real step can never skew the order.
+    const preferAnchorsRunMatch = content.match(/run:\s*node\s+tools\/build-rules-store\.mjs\s+--prefer-anchors/);
+    const reconcileRunMatch = content.match(/run:\s*node\s+tools\/rule-ingestion\/reconcile-net-change\.mjs/);
+    const decideIdx = content.indexOf("Decide whether this run has work to commit");
+
+    assert.ok(preferAnchorsRunMatch, "workflow must include the --prefer-anchors step's run: line");
+    assert.ok(reconcileRunMatch, "workflow must include the reconcile-net-change step's run: line");
+    assert.ok(decideIdx !== -1, "workflow must include the work-decision step");
+
+    const preferAnchorsIdx = preferAnchorsRunMatch.index;
+    const reconcileIdx = reconcileRunMatch.index;
+
+    assert.ok(
+      preferAnchorsIdx < reconcileIdx,
+      `reconcile-net-change (pos ${reconcileIdx}) must run AFTER --prefer-anchors (pos ${preferAnchorsIdx})`
+    );
+    assert.ok(
+      reconcileIdx < decideIdx,
+      `reconcile-net-change (pos ${reconcileIdx}) must run BEFORE the work-decision step (pos ${decideIdx})`
+    );
+  });
+
+  test("reconcile is gated like land-scoped and prefer-anchors, not on a raw noop/changed signal", () => {
+    const content = readWorkflow();
+    const lines = content.split("\n");
+    const idx = lines.findIndex((l) => /run:\s*node\s+tools\/rule-ingestion\/reconcile-net-change\.mjs/.test(l));
+    assert.ok(idx > 0, "reconcile-net-change step's run: line not found");
+
+    let nearestIf = "";
+    for (let i = idx; i >= 0 && i > idx - 12; i--) {
+      if (/^\s*if:/.test(lines[i])) { nearestIf = lines[i]; break; }
+    }
+    assert.ok(nearestIf, "reconcile step must carry an explicit if:");
+    assert.ok(
+      !/outputs\.(noop|changed)/.test(nearestIf),
+      `reconcile must not be gated on a raw noop/changed signal. Found: "${nearestIf}"`
+    );
+    assert.match(
+      nearestIf,
+      /steps\.pipeline\.conclusion\s*==\s*['"]success['"]/,
+      "reconcile runs whenever the pipeline succeeded"
+    );
+  });
+
+  test("the work decision reads steps.reconcile.outputs.changed", () => {
+    const content = readWorkflow();
+    assert.match(
+      content,
+      /steps\.reconcile\.outputs\.changed/,
+      "the combined work signal must read the reconciled (net-vs-HEAD) signal"
+    );
+  });
+
+  test("ANY is derived from the reconciled signal, not the raw GLOBAL-noop OR", () => {
+    // The trap this pins: OR'ing in the raw pipeline noop (`$GLOBAL = 'false'`)
+    // reintroduces the exact bug reconcile exists to fix, because that signal
+    // reads false every single week in steady state.
+    const content = readWorkflow();
+    const decideBlockMatch = content.match(
+      // `\Z` is a Perl/PCRE end-of-input anchor, not a JS RegExp one — in JS
+      // it matches the LITERAL character "Z", so a workflow ending in a step
+      // literally named "...Z" would have silently truncated this match.
+      // `(?![\s\S])` is the JS equivalent of end-of-input (no char, of any
+      // kind including newline, follows).
+      /- name: Decide whether this run has work to commit[\s\S]*?(?=\n {6}- name:|(?![\s\S]))/
+    );
+    assert.ok(decideBlockMatch, "could not locate the work-decision step's block");
+    const block = decideBlockMatch[0];
+
+    assert.match(
+      block,
+      /ANY=(\$RECONCILED|"\$RECONCILED")/,
+      `ANY must be assigned directly from the reconciled signal. Block:\n${block}`
+    );
+    assert.ok(
+      !/if\s*\[\s*"\$GLOBAL"\s*=\s*'false'\s*\][\s\S]*?then\s+ANY=true/.test(block),
+      `GLOBAL must not gate ANY via an OR'd if-condition anymore. Block:\n${block}`
+    );
+  });
+
+  test("the corrected comment does not claim relocating-nothing alone achieves steady-state quiescence", () => {
+    // #1344's own relocation ALWAYS finds the same params to relocate once
+    // they exist — the prior comment's "stays a true no-op end to end" framed
+    // prefer-anchors's own no-op case as sufficient, which the T3.1 repro
+    // disproved.
+    const content = readWorkflow();
+    assert.ok(
+      !/stays a true no-op end to end/.test(content),
+      "the superseded 'relocates nothing -> true no-op' claim must be corrected"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // T-20 [RED] — quarantine review summary step (ADR-7)
 // ---------------------------------------------------------------------------
 describe("T-20 — quarantine review summary step", () => {

@@ -47,6 +47,12 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   scoped DNR rules stay within 2000, update tests to the relocated state.
   Route: delegated (same writer).
 
+- [x] T3 Make the weekly auto-ingest preserve the #1344 relocation. The
+  first post-merge ingest (run 35921813206) failed `npm test`: the pipeline
+  re-added the 62 relocated params to the global list, the circularity #1344
+  itself described ("hand-removing them is undone by the next ingest").
+  Route: delegated (writer; exploration of the ingest pipeline spans 4+ files).
+
 ## Checks
 
 `npm test`, `npm run check:rules-store`, `npm run lint:js`, `npm run typecheck`,
@@ -139,11 +145,260 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   Open advisory: R3-legacy-cap-exceeded (the payload now exceeds 3.0.x's 50 KB
   cap; adoption rests on the maintainer's report).
 
+- 2026-09-23: PR #1358 and #1359 merged; channel v15 live at
+  rules.muga.app (53403 bytes, both signatures, `trk` not global). Manual
+  auto-ingest dispatch failed `npm test` (T3 opened).
+
+- 2026-09-23: T3 closed. Mapped the write path first: `promote-rules.mjs`
+  reads `params.json` and the store directly (not via `build-rules-store.mjs`),
+  merges upstream's `art.params` (which `parseRemoveparamRules`'s design
+  correction C1 folds a host-anchored name into, by design — C1 is still
+  right, see tools/import-upstream.mjs) into the global list, and writes both
+  files itself; `land-scoped.mjs` then calls `build-rules-store.mjs`'s
+  `writeAll`, which re-renders `params.json`'s `scoped` section from
+  whatever the store's global list is AT THAT POINT — so a param promote just
+  re-added gets re-shadowed by `withoutGloballyShadowed`, exactly reproducing
+  the circularity #1344 already named.
+
+  Chose approach (b): wired `node tools/build-rules-store.mjs
+  --prefer-anchors` into `.github/workflows/auto-ingest-rules.yml`, as a new
+  step after land-scoped and before the gates/publish, gated on
+  `steps.pipeline.conclusion == 'success'` (matching land-scoped, not the
+  global `noop` signal — the failure mode is a promote run that reports
+  non-noop while still being wrong). Its own `changed` output (new
+  `GITHUB_OUTPUT` emission in `build-rules-store.mjs`'s CLI, mirroring
+  land-scoped's) feeds the combined `steps.work.outputs.any` decision.
+  Rejected approach (a) (excluding a param from promote's merge via the raw
+  3-part predicate): it would decide admission WITHOUT the orphan/budget
+  check `computeAnchorPreference` already does, risking a real orphan on a
+  future saturated budget, and would duplicate logic. `--prefer-anchors`
+  already derives candidates live from the store, is already proven
+  orphan-safe (`channel-prefers-anchors.test.mjs`), and a no-op run writes
+  nothing / bumps no version — so composing it after promote+land-scoped is
+  the smallest correct fix, reusing tested code instead of adding a second
+  admission path.
+
+  RED: added a "T3 (#1344)" describe block to
+  `tests/unit/ingestion-scheduled-workflow.test.mjs` asserting the
+  `--prefer-anchors` step exists, runs after land-scoped and before the test
+  gate and the publish step, is gated like land-scoped (not on the global
+  noop), and feeds the combined signal. Verified RED by stashing the fix and
+  running `node --test tests/unit/ingestion-scheduled-workflow.test.mjs`: 4
+  failures. Restored the fix: `node --test` on that file passes (38/38).
+  Also added a function-level regression test in
+  `tests/unit/channel-prefers-anchors.test.mjs` ("T3 (#1344) — a param
+  promote re-globalizes is relocated back out on the next run") that builds a
+  post-relocation store, simulates promote's re-add via `withGlobalParams`,
+  and asserts `computeAnchorPreference` relocates it back out with orphans
+  unchanged and a stable idempotent second run — passes.
+
+  Real-pipeline reproduction (scratch git worktree at commit 1b82b2d, under
+  the session scratchpad, `npm ci` + a throwaway ed25519 key added to
+  `TRUSTED_PUBLIC_KEYS` INSIDE THAT WORKTREE ONLY, never committed):
+  `MUGA_SIGNING_KEY_PATH=... npm run pipeline:rules` (promote wrote v15->16,
+  +60 net params) then `node tools/rule-ingestion/land-scoped.mjs --report
+  ...` (1517 facts landed, 58 new) then `npm test` — **7989 tests, 32
+  failing**, all in `channel-prefers-anchors.test.mjs` (igsh, mibextid, smid,
+  campaign, ... back in the global list — the exact run-35921813206 failure).
+  Then `node tools/build-rules-store.mjs --prefer-anchors` (the step the fix
+  adds): relocated the same 62 params, orphans 0->0, 336932 bytes left in
+  budget. `npm test` again — **7989 tests, 0 failing** (1 pre-existing skip).
+  Worktree and throwaway key deleted afterward (`git worktree remove` hit a
+  Windows long-path error on the nested `node_modules`; emptied it with
+  `robocopy /MIR` against an empty dir first, then `rm -rf` + `git worktree
+  prune` — confirmed gone from `git worktree list`).
+
+  On the branch: `npm test` 7994/7993 pass (1 pre-existing skip, no flake
+  observed), `npm run check:rules-store` clean (informational inert-facts
+  line only, no drift), `npm run lint:js` clean, `npm run typecheck` clean.
+  No CRLF or generated-file noise (`git diff --stat -- tools/rules-source/
+  src/rules/ docs/rules/` empty — this task never ran compile:rules/build:dnr
+  since nothing here touches TRACKING_PARAMS).
+
+  Files changed: `.github/workflows/auto-ingest-rules.yml` (new
+  `prefer_anchors` step + updated combined-signal step + header comment),
+  `tools/build-rules-store.mjs` (GITHUB_OUTPUT `changed=` emission for
+  `--prefer-anchors`), `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/channel-prefers-anchors.test.mjs`.
+
+  Commit: 9b19158 (fix(rules): keep the #1344 relocation across ingest runs).
+
+- 2026-09-23: T3.1 (coordinator review finding). Concern: in steady state,
+  promote re-adds the same 62 relocated params every week (C1), so pipeline
+  `noop` reads `false` and `--prefer-anchors` relocates 62 every week
+  (`changed: true`) forever, even once net content stops moving — and each
+  step's own version bump stacks (promote +1, prefer-anchors +1) into one run.
+  Measured, not reasoned about: scratch worktree at 741bd57 (T3's commit,
+  before this fix), throwaway key trusted in that worktree only. Week 1
+  (`pipeline:rules` -> `land-scoped.mjs` -> `--prefer-anchors`, then committed):
+  pipeline noop=false (v15->16, +60 net), land-scoped changed=true (58 new
+  facts), prefer-anchors relocated 62, final version 17 (a STACKED double
+  bump: 15->16->17). Week 2 (same sequence again, same live upstream,
+  uncommitted): pipeline noop=false again (v17->18, +62 net — the same 62
+  params look "new" against the post-relocation list), land-scoped
+  changed=false (0 added — the 58 facts were already landed), prefer-anchors
+  relocated the SAME 62 params again, final version 19 (another stacked
+  bump). `git diff --stat tools/rules-source` after week 2: only
+  `params.json`, 2 lines (version/published) — `rules.json` byte-identical to
+  week 1's commit, `params.length` 94 both weeks, `scoped.length` 1017 both
+  weeks. Confirmed: a true net no-op, but the workflow (as T3 shipped it)
+  would have signed, published and auto-merged a new version anyway.
+
+  Fix: added `tools/rule-ingestion/reconcile-net-change.mjs` — compares the
+  working tree's `params.json` (ignoring `version`/`published`/`sig` via
+  `normalizeParamsForCompare`) and `rules.json` (byte-for-byte) against
+  `git show HEAD:...`. Identical: `git checkout -- tools/rules-source`
+  (restore, discard the run's bumps), report `changed:false`. Different:
+  `withVersion` surgically rewrites ONLY the top-level `"version"` field
+  (never re-`JSON.stringify`s the whole file, which would blow away
+  `renderParamsFile`'s one-fact-per-line `scoped` formatting) to exactly
+  `HEAD`'s version + 1, collapsing any stacked bump to one. Wired into
+  `.github/workflows/auto-ingest-rules.yml` as a new `reconcile` step after
+  `--prefer-anchors` and before the work-decision step; that step's `ANY` is
+  now assigned directly from `steps.reconcile.outputs.changed`
+  (`ANY="$RECONCILED"`) instead of OR-ing the raw `GLOBAL`/`SCOPED`/`ANCHORS`
+  signals — OR-ing `GLOBAL` back in would have reintroduced the exact bug,
+  since it reads `false` every week in steady state regardless of net
+  content. GLOBAL/SCOPED/ANCHORS are kept and logged for observability, not
+  removed. Corrected the prefer-anchors step's own comment, which had claimed
+  "a run that relocates nothing... stays a true no-op end to end" — that
+  never actually triggers once #1344's candidates exist, since prefer-anchors
+  relocates the same params every week; reconcile is what achieves
+  quiescence, not prefer-anchors's own no-op case.
+
+  RED: `tests/unit/rule-ingestion-reconcile-net-change.test.mjs` written
+  first — ran against a temporarily-moved-away module file (`ERR_MODULE_NOT_FOUND`,
+  1 fail), then against the real module (13/13 pass, including a stacked-bump
+  regression test asserting HEAD=15/current=17 collapses to 16, and a pinned
+  edge case for the real committed scoped fact `{"param":"version",...}` never
+  being mistaken for the top-level field). Added a "T3.1" describe block to
+  `tests/unit/ingestion-scheduled-workflow.test.mjs` (step exists, ordered
+  after prefer-anchors and before the decision step, gated like land-scoped,
+  `ANY` derived from `RECONCILED` not the old GLOBAL-OR, superseded comment
+  text gone): 5 failures against the pre-fix workflow, 44/44 after.
+
+  Re-measured post-fix (fresh scratch worktree at 5da93af, same throwaway-key
+  protocol): week 1 — pipeline v15->16, prefer-anchors relocated 62,
+  reconcile "net content differs from HEAD — version set to 16" (collapsed
+  the stacked 15->16->17 to a single 16), committed. Week 2 — pipeline
+  v16->17 (+62 net, same C1 re-offer), land-scoped changed=false,
+  prefer-anchors relocated the same 62, reconcile "net content identical to
+  HEAD ... restored tools/rules-source to HEAD, nothing to publish this run".
+  `git status --short` after week 2: clean under `tools/rules-source/`;
+  committed version stayed 16. Week 2 is now a true no-op; week 1 still
+  publishes with exactly one version bump.
+
+  Checks: `npm test` 8014/8013 pass (1 pre-existing skip, no flake), `npm run
+  check:rules-store` clean, `npm run lint:js` clean, `npm run typecheck`
+  clean. No generated-file/CRLF diff. Both scratch worktrees and both
+  throwaway keys deleted (`robocopy /MIR` against an empty dir, then `rm -rf`
+  + `git worktree prune`; confirmed gone from `git worktree list`).
+
+  Files changed: `tools/rule-ingestion/reconcile-net-change.mjs` (new),
+  `.github/workflows/auto-ingest-rules.yml` (new `reconcile` step, corrected
+  `ANY` assignment, corrected comment), `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs` (new).
+
+  Commit: 5da93af (fix(rules): guard the weekly ingest against #1344
+  relocation churn).
+
+- 2026-09-24: Native review approved (receipt acknowledged); 5 non-blocking
+  advisories applied in one follow-up commit:
+  1. `reconcile-net-change.mjs` restored the whole `tools/rules-source`
+     directory but only ever compared `params.json`+`rules.json` — narrowed
+     `restore()` to accept exactly those two repo-relative paths. Replaced the
+     fixed `RELATIVE_PARAMS_PATH`/`RELATIVE_STORE_PATH` constants with a new
+     `toRepoRelativePath()` helper derived from whatever `paramsPath`/
+     `storePath` the caller actually passed (with an explicit
+     `headParamsPath`/`headStorePath` override for a fixture whose paths
+     aren't real repo paths), closing the hidden coupling where an overridden
+     path silently kept comparing/restoring the production files.
+  2. Corrected `tools/build-rules-store.mjs`'s `--prefer-anchors` CLI comment:
+     it claimed the workflow's combined signal routes on this step's own
+     `changed` output — it does not (T3.1: `ANY` reads `reconcile-net-change`
+     alone) — and states explicitly that OR-ing this signal back into `ANY`
+     reintroduces the steady-state churn.
+  3. Fixed `\Z` (a PCRE end-of-input anchor, matches the literal char "Z" in
+     JS) in the work-decision block matcher to `(?![\s\S])`.
+  4. Anchored the T3 ordering test on `run:` lines (regex + `.index`) instead
+     of bare `content.indexOf(...)`, matching the T3.1 test's own pattern —
+     the bare version was fragile to exactly the kind of forward-reference
+     comment this file's own docblocks use.
+  5. Added spawn-based CLI tests: `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`
+     gained a "CLI (real subprocess, real git, throwaway fixture repo)"
+     block — the script has no internal imports, so it was copied into a
+     disposable `git init`'d fixture repo (mirroring `tools/rules-source/` +
+     `tools/rule-ingestion/` layout) and run for real via `node`/`spawnSync`,
+     covering both `changed=false` (restore) and `changed=true` (single-bump
+     write) branches against a real `$GITHUB_OUTPUT` file. New
+     `tests/unit/build-rules-store-cli.test.mjs` spawns the REAL
+     `build-rules-store.mjs --prefer-anchors` against the REAL repo for the
+     `changed=false` branch only — safe because this branch's committed tree
+     already has every #1344 candidate relocated (a proven no-op, asserted via
+     `git status --short` before/after) — and explicitly declines to fixture
+     the `changed=true` branch: that module pulls in `rules-store.mjs`,
+     `affiliates-data.js` and `remote-rules.js`, and faithfully mirroring that
+     graph risked asserting against a drifted strawman while the real
+     alternative (mutating the real committed tree) is not permitted; that
+     branch stays covered at the pure-function level by
+     `channel-prefers-anchors.test.mjs`.
+
+  Checks: `npm test` 8019/8018 pass (1 pre-existing skip, no flake observed —
+  the known `sign-rules.test.mjs` full-suite flake did not reproduce this
+  run), `npm run check:rules-store` clean, `npm run lint:js` clean, `npm run
+  typecheck` clean. No generated-file diff.
+
+  Files changed: `tools/rule-ingestion/reconcile-net-change.mjs`,
+  `tools/build-rules-store.mjs`, `tests/unit/ingestion-scheduled-workflow.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`,
+  `tests/unit/build-rules-store-cli.test.mjs` (new).
+
+  Commit: cafd5f7 (fix(rules): restore only what reconcile compares, and test
+  its CLI output).
+
+- 2026-09-24: Second native review approved the T3.1 advisory follow-up
+  (receipt acknowledged); 4 test-safety advisories applied in one commit:
+  1. `build-rules-store-cli.test.mjs` spawned the real `--prefer-anchors` CLI
+     against the real repo and only checked the "already relocated"
+     precondition AFTER running — a failing precondition would have mutated
+     the working tree. Moved the check BEFORE the spawn, via a pure
+     `computeAnchorPreference` dry-run against `loadStore()`; a non-zero
+     `relocated.length` now fails the assertion before any subprocess exists.
+  2. `reconcile-net-change`'s fixture git subprocesses and the spawned CLI
+     both inherited the test runner's own `GIT_*` env vars (`GIT_DIR`,
+     `GIT_WORK_TREE`, `GIT_INDEX_FILE`, ...), risking silent redirection at
+     the wrong repo/index/worktree. Added `isolatedGitEnv()`: strips every
+     `GIT_*` var, sets `GIT_CONFIG_NOSYSTEM=1` and an isolated
+     `HOME`/`USERPROFILE`; the fixture repo also gets `commit.gpgsign=false`
+     and `core.hooksPath` pointed at a fresh empty directory (never an empty
+     string — inconsistent across git versions).
+  3. Every fixture `git init`/`config`/`add`/`commit` call now goes through
+     `assertGitOk()`, which asserts exit status 0 and surfaces stderr, so a
+     setup failure fails loudly instead of masquerading as a test failure
+     three steps later.
+  4. Added a third tracked file (`notes.txt`) under the fixture's
+     `rules-source/` dir with an uncommitted local edit in the net-unchanged
+     CLI test, and asserted it survives the reconcile run untouched — direct
+     proof the restore stays narrowed to exactly `params.json`/`rules.json`
+     (the previous review's R3-001 fix), not a directory-wide checkout.
+
+  Checks: `npm test` 8019/8018 pass (1 pre-existing skip, no flake), `npm run
+  lint:js` clean, `npm run typecheck` clean. `git status --short` after the
+  full test run showed only the two edited test files — no mutation of the
+  real committed tree from any of these tests.
+
+  Files changed: `tests/unit/build-rules-store-cli.test.mjs`,
+  `tests/unit/rule-ingestion-reconcile-net-change.test.mjs`.
+
+  Commit: 892cf6e (test(rules): isolate the reconcile and prefer-anchors CLI
+  tests).
+
 ## Next step
 
-Both tasks closed and both checks lists green. Nothing outstanding for this
-feature; #1344 is closed by this relocation. Delivery (push, PR) is the
-user's decision under ordinary repository policy — not done by this agent.
+All three tasks closed and all checks lists green. Nothing outstanding for
+this feature; #1344 is closed by this relocation and the weekly ingest now
+preserves it. Delivery (push, PR) is the user's decision under ordinary
+repository policy — not done by this agent.
 
 ## Related
 
