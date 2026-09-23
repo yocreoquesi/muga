@@ -1673,7 +1673,14 @@ function initReportFlow() {
   const invalidHint = document.getElementById("report-url-invalid-hint");
   const resultDiv = document.getElementById("report-url-result");
 
+  // Overlapping checks (double click, Enter then click, a second URL before
+  // the first finishes) must not interleave: each await re-checks that this
+  // run is still the latest, and a superseded run stops touching the DOM.
+  let latestCheck = 0;
+
   async function runReportUrlCheck() {
+    const run = ++latestCheck;
+    const isStale = () => run !== latestCheck;
     const url = input.value.trim();
     if (invalidHint) invalidHint.hidden = true;
     if (resultDiv) resultDiv.hidden = true;
@@ -1704,6 +1711,7 @@ function initReportFlow() {
       // Referrer stays "" deliberately, same as testUrl(): a URL pasted into
       // Settings arrives from nowhere, so honor-creator has nothing to honour.
       const cleaningContext = await loadCleaningContext();
+      if (isStale()) return;
       const result = cleanForPreview(url, prefs, cleaningContext, { referrer: "" });
       if (cleanEl) cleanEl.textContent = result.cleanUrl;
       if (removedEl) {
@@ -1727,12 +1735,16 @@ function initReportFlow() {
       } catch {
         scopedParams = [];
       }
+      if (isStale()) return;
 
-      if (reportBtn) {
+      // Re-read the button: a previous run may already have replaced the
+      // node captured before the awaits.
+      const currentBtn = document.getElementById("report-url-report-btn");
+      if (currentBtn) {
         // Clone to avoid listener accumulation across repeated checks,
         // same as testUrl().
-        const newBtn = reportBtn.cloneNode(true);
-        reportBtn.parentNode.replaceChild(newBtn, reportBtn);
+        const newBtn = currentBtn.cloneNode(true);
+        currentBtn.parentNode.replaceChild(newBtn, currentBtn);
         newBtn.hidden = false;
         if (includeUrlRow) includeUrlRow.hidden = false;
 
