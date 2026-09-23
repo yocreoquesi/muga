@@ -226,7 +226,15 @@ export function parseRemoveparamRules(text) {
         // PATH_PREFIX_RE and is left out of `pathAnchored` — ADR-0010 ships no
         // regex/wildcard path predicate, so such a line stays UNLANDABLE, not
         // coerced into something narrower than what upstream actually said.
-        if (PATH_PREFIX_RE.test(pathPrefix)) {
+        //
+        // A bare "/" (e.g. `||host/?cmd=x$removeparam=cmd` — the path token is
+        // empty, only the query survives) is REJECTED even though it passes
+        // PATH_PREFIX_RE: it matches every path on the host, so landing it
+        // would be exactly the host-wide over-claim ADR-0010 exists to avoid,
+        // not a narrower one. Upstream's real predicate here is on the QUERY
+        // key, which this mechanism does not express at all — the fact stays
+        // UNLANDABLE, the same posture as a wildcard path.
+        if (pathPrefix.length > 1 && PATH_PREFIX_RE.test(pathPrefix)) {
           for (const name of names) pathAnchored.push({ param: name, host, pathPrefix });
         }
       }

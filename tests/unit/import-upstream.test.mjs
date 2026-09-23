@@ -438,4 +438,16 @@ describe("parseRemoveparamRules — path-anchored (host, pathPrefix) extraction 
     assert.deepEqual(pathAnchored, []);
     assert.equal(pathAnchorSkipped, 0);
   });
+
+  test("a bare root path (||host/?query=v, empty path token) yields no pathAnchored fact — matches every path, not a narrower one", () => {
+    // Real upstream shape: ||game-i.daa.jp/?cmd=ad_mode$removeparam=cmd. The
+    // path token between the host's "/" and the "?" is empty, so the only
+    // real predicate upstream expresses is on the QUERY key, which this
+    // mechanism cannot carry. Landing "/" as a prefix would match every path
+    // on the host — the exact host-wide over-claim ADR-0010 exists to avoid.
+    const text = "||game-i.daa.jp/?cmd=ad_mode$removeparam=cmd";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, []);
+  });
 });
