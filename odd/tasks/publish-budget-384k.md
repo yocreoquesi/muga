@@ -47,6 +47,12 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   scoped DNR rules stay within 2000, update tests to the relocated state.
   Route: delegated (same writer).
 
+- [ ] T3 Make the weekly auto-ingest preserve the #1344 relocation. The
+  first post-merge ingest (run 35921813206) failed `npm test`: the pipeline
+  re-added the 62 relocated params to the global list, the circularity #1344
+  itself described ("hand-removing them is undone by the next ingest").
+  Route: delegated (writer; exploration of the ingest pipeline spans 4+ files).
+
 ## Checks
 
 `npm test`, `npm run check:rules-store`, `npm run lint:js`, `npm run typecheck`,
@@ -138,6 +144,10 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   (passes 5/5 isolated, seen on main-based branches too).
   Open advisory: R3-legacy-cap-exceeded (the payload now exceeds 3.0.x's 50 KB
   cap; adoption rests on the maintainer's report).
+
+- 2026-09-23: PR #1358 and #1359 merged; channel v15 live at
+  rules.muga.app (53403 bytes, both signatures, `trk` not global). Manual
+  auto-ingest dispatch failed `npm test` (T3 opened).
 
 ## Next step
 
