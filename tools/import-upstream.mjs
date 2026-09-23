@@ -29,6 +29,7 @@
 
 import { TRACKING_PARAMS } from "../src/lib/affiliates.js";
 import { writeFileSync } from "node:fs";
+import { PATH_PREFIX_RE } from "./rules-store.mjs";
 
 // The `safari` platform path was deprecated by AdGuard and now 404s; `chromium`
 // serves the same Filter 17 (URL Tracking Protection) list.
@@ -115,16 +116,36 @@ function normalizeHost(raw) {
  *                              rather than being folded into `skipped` (a
  *                              path anchor is not a malformed spec either).
  *
+ * Slice 3 (#1326) addition: a `||host/path...` line — the subset of a path
+ * anchor that names an actual literal host AND an actual literal path, as
+ * opposed to a query anchor (`||host&query=...`) or a wildcarded/TLD-family
+ * host (e.g. the `google` family anchored to a `/search` path) — additionally
+ * lands its (param, host, pathPrefix) fact in the new `pathAnchored` array.
+ * This is PURELY ADDITIVE,
+ * mirroring how Slice 2 added `scoped` without touching `params`/`skipped`:
+ * `pathAnchorSkipped` keeps counting exactly what it counted before (every
+ * path/query-anchored line, landable or not), so nothing about its existing
+ * meaning changes. `pathAnchored` is a strict subset of what `pathAnchorSkipped`
+ * counts — a query anchor, a wildcarded host, or a path segment that is not a
+ * literal prefix (contains upstream's own `*`/regex punctuation) contributes to
+ * the count but not to this array, because ADR-0010 decision 2 accepts only a
+ * literal path prefix (`tools/rules-store.mjs`'s `PATH_PREFIX_RE`), never a
+ * regex or a host wildcard — reused here rather than re-derived, so the two
+ * validators cannot silently drift apart.
+ *
  * @param {string} text The raw filter list contents.
- * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number }}
+ * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number, pathAnchored: Array<{param: string, host: string, pathPrefix: string}> }}
  *   Lowercased parameter names, skip count, count of `@@` exception lines excluded from `params`,
  *   host-anchored (param, host) facts, a count of lines skipped from the scoped path because
- *   they carried both anchor forms at once (ambiguous), and a count of `||`-prefixed lines
- *   anchored to a path or query rather than a whole host (excluded from both `params` and `scoped`).
+ *   they carried both anchor forms at once (ambiguous), a count of `||`-prefixed lines
+ *   anchored to a path or query rather than a whole host (excluded from both `params` and `scoped`),
+ *   and the literal (param, host, pathPrefix) subset of those lines that ADR-0010's schema can
+ *   actually express.
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
   const scoped = [];
+  const pathAnchored = [];
   let skipped = 0;
   let exceptionsSkipped = 0;
   let scopeSkipped = 0;
@@ -182,6 +203,33 @@ export function parseRemoveparamRules(text) {
       // cannot express a path predicate at all). Names are still validated
       // above so a malformed name is still counted in `skipped`, not here.
       pathAnchorSkipped++;
+
+      // Slice 3 (#1326): additionally try to land the literal (host,
+      // pathPrefix) fact ADR-0010 can actually express. `[^^/?&=]*` mirrors
+      // `anchorMatch`'s own host-character class; the difference is the
+      // trailing literal `/` instead of `^`, which is exactly the shape that
+      // makes a line "path-anchored" rather than "host-anchored" in the first
+      // place. `[^$,^]*` stops the path capture at the next option separator
+      // (`$`/`,`) or an embedded `^` (#1357's caret-terminated path, e.g.
+      // `||ca.indeed.com/viewjob^$removeparam=cmp`) — never at `?`/`&`, which
+      // stay IN the captured token so a trailing query string can be trimmed
+      // below rather than swallowed by the host-side character class meant
+      // for `anchorMatch`.
+      const hostPathMatch = /^\|\|([^^/?&=]*)\/([^$,^]*)/.exec(line);
+      const host = hostPathMatch ? normalizeHost(hostPathMatch[1]) : null;
+      if (host) {
+        const queryAt = hostPathMatch[2].indexOf("?");
+        const pathToken = queryAt === -1 ? hostPathMatch[2] : hostPathMatch[2].slice(0, queryAt);
+        const pathPrefix = `/${pathToken}`;
+        // A wildcard or otherwise non-literal path (upstream's own `*`, or a
+        // stray `&`/`=` a query-shaped line leaves in the token) fails
+        // PATH_PREFIX_RE and is left out of `pathAnchored` — ADR-0010 ships no
+        // regex/wildcard path predicate, so such a line stays UNLANDABLE, not
+        // coerced into something narrower than what upstream actually said.
+        if (PATH_PREFIX_RE.test(pathPrefix)) {
+          for (const name of names) pathAnchored.push({ param: name, host, pathPrefix });
+        }
+      }
       continue;
     }
 
@@ -212,17 +260,28 @@ export function parseRemoveparamRules(text) {
       }
     }
   }
-  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped };
+  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped, pathAnchored };
 }
 
-async function main() {
+/**
+ * Fetches the raw AdGuard Filter 17 text. Exported (#1326 slice 3) so
+ * `tools/import-path-anchors.mjs` fetches the exact same upstream list the
+ * same way, rather than a second copy of this request.
+ *
+ * @returns {Promise<string>}
+ */
+export async function fetchAdGuardFilter17() {
   const response = await fetch(ADGUARD_FILTER_17_URL, {
     headers: { "User-Agent": "muga-import-upstream/1.0 (+https://github.com/yocreoquesi/muga)" },
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch AdGuard Filter 17: ${response.status} ${response.statusText}`);
   }
-  const text = await response.text();
+  return response.text();
+}
+
+async function main() {
+  const text = await fetchAdGuardFilter17();
 
   const { params: upstreamParams, skipped, exceptionsSkipped, pathAnchorSkipped } = parseRemoveparamRules(text);
   const existing = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));

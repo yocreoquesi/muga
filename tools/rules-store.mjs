@@ -130,8 +130,12 @@ const SCOPED_PARAM_RE = /^[a-zA-Z0-9_.\-]+$/;
  * URL path characters — no query (`?`), fragment (`#`), or wildcard (`*`).
  * See docs/adr/0010-path-scoped-param-rules.md for what a literal prefix
  * gives up against a regex, and why that tradeoff was chosen anyway.
+ *
+ * Exported (#1326 slice 3) so `tools/import-path-anchors.mjs` validates a
+ * candidate path prefix against the exact same shape the store enforces,
+ * rather than a second, drift-prone copy of this regex.
  */
-const PATH_PREFIX_RE = /^\/[A-Za-z0-9_\-./]*$/;
+export const PATH_PREFIX_RE = /^\/[A-Za-z0-9_\-./]*$/;
 
 /**
  * Validates a `pathPrefixes` array (#1326): non-empty, every element a
