@@ -127,6 +127,18 @@ a data regeneration). Runner: `npm test` (node:test). Ordinary checks apply.
   compile:rules` + `npm run build:dnr` (no unexpected diff).
   Commit: d343941 (fix(rules): relocate host-anchored params ... #1344).
 
+- 2026-09-23: Native review (medium, lineage review-70037cfeea8cda79)
+  granted and approved, acknowledged. Advisory follow-ups applied in a
+  separate commit: the naive-eviction test asserts the property (> 0 evicted)
+  instead of pinning 13; the orphan bisection asserts its endpoints; a new
+  guard in rules-store-roundtrip.test.mjs asserts the committed scoped section
+  compiles to fewer than DNR_SCOPED_PARAMS_MAX_RULES rules. `npm test` 7988
+  pass / 0 fail; lint:js and typecheck clean. Known flake:
+  sign-rules.test.mjs fails intermittently under full-suite load on Windows
+  (passes 5/5 isolated, seen on main-based branches too).
+  Open advisory: R3-legacy-cap-exceeded (the payload now exceeds 3.0.x's 50 KB
+  cap; adoption rests on the maintainer's report).
+
 ## Next step
 
 Both tasks closed and both checks lists green. Nothing outstanding for this

@@ -221,11 +221,13 @@ describe("#1344 — the orphan count must never rise", () => {
     const after = fit(globalParams.filter((p) => !TEN.includes(p)));
 
     const evicted = [...before].filter((p) => !after.has(p) && !TEN.includes(p));
-    assert.equal(
-      evicted.length,
-      13,
-      `expected 13 unrelated params evicted under a saturated 50 KB budget, got ${evicted.length}: ` +
-        evicted.sort().join(", ")
+    // The property is "an unprotected relocation evicts a neighbour", not a
+    // count: the exact number moves with every unrelated store change (13 on
+    // 2026-09-23, 14 before the #1344 relocation shortened the global list).
+    assert.ok(
+      evicted.length > 0,
+      "expected an unprotected relocation of the ten to evict at least one unrelated param " +
+        "under a saturated 50 KB budget, got none"
     );
   });
 });
@@ -489,6 +491,17 @@ describe("#1344 — safety property: a relocation must not cost MORE coverage th
     // still clean, found the same way, first.
     let orphanLo = 0;
     let orphanHi = PUBLISH_PAYLOAD_BUDGET_BYTES;
+    // The bisection is only meaningful between a clean and a broken
+    // endpoint; say so instead of returning a silent, meaningless bound.
+    assert.equal(
+      computeAnchorPreference(withNeighbour, textFor(orphanLo)).orphansBefore,
+      0,
+      "fixture assumption: with no padding the baseline must orphan nothing"
+    );
+    assert.ok(
+      computeAnchorPreference(withNeighbour, textFor(orphanHi)).orphansBefore > 0,
+      "fixture assumption: padding the whole budget must orphan the neighbour in the baseline"
+    );
     while (orphanHi - orphanLo > 1) {
       const mid = Math.floor((orphanLo + orphanHi) / 2);
       const stillClean = computeAnchorPreference(withNeighbour, textFor(mid)).orphansBefore === 0;
