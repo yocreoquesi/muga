@@ -2,8 +2,9 @@ name: Auto-ingest rule parameters
 
 # Weekly scheduled ingestion of tracking parameters.
 # Runs the full pipeline (ingest → orchestrate → promote → land-scoped →
-# prefer-anchors → sign) inline, gates via the same suite as ci.yml, then opens
-# a PR via MUGA_PR_TOKEN and lets GitHub auto-merge it once required checks pass.
+# prefer-anchors → reconcile → sign) inline, gates via the same suite as
+# ci.yml, then opens a PR via MUGA_PR_TOKEN and lets GitHub auto-merge it once
+# required checks pass.
 #
 # Why MUGA_PR_TOKEN (fine-grained PAT) and --squash --auto:
 #   PRs created with GITHUB_TOKEN do NOT trigger ci.yml (GitHub recursion guard),
@@ -122,10 +123,7 @@ jobs:
       # `computeAnchorPreference` derives its candidates from the store on every
       # run, never a hardcoded list, so re-running it HERE — after promote AND
       # land-scoped, so it sees whatever either just wrote — relocates anything
-      # the pipeline put back, exactly as it would a first-time candidate. A run
-      # that relocates nothing writes nothing and bumps no version (see
-      # `runPreferAnchors`'s own doc), so this step's `changed` output, like
-      # land-scoped's, is a real "did the state move" signal, not "did it run".
+      # the pipeline put back, exactly as it would a first-time candidate.
       #
       # NOT gated on `steps.pipeline.outputs.noop`: the exact failure this fixes
       # is a promote run that reports non-noop (its own merge changed the global
@@ -133,16 +131,54 @@ jobs:
       # to cover it. Gated on `steps.pipeline.conclusion == 'success'`, matching
       # land-scoped, so it also runs in a week where promote itself was a noop
       # but a prior week's relocation still needs re-asserting.
+      #
+      # T3.1: in STEADY STATE (once #1344's candidates are relocated at all)
+      # this step relocates the SAME params every single week — promote keeps
+      # re-adding them (C1), this step keeps taking them back out — so its own
+      # `changed` output reads `true` forever and is informational only. It is
+      # NOT what makes a no-content-change week quiet; the churn-guard step
+      # right after this one is.
       - name: Prefer host anchors over global entries (#1344)
         id: prefer_anchors
         if: steps.pipeline.conclusion == 'success'
         run: node tools/build-rules-store.mjs --prefer-anchors
 
-      # ── 4d. Did anything change on ANY path? ────────────────────────────────
-      # One signal for every downstream gate, publish and commit step, so no
-      # path can starve another. `noop` from the pipeline covers the global
-      # param list; `changed` from land-scoped covers the host-scoped segment;
-      # `changed` from prefer-anchors covers the #1344 relocation (T3).
+      # ── 4c-3. Reconcile the run's NET effect against HEAD (#1344, T3.1) ─────
+      # Measured directly (scratch worktree, week-1/week-2 repro): once #1344's
+      # candidates are relocated, EVERY subsequent weekly run repeats the exact
+      # same cycle above — promote's `noop` reads `false` and prefer-anchors's
+      # `changed` reads `true` EVERY week, forever, even though the committed
+      # `params[]`/`scoped[]`/store end up byte-identical to what is already on
+      # `main`. Neither raw signal can see that, because each looks only at its
+      # own step's before/after, never at the run's net effect against what is
+      # actually committed — so gating publish on either one (or OR'ing them
+      # together, the first cut of T3) signs, publishes and auto-merges a new
+      # version EVERY week with nothing new to say.
+      #
+      # `reconcile-net-change.mjs` compares the working tree's params.json
+      # (ignoring the signing-flow fields `version`/`published`/`sig`) and
+      # rules.json (byte-for-byte) against `HEAD` — the commit this run started
+      # from. Identical: restores both files to HEAD's exact bytes (undoing
+      # whatever version bumps promote and/or prefer-anchors made) and reports
+      # `changed: false`. Different: sets the version to EXACTLY HEAD's version
+      # + 1 — a single bump for the run's net change, never one per step that
+      # happened to write — and reports `changed: true`. This is the signal the
+      # work-decision step below actually gates on.
+      - name: Reconcile net content change against HEAD (#1344 churn guard)
+        id: reconcile
+        if: steps.pipeline.conclusion == 'success'
+        run: node tools/rule-ingestion/reconcile-net-change.mjs
+
+      # ── 4d. Did anything NET change, against what is already committed? ────
+      # `RECONCILED` is authoritative: it is the only signal that compares the
+      # run's end state to `HEAD` rather than to its own step's start state, so
+      # it is the only one immune to the #1344 steady-state cycle (T3.1). GLOBAL,
+      # SCOPED and ANCHORS are kept and logged for observability — a maintainer
+      # reading a run's log should still see which path(s) moved — but `ANY`
+      # itself is assigned directly from `RECONCILED`, not an OR of the raw
+      # per-step signals: OR'ing `GLOBAL = 'false'` back in would reintroduce
+      # exactly the bug this guards against, since that signal reads `false`
+      # every week in steady state regardless of net content.
       - name: Decide whether this run has work to commit
         id: work
         if: steps.pipeline.conclusion == 'success'
@@ -150,8 +186,9 @@ jobs:
           GLOBAL='${{ steps.pipeline.outputs.noop }}'
           SCOPED='${{ steps.land_scoped.outputs.changed }}'
           ANCHORS='${{ steps.prefer_anchors.outputs.changed }}'
-          if [ "$GLOBAL" = 'false' ] || [ "$SCOPED" = 'true' ] || [ "$ANCHORS" = 'true' ]; then ANY=true; else ANY=false; fi
-          echo "global noop=$GLOBAL scoped changed=$SCOPED anchors changed=$ANCHORS -> any=$ANY"
+          RECONCILED='${{ steps.reconcile.outputs.changed }}'
+          ANY="$RECONCILED"
+          echo "global noop=$GLOBAL scoped changed=$SCOPED anchors changed=$ANCHORS reconciled changed=$RECONCILED -> any=$ANY"
           echo "any=$ANY" >> "$GITHUB_OUTPUT"
 
       # ── 5. No-op early exit ───────────────────────────────────────────────────
