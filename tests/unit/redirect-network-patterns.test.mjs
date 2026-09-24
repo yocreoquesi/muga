@@ -39,13 +39,14 @@ const EXPECTED_NETWORKS = [
   "rakuten-linkshare",
   "tradetracker",
   "tradedoubler",
+  "shareasale",
 ];
 
 describe("REDIRECT_NETWORK_PATTERNS — shape", () => {
-  test("is a frozen array with 10 entries (matrix v1.0 + #695 Tradedoubler promotion)", () => {
+  test("is a frozen array with 11 entries (matrix v1.0 + #695 Tradedoubler + #1443 ShareASale)", () => {
     assert.ok(Array.isArray(REDIRECT_NETWORK_PATTERNS));
     assert.ok(Object.isFrozen(REDIRECT_NETWORK_PATTERNS));
-    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 10);
+    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 11);
   });
 
   test("contains every expected network id, no duplicates", () => {
@@ -154,6 +155,12 @@ describe("REDIRECT_NETWORK_PATTERNS — per-network content matches matrix v1.0"
     assert.deepStrictEqual(n.redirectHosts, ["tc.tradetracker.net"]);
     assert.deepStrictEqual([...n.landingParams].sort(), ["ttaid", "ttcid", "ttrk"]);
   });
+
+  test("shareasale: shareasale.com + www.shareasale.com → sscid", () => {
+    const n = pick("shareasale");
+    assert.deepStrictEqual([...n.redirectHosts].sort(), ["shareasale.com", "www.shareasale.com"]);
+    assert.deepStrictEqual(n.landingParams, ["sscid"]);
+  });
 });
 
 describe("REDIRECT_NETWORK_PATTERNS — invariants across the table", () => {
@@ -214,6 +221,11 @@ describe("getRedirectNetworkForRedirectHost() — exact-match hosts", () => {
     assert.strictEqual(getRedirectNetworkForRedirectHost("px.a8.net")?.id, "a8net");
     assert.strictEqual(getRedirectNetworkForRedirectHost("click.linksynergy.com")?.id, "rakuten-linkshare");
     assert.strictEqual(getRedirectNetworkForRedirectHost("tc.tradetracker.net")?.id, "tradetracker");
+  });
+
+  test("matches ShareASale (both hosts)", () => {
+    assert.strictEqual(getRedirectNetworkForRedirectHost("shareasale.com")?.id, "shareasale");
+    assert.strictEqual(getRedirectNetworkForRedirectHost("www.shareasale.com")?.id, "shareasale");
   });
 });
 

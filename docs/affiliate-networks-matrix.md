@@ -648,6 +648,41 @@ hostname is any merchant domain
 
 ---
 
+## ShareASale
+
+**Surface**
+
+- Redirect host: `shareasale.com` / `www.shareasale.com`. Already in `AFFILIATE_REDIRECT_NETWORKS` ([`opaque-networks.js`](../src/lib/opaque-networks.js), #907) — the network's own 30x is pass-through, same as Awin/Impact/Rakuten/TradeTracker. Now also in `REDIRECT_NETWORK_PATTERNS` (`sscid` as `landingParams`, #1443).
+- Merchant landing: any ShareASale-onboarded merchant (large long-tail affiliate network, broad e-commerce coverage).
+- Endpoint shape: `https://www.shareasale.com/r.cfm?b=<bannerId>&u=<affiliateId>&m=<merchantId>&urllink=<encoded merchant URL>`.
+
+**Click flow**
+
+1. User clicks a ShareASale-wrapped link.
+2. Browser hits `shareasale.com/r.cfm`.
+3. ShareASale logs the click (third-party cookie, where available) and issues a 30x to the merchant landing URL with `?sscid=<click-id>` appended.
+4. Merchant's ShareASale tag reads `sscid` from the URL on landing and stores it in a **first-party cookie on the merchant's domain**.
+5. At conversion, the merchant's tag reads the first-party cookie and posts the conversion back to ShareASale.
+
+**Attribution mechanism**
+
+`sscid` is ShareASale's Safari-ITP / cookie-partitioning fallback click ID: browsers that block or partition third-party cookies (Safari ITP, Firefox ETP, Chrome's phase-out) can no longer rely on ShareASale's own third-party cookie surviving to conversion, so the merchant's tag reads `sscid` from the URL on landing to populate a first-party cookie instead — the same mechanism as Awin's `awc`. Universal-strip at `document_start` (as a global `TRACKING_PARAMS` entry) removes it before that first-party tag can read it, killing the creator's commission on exactly the ITP/partitioned-cookie browsers where the fallback exists to matter.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `sscid` | **required-at-landing** | ShareASale's Safari-ITP/cookie-partitioning fallback click ID. Promoted from `TRACKING_PARAMS` to `REDIRECT_NETWORK_PATTERNS.shareasale.landingParams` in #1443 (maintainer decision 2026-09-24). |
+| `b`, `u`, `m`, `urllink` (in shareasale.com URL) | n/a (redirect-internal) | Banner / affiliate / merchant / destination in the redirect URL itself. `u` is separately guarded in `AFFILIATE_PARAM_GUARD` (remote-rules.js) — it lives on the redirector, not the landing, so it cannot ride `landingParams`. |
+
+**Verification status**
+
+- ✅ `shareasale.com` / `www.shareasale.com` are the redirect hosts — confirmed by MUGA codebase (`opaque-networks.js`, #907).
+- ✅ `sscid` is ShareASale's documented click-id fallback param — confirmed by issue #1443 evidence.
+- ⚠️ Cookie TTL / lookback window — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. ShareASale does not publish a universal default; it is merchant-configurable.
+
+---
+
 ## Auto-Injectors
 
 Categorically distinct from every network above: a redirect network's landing
@@ -692,7 +727,6 @@ These networks are referenced in MUGA's codebase but do not have full matrix sec
 
 - **`alitems.com`** — Admitad's deep-link variant. Moved into `AFFILIATE_REDIRECT_NETWORKS` in #695 (pass-through, alongside the existing `ad.admitad.com` entry) per the matrix's bias toward preservation. Full per-network entry pending the next quarterly review.
 - **`redirect.viglink.com`** — VigLink wrapper used by some publishers. Moved into `AFFILIATE_REDIRECT_NETWORKS` in #695 (pass-through) under the same bias-toward-preservation rule. Full per-network entry pending.
-- **ShareASale** — `shareasale.com/?urllink=` wrapper. Genuine local-unwrap target (caps-spec recipe + DNR rule); NOT in `AFFILIATE_REDIRECT_NETWORKS`. Treated as the standard wrapper pattern until observed otherwise.
 
 `alitems.com` and `redirect.viglink.com` should get full matrix sections in the next quarterly review. Their pass-through status today is the safe default — the merchant's first-party tag (whichever it is) gets to run on the URL it expects.
 
@@ -711,7 +745,7 @@ To run at the **2026-08-24** review (and every quarter after):
 ## Out of scope for v1.0
 
 - **The non-redirect direct-injection programs** (Amazon Associates, eBay Partner Network, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners) — these carry attribution in a simple `?tag=` query parameter, which MUGA detects and preserves via `AFFILIATE_PATTERNS` (it never adds a tag of its own; see [ADR-0006](adr/0006-remove-own-tag-affiliate-injection.md)), and are not affected by the 2.1 pivot.
-- **Tradedoubler, ShareASale, VigLink** — flagged in the "Known-unknowns" section above. Become matrix entries in the next quarterly review or on first observed payout regression.
+- **VigLink** — flagged in the "Known-unknowns" section above. Becomes a matrix entry in the next quarterly review or on first observed payout regression. (Tradedoubler got its own section in #695; ShareASale got its own section in #1443.)
 - **MUGA's own affiliate partnerships** with redirect networks — explicitly out of scope per ADR-0002. The matrix describes how to preserve **creator** attribution; MUGA opening its own AliExpress / CJ / Awin accounts is a 2.2+ roadmap question.
 
 ## References

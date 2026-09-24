@@ -441,6 +441,50 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(cleanUrl, "https://www.shein.com/dress-p-12345.html?awc=999_abc");
   });
 
+  // #1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.
+  test("preserves sscid (ShareASale click ID — maintainer decision #1443)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1");
+  });
+
+  test("preserves sscid but strips utm_* alongside (mixed URL still cleaned)", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1&utm_source=shareasale",
+      PREFS
+    );
+    assert.ok(!removedTracking.includes("sscid"), "sscid must be preserved per #1443");
+    assert.ok(removedTracking.includes("utm_source"));
+    assert.equal(cleanUrl, "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1");
+  });
+
+  // #1443 test requirement (d): the issue text asks that sscid be "stripped only
+  // under stripAllAffiliates", by analogy with awc/irclickid/cjevent. Verified
+  // against the actual codebase (src/lib/remote-rules.js:221-231): stripAllAffiliates
+  // (cleaner.js Step 4b) only ever strips AFFILIATE_PATTERNS (host-scoped
+  // direct-injection programs like Amazon `tag`) — it never touches
+  // REDIRECT_NETWORK_PATTERNS.landingParams for ANY network, awc included. This
+  // test pins the VERIFIED current behavior (sscid survives stripAllAffiliates,
+  // exactly like its own comparison target awc) rather than assert an unbuilt
+  // strip path. See the final report for the open question this raises.
+  test("sscid survives stripAllAffiliates, identically to awc (#1443 — see open question)", () => {
+    const sscidResult = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    const awcResult = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_1234567890_abc",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(sscidResult.action, "untouched");
+    assert.equal(new URL(sscidResult.cleanUrl).searchParams.get("sscid"), "a1k7_abcd1");
+    assert.equal(awcResult.action, "untouched");
+    assert.equal(new URL(awcResult.cleanUrl).searchParams.get("awc"), "12345_1234567890_abc");
+  });
+
 });
 
 // ---------------------------------------------------------------------------

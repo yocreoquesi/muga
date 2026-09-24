@@ -143,5 +143,10 @@
     "url": "https://go.redirectingat.com/?id=12345X&xs=1&url=https%3A%2F%2Fmerchant.example.com%2Fproduct%3Futm_source%3Dblog",
     "note": "#907 regression: Skimlinks (go.redirectingat.com) reclassified into AFFILIATE_REDIRECT_NETWORKS — processUrl must NOT unwrap or strip; the wrapper's own query params (id, xs, url) must survive untouched so the network's 30x carries attribution",
     "expected": { "preserve": ["id", "xs", "url"], "strip": [] }
+  },
+  {
+    "url": "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1&utm_source=shareasale",
+    "note": "#1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.landingParams — preserved unconditionally like awc/irclickid/cjevent, utm_source still stripped",
+    "expected": { "preserve": ["sscid"], "strip": ["utm_source"] }
   }
 ]

@@ -220,6 +220,25 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
       "Rakuten / TradeTracker; tduid required-at-landing per public Tradedoubler " +
       "tag integration docs.",
   },
+  {
+    id: "shareasale",
+    name: "ShareASale",
+    group: "ShareASale",
+    // shareasale.com's own 30x redirect is already treated as the attribution
+    // event (pass-through in opaque-networks.js, #907) — this entry additionally
+    // protects `sscid` on the MERCHANT landing page it redirects to.
+    redirectHosts: ["shareasale.com", "www.shareasale.com"],
+    landingParams: ["sscid"],
+    type: "redirect-network",
+    references: ["docs/affiliate-networks-matrix.md#shareasale"],
+    notes:
+      "Promoted from TRACKING_PARAMS in #1443 (maintainer decision 2026-09-24): " +
+      "`sscid` is ShareASale's Safari-ITP / cookie-partitioning first-party " +
+      "fallback click ID, read by the merchant's ShareASale tag on landing to " +
+      "re-populate attribution when the network's own third-party cookie is " +
+      "blocked — analogous to Awin's `awc`. Universal strip would kill creator " +
+      "attribution on every ITP/partitioned-cookie install.",
+  },
 ]);
 
 /**

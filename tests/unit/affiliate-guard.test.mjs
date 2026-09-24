@@ -97,9 +97,9 @@ describe("affiliate-guard", () => {
       }
     });
 
-    it("preserve set has exactly 32 unique names (update comment if manifest sync changes count)", () => {
-      // update if manifest sync changes count
-      assert.equal(set.size, 32);
+    it("preserve set has exactly 33 unique names (update comment if manifest sync changes count)", () => {
+      // update if manifest sync changes count (#1443: +1 for ShareASale sscid)
+      assert.equal(set.size, 33);
     });
   });
 
@@ -172,6 +172,13 @@ describe("affiliate-guard", () => {
       const result = checkAffiliateGuard({ param: "cjevent" });
       assert.equal(result.rejected, true);
       assert.equal(result.reason, "affiliate-collision");
+    });
+
+    it("rejects 'sscid' with id shareasale and source 'redirect-network' (#1443)", () => {
+      const result = checkAffiliateGuard({ param: "sscid" });
+      assert.equal(result.rejected, true);
+      assert.equal(result.collidingPrograms[0].id, "shareasale");
+      assert.equal(result.collidingPrograms[0].source, "redirect-network");
     });
   });
 

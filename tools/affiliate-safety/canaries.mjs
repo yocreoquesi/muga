@@ -109,4 +109,6 @@ export const LANDING_CANARIES = Object.freeze([
   { name: "tradetracker", landingHost: "merchant.de", referrer: "https://tc.tradetracker.net/?c=1&m=2", mustPreserve: ["ttaid", "ttcid", "ttrk"], network: "tradetracker" },
   // #770: Tradedoubler was the one matrix-v1.0 network with zero canary coverage.
   { name: "tradedoubler", landingHost: "merchant.com", referrer: "https://clk.tradedoubler.com/click?p=1&a=2&url=https%3A%2F%2Fmerchant.com", mustPreserve: ["tduid"], network: "tradedoubler" },
+  // #1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.
+  { name: "shareasale", landingHost: "merchant.com", referrer: "https://www.shareasale.com/r.cfm?b=1&u=2&m=3&urllink=https%3A%2F%2Fmerchant.com", mustPreserve: ["sscid"], network: "shareasale" },
 ]);
