@@ -5254,8 +5254,7 @@
       "pid"
     ],
     "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
-  }
-,
+  },
   {
     "domain": "2chblog.jp",
     "preserveParams": [],
