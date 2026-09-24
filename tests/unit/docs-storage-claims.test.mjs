@@ -32,9 +32,9 @@ const TERMS = ["docs/tos.html", "src/privacy/tos.html"];
 
 // Read the cap from source so this test does not depend on storage.js's
 // chrome.* shims at import time.
-const DOMAIN_STATS_MAX = Number(
-  read("src/lib/storage.js").match(/export const DOMAIN_STATS_MAX = (\d+);/)[1]
-);
+const DOMAIN_STATS_MATCH = read("src/lib/storage.js").match(/export const DOMAIN_STATS_MAX\s*=\s*(\d+)\s*;/);
+assert.ok(DOMAIN_STATS_MATCH, "storage.js must declare DOMAIN_STATS_MAX (source of truth for this file)");
+const DOMAIN_STATS_MAX = Number(DOMAIN_STATS_MATCH[1]);
 
 describe("source of truth: these stores persist by default", () => {
   test("ledger, cross-site frequency and per-site stats are on by default", () => {

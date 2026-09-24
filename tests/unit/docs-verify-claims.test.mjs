@@ -65,7 +65,7 @@ describe("(B) zero-request promises name the short-link switches", () => {
   });
 
   const ZERO_RE = /zero (?:outbound )?(?:network )?(?:requests|activity)|no outbound requests/i;
-  const QUALIFIED_RE = /short|every toggle|all of them/i;
+  const QUALIFIED_RE = /short[- ]link|shortener|every toggle|all of them/i;
   const DOCS = [
     "docs/transparency.html",
     "docs/faq.md",

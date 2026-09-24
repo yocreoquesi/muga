@@ -44,6 +44,7 @@ const USER_FACING_DOCS = [
   "docs/tos.html",
   "docs/store-listing.md",
   "src/privacy/privacy.html",
+  "src/privacy/tos.html",
   "landing/index.html",
 ];
 
@@ -213,6 +214,8 @@ const PERMISSION_PROMPT_CLAIMS = [
   /requested when you (?:turn on|enable)/i,
   /does not revoke the host permissions/i,
   /revoke this permission at any time/i,
+  // The Terms' wording (#1386 native review): no browser prompts for it.
+  /requests? permission for the shortener/i,
 ];
 
 describe("(E) docs do not promise a permission prompt the code never shows", () => {
