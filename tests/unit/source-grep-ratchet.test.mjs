@@ -204,7 +204,7 @@ const BASELINE = {
   "content-script.test.mjs": 20,            // content script not importable (#824); +1: same-document click-guard mirror (carousel regression)
   "dnr-ids.test.mjs": 8,                    // verifies SW + remote-rules import the ids module (#824)
   "dnr-consent-gate.test.mjs": 12, // #1405 re-count: 8 -> 12. SW not importable; mixed with behavioral tests (#824). +1 for #921 rule-1001 gate guard
-  "allowlist-dnr.test.mjs": 3, // #1405 re-count: 1 -> 3. 7 -> 1 (#1266 item 5, #1268): syncAllowlistDNR and applyDnrState moved to src/background/dnr-sync.js, importable in Node, so this file now imports the real functions instead of a mirror; the applyDnrState ordering/gate-closed guards became real behavioral assertions against recorded updateDynamicRules calls. The one remaining swSource.slice() is the storage.onChanged wiring, which stays in service-worker.js as the composition root and has no behavioral proxy.
+  "allowlist-dnr.test.mjs": 3, // #1405 re-count: 1 -> 3. 7 -> 1 (#1266 item 5, #1268): syncAllowlistDNR and applyDnrState moved to src/background/dnr-sync.js, importable in Node, so this file now imports the real functions instead of a mirror; the applyDnrState ordering/gate-closed guards became real behavioral assertions against recorded updateDynamicRules calls. What remains is the storage.onChanged wiring read through swSource.slice() (the composition root in service-worker.js, no behavioral proxy); the #1405 binding-aware count sees it as 3 assertions on that one slice.
   "verify-warnings-regression.test.mjs": 6, // regression guards; some migratable (#824)
   "i18n-orphan.test.mjs": 5,               // reads HTML/JS to find orphaned i18n keys (#824)
   "browser-detect.test.mjs": 14, // #1405 re-count: 4 -> 14. verifies popup/options import the module (#824)
@@ -288,14 +288,8 @@ const BASELINE = {
   // Audit 2026-09 copy/a11y guards on static HTML and locale files
   // (browser-only pages; nothing to exercise behaviourally in node).
   "onboarding-cta-copy.test.mjs": 1,
-  // Audit 2026-09 copy/a11y guards on static HTML and locale files
-  // (browser-only pages; nothing to exercise behaviourally in node).
   "options-toggle-accessible-names.test.mjs": 4,
-  // Audit 2026-09 copy/a11y guards on static HTML and locale files
-  // (browser-only pages; nothing to exercise behaviourally in node).
   "settings-hint-copy-drift.test.mjs": 4,
-  // Audit 2026-09 copy/a11y guards on static HTML and locale files
-  // (browser-only pages; nothing to exercise behaviourally in node).
   "settings-report-copy.test.mjs": 3,
 };
 
