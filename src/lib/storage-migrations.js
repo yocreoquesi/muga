@@ -418,3 +418,79 @@ export async function migrateDropDnrEnabledPref() {
     // the caller or break startup.
   }
 }
+
+/**
+ * One-time migration (#1355 review finding R3-002): turns
+ * `experimentalParamClassesEnabled` OFF for anyone who had it ON, exactly
+ * once. Its control moved to Developer tools (#1355, ADR-0011
+ * internal-with-a-default) — a surface most users never open — so a user
+ * who had this experimental, false-positive-prone heuristic ON before the
+ * move could be left with it silently running and no visible way back to
+ * the switch. The user can re-enable it in Developer tools afterward.
+ *
+ * Unlike migrateDropDnrEnabledPref (a pure delete, naturally idempotent
+ * forever from key-shape alone), this migration WRITES a value the user
+ * might deliberately change back — re-running "if true, set false" on every
+ * worker wake would silently re-flip a later manual re-enable forever. It
+ * needs a persistent one-time-done marker, `experimentalParamClassesOffMigrated`,
+ * kept in `chrome.storage.local` (per-device: this corrects an install's
+ * upgrade path, it is not itself a synced preference), mirroring the
+ * per-device one-time-marker idiom migration-storage.js and
+ * consent-storage.js already use.
+ *
+ * Ordering matters for safety: the marker is written ONLY after any needed
+ * value write has actually succeeded. If the process is interrupted between
+ * the two writes (or the value write fails), the marker stays unset and a
+ * later wake retries the whole check — it can never "complete" without
+ * having actually flipped the value, and re-checking an already-flipped
+ * value is itself a safe no-op (see the read-first branch below).
+ *
+ * Wired into the single `runOneTimeMigrations()` call site (#1257) — same
+ * mechanism as every sibling migration — so concurrent module-scope /
+ * onInstalled / onStartup calls within one worker lifetime collapse onto the
+ * same in-flight promise rather than racing independent read-then-write
+ * sequences.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error must never throw out to
+ * the caller or break startup.
+ */
+export async function migrateExperimentalParamClassesOff() {
+  const DONE_KEY = "experimentalParamClassesOffMigrated";
+  try {
+    const localData = await new Promise((resolve) => {
+      chrome.storage.local.get({ [DONE_KEY]: false }, (result) => {
+        void chrome.runtime.lastError; // non-critical
+        resolve(result);
+      });
+    });
+    if (localData[DONE_KEY] === true) return; // already migrated — never re-flip a later manual choice
+
+    const syncData = await new Promise((resolve, reject) => {
+      chrome.storage.sync.get({ experimentalParamClassesEnabled: false }, (result) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(result);
+      });
+    });
+
+    if (syncData.experimentalParamClassesEnabled === true) {
+      await new Promise((resolve, reject) => {
+        chrome.storage.sync.set({ experimentalParamClassesEnabled: false }, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        });
+      });
+    }
+
+    // Mark done only now that any needed flip has actually persisted.
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [DONE_KEY]: true }, () => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
+      });
+    });
+  } catch {
+    // Migration is best-effort — a storage error must never throw out to
+    // the caller or break startup. The done marker is intentionally left
+    // unset on any failure above, so a later wake retries.
+  }
+}
