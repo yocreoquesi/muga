@@ -82,6 +82,34 @@ describe("addEntry: shows sync_save_failed on a genuine write failure, not on du
   test("still re-renders the list on a successful add (next !== undefined)", () => {
     assert.match(body, /renderList\(containerId,\s*next,\s*listKey\)/);
   });
+
+  // b5-3 audit fix #3: on a genuine write failure, the input used to be
+  // cleared unconditionally BEFORE the success/failure branch ran, so a
+  // failed add silently discarded what the user typed — "just click Add
+  // again" didn't work because there was nothing left to resubmit. Clearing
+  // now happens only in the success and aborted (duplicate/cap) branches,
+  // not the genuine-failure one. Full behavioral coverage (the input keeps
+  // its value and the toast appears) lives in tests/e2e/options.spec.mjs.
+  test("input.value is NOT cleared unconditionally before the result is known", () => {
+    assert.doesNotMatch(
+      body,
+      /\}\)\.then\(\(next\)\s*=>\s*\{\s*input\.value\s*=\s*"";/,
+      "input.value must not be cleared before checking whether the write actually succeeded",
+    );
+  });
+
+  test("input.value is cleared on success and on an aborted (duplicate/cap) no-op, not on a genuine failure", () => {
+    const successIdx = body.search(/if\s*\(\s*next\s*!==\s*undefined\s*\)\s*\{/);
+    assert.ok(successIdx !== -1);
+    const successBranch = body.slice(successIdx, body.indexOf("}", successIdx));
+    assert.match(successBranch, /input\.value\s*=\s*""/, "the success branch must still clear the input");
+
+    const failedToastIdx = body.indexOf("sync_save_failed");
+    const failureBranchStart = body.lastIndexOf("else if", failedToastIdx);
+    const failureBranchEnd = body.indexOf("}", failedToastIdx);
+    const failureBranch = body.slice(failureBranchStart, failureBranchEnd);
+    assert.doesNotMatch(failureBranch, /input\.value\s*=\s*""/, "the genuine-failure branch must NOT clear the input");
+  });
 });
 
 describe("removeEntry: shows sync_save_failed when the delete write fails", () => {
@@ -93,5 +121,26 @@ describe("removeEntry: shows sync_save_failed when the delete write fails", () =
 
   test("still re-renders the list on a successful delete (next !== undefined)", () => {
     assert.match(body, /renderList\(containerId,\s*next,\s*listKey\)/);
+  });
+
+  // b5-3 audit fix #3: removeEntry had no equivalent to addEntry's `aborted`
+  // distinction, so an out-of-range index (e.g. a fast double-click on the
+  // same delete button for the last item: the first click's write already
+  // shortens the list before the second click's pre-captured index is
+  // looked up) had no deliberate no-op path to fall into — every undefined
+  // result was treated as a genuine save failure.
+  test("mutateFn has an early-return bounds check treated as a deliberate no-op, not a failure", () => {
+    assert.match(
+      body,
+      /if\s*\(\s*index\s*<\s*0\s*\|\|\s*index\s*>=\s*list\.length\s*\)\s*\{\s*aborted\s*=\s*true;\s*return\s+undefined;\s*\}/,
+      "removeEntry's mutateFn must treat an out-of-range index as an aborted no-op, mirroring addEntry's duplicate/cap early returns",
+    );
+  });
+
+  test("the sync_save_failed toast fires only when mutateFn did NOT itself abort (out-of-range index)", () => {
+    const failedToastIdx = body.indexOf("sync_save_failed");
+    assert.ok(failedToastIdx !== -1);
+    const before = body.slice(0, failedToastIdx);
+    assert.match(before, /aborted/, "removeEntry must track an abort flag to distinguish a no-op from a genuine save failure");
   });
 });

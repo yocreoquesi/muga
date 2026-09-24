@@ -1932,14 +1932,24 @@ function addEntry(listKey, inputId, containerId) {
     }
     return [...list, value];
   }).then((next) => {
-    input.value = "";
     if (next !== undefined) {
+      // Success: the value is now in the list, safe to clear the input.
+      input.value = "";
       renderList(containerId, next, listKey);
     } else if (!aborted) {
       // mutateFn returned a real value, so this undefined can only mean the
       // read or write inside withSyncMutation failed — a genuine save
-      // failure, not a duplicate/cap no-op.
+      // failure, not a duplicate/cap no-op. b5-3 audit fix #3: keep the
+      // typed value in the input so the user can just click Add again
+      // ("try again") instead of retyping it from scratch after a toast
+      // they may not have even seen fire.
       showToast(t("sync_save_failed", _currentLang));
+    } else {
+      // Aborted by mutateFn's own logic (duplicate already in the list, or
+      // the list is full) — already explained by its own toast, or a silent
+      // no-op for an exact duplicate. The value doesn't need to be retried,
+      // so clearing the input here is safe and expected.
+      input.value = "";
     }
   });
 }
@@ -1948,14 +1958,22 @@ function addEntry(listKey, inputId, containerId) {
 function removeEntry(listKey, index) {
   const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items", userCustomRules: "user-custom-rules-items" };
   const containerId = containerMap[listKey] ?? `${listKey}-items`;
+  // b5-3 audit fix #3: mirror addEntry's `aborted` distinction. A stale index
+  // (e.g. a fast double-click on the same "x" removing the last item: the
+  // first click's write already shortens the list before the second click's
+  // pre-captured index is looked up) has nothing left to remove — that is a
+  // deliberate no-op, not a save failure, and must not show sync_save_failed
+  // even if withSyncMutation happens to resolve to undefined for it.
+  let aborted = false;
   return withSyncMutation(withListLock, listKey, [], (list) => {
+    if (index < 0 || index >= list.length) { aborted = true; return undefined; }
     const next = [...list];
     next.splice(index, 1);
     return next;
   }).then((next) => {
     if (next !== undefined) {
       renderList(containerId, next, listKey);
-    } else {
+    } else if (!aborted) {
       // A failed delete must not leave the user thinking it worked while the
       // stale entry silently stays in storage (#1430).
       showToast(t("sync_save_failed", _currentLang));

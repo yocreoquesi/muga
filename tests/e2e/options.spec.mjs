@@ -111,6 +111,33 @@ test.describe("Options — blacklist", () => {
     await addBtn.click();
     await expect(items).toHaveCount(initialCount);
   });
+
+  test("audit b5-3, part 3: on a genuine save failure, the input keeps its value so the user can just retry", async ({ optionsPage: page }) => {
+    const input = page.locator("#bl-input");
+    const addBtn = page.locator("#bl-add-btn");
+    const list = page.locator("#blacklist-items");
+
+    // Force every chrome.storage.sync.set() to fail from here on, simulating
+    // a genuine sync write error (setPrefs resolves false, never throws).
+    await page.evaluate(() => {
+      const real = chrome.storage.sync.set.bind(chrome.storage.sync);
+      chrome.storage.sync.set = (items, cb) => {
+        chrome.runtime.lastError = { message: "simulated sync failure" };
+        try { cb && cb(); } finally { delete chrome.runtime.lastError; }
+      };
+      window.__mugaRealSyncSet = real; // unused, kept for clarity in traces
+    });
+
+    await input.fill("still-here.example");
+    await addBtn.click();
+
+    // The failure toast appears...
+    await expect(page.locator(".toast.visible")).toHaveText(/couldn't save|try again/i);
+    // ...the entry was NOT added...
+    await expect(list).not.toContainText("still-here.example");
+    // ...and, unlike a successful add, the input keeps what the user typed.
+    await expect(input).toHaveValue("still-here.example");
+  });
 });
 
 test.describe("Options — whitelist", () => {
