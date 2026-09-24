@@ -66,7 +66,10 @@ describe("Brand taglines are translated for all locales", () => {
 // ── Removed orphan keys are gone ───────────────────────────────────────────
 
 describe("Orphaned section_* keys removed from TRANSLATIONS", () => {
-  const removed = ["section_url_cleaning", "section_privacy", "section_redirects"];
+  // #1398 (maintainer decision, 2026-09-24): section_privacy_controls's only
+  // reference (the Advanced > Privacy <h2>) was removed once both of its
+  // switches moved into Settings > Activity, leaving the card empty.
+  const removed = ["section_url_cleaning", "section_privacy", "section_redirects", "section_privacy_controls"];
 
   for (const key of removed) {
     test(`"${key}" is no longer in TRANSLATIONS`, () => {

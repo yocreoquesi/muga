@@ -134,6 +134,23 @@
     <h2 data-i18n="section_activity">Activity</h2>
     <div class="card">
       <div class="list-section" id="domain-stats-panel">
+        <!-- #1398 (maintainer decision): the recording switch and Reset stats
+             move here from Advanced > Display / Advanced > Statistics, next
+             to the panel they control. No duplicate left in Advanced. -->
+        <div class="row">
+          <label class="row-label" for="domain-stats">
+            <strong id="domain-stats-label" data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
+            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site to show under Activity where the most noise comes from. Stored on this device only.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="domain-stats" aria-labelledby="domain-stats-label"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="stats_reset_label">Lifetime stats</strong>
+            <small data-i18n="stats_reset_hint">Counters persist across sessions. Debug log resets when the browser restarts.</small>
+          </div>
+          <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
+        </div>
         <strong class="list-group-title" data-i18n="domain_stats_label">Where the most noise comes from</strong>
         <div id="domain-stats-list"></div>
       </div>
@@ -145,6 +162,16 @@
            page" once opened from Settings. Gated on crossSiteFrequencyEnabled,
            same as the popup gated the subgroup before. -->
       <div class="list-section" id="suspicious-params-panel">
+        <!-- #1398 (maintainer decision): the recording switch moves here from
+             Advanced > Privacy, next to the panel it controls. No duplicate
+             left in Advanced. -->
+        <div class="row">
+          <label class="row-label" for="cross-site-frequency">
+            <strong id="cross-site-frequency-label" data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
+            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers under Activity. The analysis stays on your device.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="cross-site-frequency" aria-labelledby="cross-site-frequency-label"><span class="slider"></span></label>
+        </div>
         <strong class="list-group-title" data-i18n="suspicious_params_frequency_group">Across sites you've visited</strong>
         <p class="hint" data-i18n="suspicious_params_settings_hint"></p>
         <div id="suspicious-params-settings-list"></div>
@@ -188,6 +215,25 @@
           <p id="activity-session-empty" class="history-empty" hidden data-i18n="history_empty"></p>
         </div>
         <div id="activity-recent-panel" hidden>
+          <!-- #1398 (maintainer decision): the recording switch moves here
+               from Advanced > Privacy, next to the panel it controls. No
+               duplicate left in Advanced. #1390: a Clear button next to it
+               so clearing this panel's data never requires flipping the
+               switch. -->
+          <div class="row">
+            <label class="row-label" for="attribution-ledger">
+              <strong id="attribution-ledger-label" data-i18n="row_attribution_ledger_label">Recent activity</strong>
+              <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations to show under Activity. Stored on this device only.</small>
+            </label>
+            <label class="toggle"><input type="checkbox" id="attribution-ledger" aria-labelledby="attribution-ledger-label"><span class="slider"></span></label>
+          </div>
+          <div class="row">
+            <div class="row-label">
+              <strong data-i18n="activity_ledger_clear_label">Clear recent activity</strong>
+              <small data-i18n="activity_ledger_clear_hint">Removes the recent activity list stored on this device.</small>
+            </div>
+            <button class="add-btn" id="activity-ledger-clear-btn" data-i18n="activity_ledger_clear_btn">Clear</button>
+          </div>
           <div id="activity-recent-list" class="recent-activity-list"></div>
           <p id="activity-recent-empty" class="recent-activity-empty" hidden data-i18n="ledger_empty"></p>
         </div>
@@ -423,27 +469,13 @@
         </div>
       </div>
 
-      <!-- Advanced: Privacy (#925 — newly surfaced prefs, all ON by default) -->
-      <h2 class="mt-16" data-i18n="section_privacy_controls">Privacy</h2>
-      <div class="card">
-        <!-- #1355 (ADR-0011 internal-with-a-default): canonicalExtractorEnabled's
-             control moved to Developer tools (devToolsMode-gated), see
-             #dev-tools-panel below. -->
-        <div class="row">
-          <label class="row-label" for="cross-site-frequency">
-            <strong id="cross-site-frequency-label" data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
-            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers under Activity. The analysis stays on your device.</small>
-          </label>
-          <label class="toggle"><input type="checkbox" id="cross-site-frequency" aria-labelledby="cross-site-frequency-label"><span class="slider"></span></label>
-        </div>
-        <div class="row">
-          <label class="row-label" for="attribution-ledger">
-            <strong id="attribution-ledger-label" data-i18n="row_attribution_ledger_label">Recent activity</strong>
-            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations to show under Activity. Stored on this device only.</small>
-          </label>
-          <label class="toggle"><input type="checkbox" id="attribution-ledger" aria-labelledby="attribution-ledger-label"><span class="slider"></span></label>
-        </div>
-      </div>
+      <!-- #1398 (maintainer decision, 2026-09-24): the Privacy card's two
+           recording switches (cross-site-frequency, attribution-ledger)
+           moved into Settings > Activity, next to the panel each controls.
+           No duplicate left here — the card had no other content, so the
+           whole card and its heading (section_privacy_controls) are removed
+           rather than left empty. canonicalExtractorEnabled's control had
+           already moved to Developer tools (#1355) before this. -->
 
       <!-- Advanced: Aggressive privacy (referer-beacon-privacy PR 4, D5).
            Both toggles unchecked by default; wired via the existing
@@ -480,13 +512,9 @@
         <!-- #1355/#1354: showReportButton retired too. Reporting a problem
              now lives in Settings (#1353, section-report), reachable by
              every user; the popup's own report button + flow are removed. -->
-        <div class="row">
-          <label class="row-label" for="domain-stats">
-            <strong id="domain-stats-label" data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
-            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site to show under Activity where the most noise comes from. Stored on this device only.</small>
-          </label>
-          <label class="toggle"><input type="checkbox" id="domain-stats" aria-labelledby="domain-stats-label"><span class="slider"></span></label>
-        </div>
+        <!-- #1398 (maintainer decision, 2026-09-24): the "Record per-domain
+             statistics" switch moved into Settings > Activity, next to the
+             domain-stats panel it controls. No duplicate left here. -->
         <div class="row">
           <label class="row-label" for="show-badge">
             <strong id="show-badge-label" data-i18n="row_show_badge_label">Show a running count on the toolbar icon</strong>
@@ -526,15 +554,11 @@
 
       <!-- Advanced: Statistics (#936 — moved down from the top of the page;
            destructive actions off the first screen) -->
+      <!-- #1398 (maintainer decision, 2026-09-24): "Reset stats" moved into
+           Settings > Activity, next to the domain-stats panel it clears. No
+           duplicate left here. -->
       <h2 class="mt-16" data-i18n="section_stats">Statistics</h2>
       <div class="card">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="stats_reset_label">Lifetime stats</strong>
-            <small data-i18n="stats_reset_hint">Counters persist across sessions. Debug log resets when the browser restarts.</small>
-          </div>
-          <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
-        </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="forget_reported_params_label">Reported params</strong>

@@ -517,12 +517,26 @@ async function init() {
   // further below, alongside the devToolsMode wiring (#1355: both controls
   // moved into the Developer tools panel).
 
-  // #925: surface the seven previously UI-less prefs as Advanced controls
-  // (all default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
+  // #925: surface the seven previously UI-less prefs as controls (all
+  // default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
   // userCustomRules list uses the shared renderList/removeEntry path below.
-  // Privacy group:
+  // #1398 (maintainer decision, 2026-09-24): cross-site-frequency and
+  // attribution-ledger moved out of Advanced > Privacy into Settings >
+  // Activity, next to the panel each one controls — the ids and pref keys
+  // are unchanged, only their location in options.html moved.
   bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
   bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
+  // #1390: turning recording off must not keep showing already-stored
+  // recent-activity URLs with no way to clear them. Clear the ledger the
+  // moment the switch flips off, then re-render so the panel immediately
+  // reflects the disabled empty state instead of stale entries.
+  document.getElementById("attribution-ledger")?.addEventListener("change", () => {
+    const enabled = document.getElementById("attribution-ledger").checked;
+    prefs.attributionLedgerEnabled = enabled;
+    (enabled ? Promise.resolve() : chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } }))
+      .then(() => renderActivityLedgerPanel(_currentLang))
+      .catch((err) => console.error("[MUGA] attribution-ledger toggle:", err));
+  });
   // Aggressive privacy (referer-beacon-privacy PR 4): opt-in, off by default.
   // Both toggles are plain booleans — no per-device override reconciliation.
   bindToggle("suppress-referer", "suppressReferer", prefs);
@@ -585,6 +599,19 @@ async function init() {
   // _applyActivityScopeView or updateActivitySectionVisibility).
   await renderActivityLedgerPanel(_currentLang).catch((err) => {
     console.error("[MUGA] renderActivityLedgerPanel failed:", err);
+  });
+  // #1390: explicit "Clear" button next to the Recent-activity panel, so
+  // clearing its stored URLs never requires flipping the recording switch
+  // off first. Same confirm-before-destructive-write pattern as "Reset
+  // stats" / "Forget reported params" (#1260).
+  document.getElementById("activity-ledger-clear-btn")?.addEventListener("click", async () => {
+    const ok = await showConfirm(t("activity_ledger_clear_confirm", _currentLang));
+    if (!ok) return;
+    try {
+      await chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } });
+      showToast(t("activity_ledger_clear_done", _currentLang));
+      await renderActivityLedgerPanel(_currentLang);
+    } catch (err) { console.error("[MUGA] clear recent activity:", err); }
   });
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
@@ -1252,6 +1279,18 @@ async function renderActivityLedgerPanel(lang) {
   panel.hidden = false;
   updateActivitySectionVisibility();
 
+  // #1390: whether recording is on decides which empty state "Recent
+  // activity" shows below (ledger_empty vs. the distinct
+  // ledger_disabled_empty) — read once here so it's available to that
+  // branch without a second storage round trip.
+  let attributionLedgerEnabled = true;
+  try {
+    attributionLedgerEnabled = (await getPrefs()).attributionLedgerEnabled !== false;
+  } catch (err) {
+    console.error("[MUGA] renderActivityLedgerPanel prefs read:", err);
+  }
+  if (isStale()) return;
+
   // ── "This session" ──
   let history = [];
   try {
@@ -1308,42 +1347,54 @@ async function renderActivityLedgerPanel(lang) {
   const recentList = document.getElementById("activity-recent-list");
   const recentEmpty = document.getElementById("activity-recent-empty");
   if (recentList && recentEmpty) {
-    try {
-      // R3-init-abort-on-render-throw: shape-check every event BEFORE it
-      // reaches presentLedger(). presentLedger does `ledger.events.map(...)`
-      // and its per-event mapper reads `ev.url`/`ev.type` unconditionally —
-      // a legacy/corrupt entry (null, a primitive, or an unrecognized
-      // `type`) throws there uncaught. Filtering here, rather than
-      // hardening the shared attribution-ledger.js module, keeps the fix
-      // scoped to this rendering path.
-      const safeEvents = Array.isArray(ledger.events)
-        ? ledger.events.filter((ev) => ev && typeof ev === "object" && typeof ev.url === "string" && EVENT_TYPES.includes(ev.type))
-        : [];
-      const safeLedger = {
-        events: safeEvents,
-        capacity: typeof ledger.capacity === "number" ? ledger.capacity : DEFAULT_LEDGER_CAPACITY,
-      };
-
-      const view = presentLedger(safeLedger);
-      const rows = renderLedgerEntries(view, (key, vars) => {
-        const template = t(key, lang);
-        if (!vars) return template;
-        let out = template;
-        for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
-        return out;
-      });
-      recentList.replaceChildren();
-      recentEmpty.hidden = rows.length !== 0;
-      if (rows.length === 0) {
-        recentEmpty.textContent = t("ledger_empty", lang);
-      } else {
-        for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
-      }
-    } catch (err) {
-      console.error("[MUGA] renderActivityLedgerPanel recent-activity render failed, degrading to empty state:", err);
+    // #1390: recording off must never keep showing stored URLs — the
+    // toggle handler and the Clear button both already empty the
+    // attributionLedger storage key, but this is the belt-and-suspenders
+    // check that also covers a stale render still in flight when the
+    // toggle flips, and shows a DISTINCT empty state (never ledger_empty,
+    // which reads as "nothing happened yet" rather than "this is off").
+    if (!attributionLedgerEnabled) {
       recentList.replaceChildren();
       recentEmpty.hidden = false;
-      recentEmpty.textContent = t("ledger_empty", lang);
+      recentEmpty.textContent = t("ledger_disabled_empty", lang);
+    } else {
+      try {
+        // R3-init-abort-on-render-throw: shape-check every event BEFORE it
+        // reaches presentLedger(). presentLedger does `ledger.events.map(...)`
+        // and its per-event mapper reads `ev.url`/`ev.type` unconditionally —
+        // a legacy/corrupt entry (null, a primitive, or an unrecognized
+        // `type`) throws there uncaught. Filtering here, rather than
+        // hardening the shared attribution-ledger.js module, keeps the fix
+        // scoped to this rendering path.
+        const safeEvents = Array.isArray(ledger.events)
+          ? ledger.events.filter((ev) => ev && typeof ev === "object" && typeof ev.url === "string" && EVENT_TYPES.includes(ev.type))
+          : [];
+        const safeLedger = {
+          events: safeEvents,
+          capacity: typeof ledger.capacity === "number" ? ledger.capacity : DEFAULT_LEDGER_CAPACITY,
+        };
+
+        const view = presentLedger(safeLedger);
+        const rows = renderLedgerEntries(view, (key, vars) => {
+          const template = t(key, lang);
+          if (!vars) return template;
+          let out = template;
+          for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
+          return out;
+        });
+        recentList.replaceChildren();
+        recentEmpty.hidden = rows.length !== 0;
+        if (rows.length === 0) {
+          recentEmpty.textContent = t("ledger_empty", lang);
+        } else {
+          for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
+        }
+      } catch (err) {
+        console.error("[MUGA] renderActivityLedgerPanel recent-activity render failed, degrading to empty state:", err);
+        recentList.replaceChildren();
+        recentEmpty.hidden = false;
+        recentEmpty.textContent = t("ledger_empty", lang);
+      }
     }
   }
 }
@@ -1897,6 +1948,12 @@ function initStatsSection() {
         // resetting stats must not re-trigger the review nudge.
       });
       showToast(t("stats_reset_done", _currentLang));
+      // #1392 (triage, reduced scope, 2026-09-24): the write above cleared
+      // domainStats, but nothing told the Activity panel to re-render it —
+      // the table kept showing the pre-reset rows until the next full
+      // page load. Re-render with the just-written (empty) data.
+      await renderDomainStatsActivity(document.getElementById("domain-stats")?.checked ?? true)
+        .catch((err) => console.error("[MUGA] render domain stats after reset:", err));
     } catch (err) { console.error("[MUGA] reset stats:", err); }
   });
 
@@ -1914,6 +1971,13 @@ function initStatsSection() {
       try {
         await chrome.storage.local.set({ submittedParams: {} });
         showToast(t("forget_reported_params_done", _currentLang));
+        // #1392 (triage, reduced scope, 2026-09-24): the write above cleared
+        // submittedParams, but nothing told the Activity panel to
+        // re-render — "already reported on {date}" labels stayed stale and
+        // the report action stayed disabled until the next full page load.
+        try {
+          await renderSuspiciousParamsActivity(await getPrefs());
+        } catch (err) { console.error("[MUGA] render suspicious params after forget:", err); }
       } catch (err) { console.error("[MUGA] forget reported params:", err); }
     });
   }
