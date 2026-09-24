@@ -14,7 +14,7 @@
  *   T2-5: TRANSLATIONS has `report_dirty_url` key with both `en` and `es`
  */
 
-import { test } from "node:test";
+import { test, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -86,4 +86,41 @@ test("a legacy export carrying showReportButton imports cleanly (key ignored, no
   const plan = planImport({ muga: true, blacklist: [], whitelist: [], customParams: [], showReportButton: true });
   assert.strictEqual(plan.ok, true);
   assert.strictEqual(plan.toSave.showReportButton, undefined);
+});
+
+// #1355 review R3-report-reachability: the popup copy now sends users to
+// Settings to report a problem, so that surface must be reachable by every
+// user, never hidden behind Advanced (dev-tools-card) or Developer tools
+// (section-dev-tools / dev-tools-panel).
+describe("#1355 — the Settings report section is reachable without any dev gate", () => {
+  const optionsHtml = readFileSync(new URL("../../src/options/options.html", import.meta.url), "utf8");
+  const open = optionsHtml.indexOf('<section id="section-report"');
+  const close = optionsHtml.indexOf("</section>", open);
+
+  it("exists as its own section with no hidden attribute or dev-tools class", () => {
+    assert.ok(open !== -1, "section-report must exist");
+    const openTag = optionsHtml.slice(open, optionsHtml.indexOf(">", open) + 1);
+    assert.doesNotMatch(openTag, /\bhidden\b/);
+    assert.doesNotMatch(openTag, /dev-tools/);
+  });
+
+  it("sits outside every dev-gated container", () => {
+    for (const gated of ['id="section-dev-tools"', 'id="dev-tools-card"', 'id="dev-tools-panel"']) {
+      const at = optionsHtml.indexOf(gated);
+      assert.ok(at !== -1, `${gated} must exist for this check to mean anything`);
+      assert.ok(at > close || at < open, `section-report must not contain ${gated}`);
+    }
+    const devSection = optionsHtml.indexOf('<section id="section-dev-tools"');
+    const devSectionEnd = optionsHtml.indexOf("</section>", devSection);
+    assert.ok(open < devSection || open > devSectionEnd, "section-report must not be inside section-dev-tools");
+    const card = optionsHtml.indexOf('id="dev-tools-card"');
+    const cardSectionEnd = optionsHtml.indexOf("</section>", card);
+    assert.ok(open < card || open > cardSectionEnd, "section-report must not be inside the Advanced dev-tools-card");
+  });
+
+  it("carries the URL input and the report button a user needs", () => {
+    const body = optionsHtml.slice(open, close);
+    assert.match(body, /id="report-url-input"/);
+    assert.match(body, /id="report-url-report-btn"/);
+  });
 });

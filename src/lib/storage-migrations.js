@@ -443,6 +443,11 @@ export async function migrateDropDnrEnabledPref() {
  * intermediate state with the value flipped and the marker missing, or the
  * reverse. If that write fails, nothing was written and a later wake retries.
  *
+ * Known limit: sync is eventually consistent. If the user re-enables the
+ * flag on one device and a second device upgrades before that device's
+ * marker has arrived, the second device can still flip it off once. The
+ * window is one sync propagation; the user can re-enable it again.
+ *
  * Wired into the single `runOneTimeMigrations()` call site (#1257) — same
  * mechanism as every sibling migration — so concurrent module-scope /
  * onInstalled / onStartup calls within one worker lifetime collapse onto the
