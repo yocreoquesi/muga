@@ -19,6 +19,7 @@ import assert from "node:assert/strict";
 import {
   clearurls,
   extractClearurlsLiterals,
+  extractClearurlsScopeFacts,
 } from "../../tools/rule-ingestion/adapters/clearurls.mjs";
 
 // ── Synthetic ClearURLs JSON fixtures ─────────────────────────────────────────
@@ -297,5 +298,131 @@ describe("clearurls.fetchRaw — injectable fetchImpl", () => {
     const goodFetch = async () => ({ ok: true, text: async () => "rawtext" });
     const result = await clearurls.fetchRaw({ fetchImpl: goodFetch });
     assert.equal(result, "rawtext");
+  });
+});
+
+// ── #1228 (anchored-only-globals): extractClearurlsScopeFacts ───────────────
+//
+// extractClearurlsLiterals unconditionally unions EVERY provider's rules[]
+// (including the ".*" globalRules catch-all) into one flat Set, so it cannot
+// answer "is this name asserted globally, or only by a host-scoped
+// provider". extractClearurlsScopeFacts splits that by scope instead.
+describe("extractClearurlsScopeFacts (#1228)", () => {
+  test("globalRules (urlPattern '.*') rules become globalPatterns, not anchored facts", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        globalRules: {
+          urlPattern: ".*",
+          rules: ["utm_source", "(?:%3F)?fbclid"],
+          referralMarketing: [],
+        },
+      },
+    });
+    const { globalPatterns, anchored } = extractClearurlsScopeFacts(fixture);
+    assert.equal(globalPatterns.length, 2);
+    assert.ok(globalPatterns.some((re) => re.test("utm_source")));
+    assert.ok(globalPatterns.some((re) => re.test("fbclid")));
+    assert.deepEqual(anchored, []);
+  });
+
+  test("a provider identified by urlPattern '.*' but a non-'globalRules' key is still treated as global", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        someOtherCatchAll: { urlPattern: ".*", rules: ["gclid"], referralMarketing: [] },
+      },
+    });
+    const { globalPatterns, anchored } = extractClearurlsScopeFacts(fixture);
+    assert.equal(globalPatterns.length, 1);
+    assert.ok(globalPatterns[0].test("gclid"));
+    assert.deepEqual(anchored, []);
+  });
+
+  test("a host-scoped provider's literal rules land in anchored, paired with the provider key", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        youtube: { urlPattern: "youtube\\.com", rules: ["si", "feature"], referralMarketing: [] },
+      },
+    });
+    const { globalPatterns, anchored } = extractClearurlsScopeFacts(fixture);
+    assert.deepEqual(globalPatterns, []);
+    assert.deepEqual(anchored.sort((a, b) => a.param.localeCompare(b.param)), [
+      { param: "feature", scope: "youtube" },
+      { param: "si", scope: "youtube" },
+    ]);
+  });
+
+  test("matching is full-string and case-insensitive against globalPatterns", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        globalRules: { urlPattern: ".*", rules: ["cid"], referralMarketing: [] },
+      },
+    });
+    const { globalPatterns } = extractClearurlsScopeFacts(fixture);
+    assert.ok(globalPatterns[0].test("CID"), "case-insensitive");
+    assert.ok(globalPatterns[0].test("cid"));
+    assert.ok(!globalPatterns[0].test("xcidx"), "full-string match, not substring");
+  });
+
+  test("a host-scoped provider's referralMarketing tokens are excluded from anchored (global two-pass union, same safety as extractClearurlsLiterals)", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        providerA: { urlPattern: "a.example", rules: ["ref"], referralMarketing: [] },
+        providerB: { urlPattern: "b.example", rules: [], referralMarketing: ["ref"] },
+      },
+    });
+    const { anchored, affiliateExcluded } = extractClearurlsScopeFacts(fixture);
+    assert.deepEqual(anchored, []);
+    assert.equal(affiliateExcluded, 1);
+  });
+
+  test("globalRules' OWN referralMarketing entries never enter globalPatterns (preserve, not strip)", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        globalRules: {
+          urlPattern: ".*",
+          rules: ["utm_source"],
+          referralMarketing: ["ref_?", "referrer"],
+        },
+      },
+    });
+    const { globalPatterns } = extractClearurlsScopeFacts(fixture);
+    assert.equal(globalPatterns.length, 1);
+    assert.ok(!globalPatterns.some((re) => re.test("referrer")));
+  });
+
+  test("a non-literal (regex-shaped) rule on a host-scoped provider is skipped, not landed in anchored", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        providerA: { urlPattern: "a.example", rules: ["(ref)", ".*sess.*"], referralMarketing: [] },
+      },
+    });
+    const { anchored, skipped } = extractClearurlsScopeFacts(fixture);
+    assert.deepEqual(anchored, []);
+    assert.ok(skipped >= 2);
+  });
+
+  test("an invalid regex fragment on the global provider is skipped, not thrown", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        globalRules: { urlPattern: ".*", rules: ["utm_source", "(unterminated"], referralMarketing: [] },
+      },
+    });
+    const { globalPatterns, skipped } = extractClearurlsScopeFacts(fixture);
+    assert.equal(globalPatterns.length, 1);
+    assert.equal(skipped, 1);
+  });
+
+  test("malformed JSON throws", () => {
+    assert.throws(() => extractClearurlsScopeFacts("not json"), /ClearURLs parse failed/);
+  });
+
+  test("mixed-case anchored names lowercase identically to extractClearurlsLiterals", () => {
+    const fixture = JSON.stringify({
+      providers: {
+        providerA: { urlPattern: "a.example", rules: ["NaPm"], referralMarketing: [] },
+      },
+    });
+    const { anchored } = extractClearurlsScopeFacts(fixture);
+    assert.deepEqual(anchored, [{ param: "napm", scope: "providerA" }]);
   });
 });

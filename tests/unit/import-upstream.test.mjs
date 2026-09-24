@@ -451,3 +451,75 @@ describe("parseRemoveparamRules — path-anchored (host, pathPrefix) extraction 
     assert.deepEqual(pathAnchored, []);
   });
 });
+
+// ── #1228 (anchored-only-globals): bareNames ────────────────────────────────
+//
+// `params` unions bare AND host-anchored names by design (see the docblock),
+// so it cannot answer "is this name ever truly unanchored". `bareNames` is
+// the additive field that answers exactly that, for the removal-direction
+// measurement `tools/anchored-only-globals.mjs` needs.
+describe("parseRemoveparamRules — bareNames (#1228, additive)", () => {
+  test("an unanchored line lands its names in bareNames", () => {
+    const text = "*$removeparam=fbclid|gclid";
+    const { bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames].sort(), ["fbclid", "gclid"]);
+  });
+
+  test("a ||host^ anchored line does NOT land its name in bareNames", () => {
+    const text = "||example.com^$removeparam=utm_source";
+    const { params, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["utm_source"]);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a ,domain=h1|h2 anchored line does NOT land its name in bareNames", () => {
+    const text = "$removeparam=x,domain=h1.example|h2.example";
+    const { bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("an all-negated ,domain=~a|~b line IS effectively unanchored: lands in bareNames", () => {
+    const text = "$removeparam=x,domain=~h1.example|~h2.example";
+    const { scoped, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual(scoped, []);
+    assert.deepEqual([...bareNames], ["x"]);
+  });
+
+  test("a mixed positive+negated ,domain=h1|~h2 line is genuinely scoped: does NOT land in bareNames", () => {
+    const text = "$removeparam=x,domain=h1.example|~h2.example";
+    const { scoped, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual(scoped, [{ param: "x", scope: "h1.example" }]);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a path/query-anchored line does NOT land its name in bareNames", () => {
+    const text = "||example.com/search$removeparam=x";
+    const { bareNames, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a line with BOTH ||host^ and domain= (ambiguous) does NOT land its name in bareNames", () => {
+    const text = "||example.com^$removeparam=x,domain=other.example";
+    const { scopeSkipped, bareNames } = parseRemoveparamRules(text);
+    assert.equal(scopeSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("an @@ exception line does NOT land its name in bareNames", () => {
+    const text = "@@$removeparam=tagtag_uid";
+    const { exceptionsSkipped, bareNames } = parseRemoveparamRules(text);
+    assert.equal(exceptionsSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("mixed sample: a name both bare on one line and host-anchored on another still appears in bareNames (it IS globally stripped somewhere)", () => {
+    const text = [
+      "*$removeparam=x",
+      "||example.com^$removeparam=x",
+    ].join("\n");
+    const { bareNames, scoped } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames], ["x"]);
+    assert.deepEqual(scoped, [{ param: "x", scope: "example.com" }]);
+  });
+});

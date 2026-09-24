@@ -133,19 +133,34 @@ function normalizeHost(raw) {
  * regex or a host wildcard — reused here rather than re-derived, so the two
  * validators cannot silently drift apart.
  *
+ * #1228 (anchored-only-globals) addition: `bareNames` collects the subset of
+ * `params` seen on at least one line that is truly unanchored — neither a
+ * `||host^` anchor nor a `,domain=` modifier naming at least one positive
+ * host. This is the piece `params` itself cannot answer, because `params`
+ * deliberately unions bare AND host-anchored names (see above) for the
+ * importer's own new-candidate-merge purpose. A line whose only `domain=`
+ * hosts are negated (`domain=~a|~b`, "everywhere except these few sites") is
+ * broader than the exceptions it lists, so its names land in `bareNames`
+ * too, mirroring `parseAdguardRemoveparamWithDomains`'s same call in
+ * `tools/import-candidates/triage.mjs`. A `||host^ ... ,domain=...` line
+ * (the ambiguous both-anchors case, `scopeSkipped`) and a path/query anchor
+ * (`pathAnchorSkipped`) are NOT bare — both are still anchored to something,
+ * just not usefully so — so neither contributes to `bareNames`.
+ *
  * @param {string} text The raw filter list contents.
- * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number, pathAnchored: Array<{param: string, host: string, pathPrefix: string}> }}
+ * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number, pathAnchored: Array<{param: string, host: string, pathPrefix: string}>, bareNames: Set<string> }}
  *   Lowercased parameter names, skip count, count of `@@` exception lines excluded from `params`,
  *   host-anchored (param, host) facts, a count of lines skipped from the scoped path because
  *   they carried both anchor forms at once (ambiguous), a count of `||`-prefixed lines
  *   anchored to a path or query rather than a whole host (excluded from both `params` and `scoped`),
- *   and the literal (param, host, pathPrefix) subset of those lines that ADR-0010's schema can
- *   actually express.
+ *   the literal (param, host, pathPrefix) subset of those lines that ADR-0010's schema can
+ *   actually express, and the names seen on at least one truly unanchored line.
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
   const scoped = [];
   const pathAnchored = [];
+  const bareNames = new Set();
   let skipped = 0;
   let exceptionsSkipped = 0;
   let scopeSkipped = 0;
@@ -259,16 +274,28 @@ export function parseRemoveparamRules(text) {
     }
 
     if (domainMatch) {
+      let anyPositiveHost = false;
       for (const rawHost of domainMatch[1].split("|")) {
         const trimmed = rawHost.trim();
         if (!trimmed || trimmed.startsWith("~")) continue; // negated or empty
         const host = normalizeHost(trimmed);
         if (!host) continue;
+        anyPositiveHost = true;
         for (const name of names) scoped.push({ param: name, scope: host });
       }
+      // Only negated hosts (or all failed validation): the rule is broader
+      // than the exceptions it lists, so it is effectively unanchored rather
+      // than silently uncounted by both `scoped` and `bareNames`.
+      if (!anyPositiveHost) {
+        for (const name of names) bareNames.add(name);
+      }
+      continue;
     }
+
+    // Neither a ||host^ anchor nor a ,domain= modifier: truly unanchored.
+    for (const name of names) bareNames.add(name);
   }
-  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped, pathAnchored };
+  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped, pathAnchored, bareNames };
 }
 
 /**

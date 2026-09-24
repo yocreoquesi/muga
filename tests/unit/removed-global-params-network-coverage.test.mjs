@@ -32,6 +32,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TRACKING_PARAMS } from "../../src/lib/affiliates.js";
+import { PATH_ANCHORED_STAY_GLOBAL } from "../../src/lib/affiliates-data.js";
 import {
   DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
   DNR_DOMAIN_PRESERVE_MAX_RULES,
@@ -452,11 +453,9 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
     // describe block below for their new pin. The rest of this list still
     // has no path predicate landed for it and stays global on the same
     // reasoning as before.
-    const PATH_ANCHORED_STAY_GLOBAL = [
-      "linkcode", "creativeasin", "lp_asin", "store_ref", "sprefix",
-      "mkevt", "mkcid", "mkrid", "toolid", "customid", "ingress",
-    ];
-
+    // PATH_ANCHORED_STAY_GLOBAL is imported from affiliates-data.js (#1228
+    // anchored-only-globals): single source of truth, also consumed by
+    // tools/anchored-only-globals.mjs's monthly detection.
     for (const param of PATH_ANCHORED_STAY_GLOBAL) {
       test(`"${param}" remains in TRACKING_PARAMS (upstream anchors it to a path, not a host)`, () => {
         assert.ok(

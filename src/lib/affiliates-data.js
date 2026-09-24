@@ -881,3 +881,29 @@ export const TRACKING_PARAM_CATEGORIES = {
     ],
   },
 };
+
+/**
+ * TRACKING_PARAMS entries that upstream (AdGuard Filter 17 / ClearURLs)
+ * anchors to a PATH or QUERY, never to a whole host — so a
+ * `domain-rules.json` `stripParams` entry, which can only express host
+ * scope (#1229 / ADR-0008 "import at the anchor, never widen"), would claim
+ * MORE than upstream's own evidence supports. These deliberately STAY
+ * global rather than being host-anchored.
+ *
+ * Promoted (#1228 anchored-only-globals) from a test-local array in
+ * `tests/unit/removed-global-params-network-coverage.test.mjs` (originally
+ * pinned by #1324) to a single exported source of truth: the network-
+ * coverage test imports this constant instead of re-declaring the list, and
+ * `tools/anchored-only-globals.mjs`'s monthly detection excludes every
+ * member here from its candidate report — reporting one of these again
+ * would just be re-discovering a decision this repo already made, not new
+ * signal.
+ *
+ * Widening this list requires a fresh measurement per param (a real host
+ * profile or path-scoping mechanism landing for it, per #1326); do not add
+ * to it from a shallow re-read of an upstream line.
+ */
+export const PATH_ANCHORED_STAY_GLOBAL = [
+  "linkcode", "creativeasin", "lp_asin", "store_ref", "sprefix",
+  "mkevt", "mkcid", "mkrid", "toolid", "customid", "ingress",
+];
