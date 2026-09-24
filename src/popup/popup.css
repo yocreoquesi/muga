@@ -90,6 +90,19 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Root-cause guard (audit 2026-09-24): several elements below set their own
+   `display` (flex/block/...) on the same selector that also carries the
+   `hidden` attribute in popup.html. That class-level `display` beats the UA
+   `[hidden] { display: none }` rule at equal specificity whenever it appears
+   later in the cascade, so `el.hidden = true` from JS silently stops hiding
+   the element (this shipped for #preview-preserved, #growth-bar and
+   #migration-banner-counter). `!important` here always wins over any
+   non-important `display` declaration regardless of selector order, and it
+   only applies while the `hidden` attribute is present — once JS clears
+   `hidden`, this rule stops matching and the element's own `display` value
+   takes over normally. Covered by tests/unit/hidden-display-guard.test.mjs. */
+[hidden] { display: none !important; }
+
 body {
   font-family: var(--font-sans);
   background: var(--surface-1);

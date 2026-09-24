@@ -180,6 +180,14 @@ const EXEMPT = new Set([
   // This file itself — the heuristic regex and its inline examples contain
   // the patterns we are searching for, causing false self-detection.
   "source-grep-ratchet.test.mjs",
+
+  // [hidden]/display CSS guard (2026-09-24 audit): the subject under test IS
+  // the committed HTML+CSS source — it statically finds every element that
+  // carries a `hidden` attribute and every CSS rule that would override the
+  // UA `[hidden]` rule with a non-none `display`, for popup/options/onboarding.
+  // No jsdom/browser is available in this suite, so there is no behavioral
+  // proxy: computed style requires actually rendering the page.
+  "hidden-display-guard.test.mjs",
 ]);
 
 // ── Baseline ─────────────────────────────────────────────────────────────────
