@@ -12,13 +12,9 @@
 export const TRACKING_PARAM_CATEGORIES = {
   "utm": {
     "label": "UTM / Campaign",
-    "labelEs": "UTM / Campaña",
-    "labelPt": "UTM / Campanha",
-    "labelDe": "UTM / Kampagne",
+    "labelKey": "category_utm_label",
     "description": "Google Analytics UTM parameters (utm_source, utm_medium, etc.)",
-    "descriptionEs": "Parámetros UTM de Google Analytics",
-    "descriptionPt": "Parâmetros UTM do Google Analytics",
-    "descriptionDe": "Google Analytics UTM-Parameter",
+    "descriptionKey": "category_utm_desc",
     "params": [
       "utm_source",
       "utm_medium",
@@ -37,13 +33,9 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
   "ads": {
     "label": "Paid Ads Clicks",
-    "labelEs": "Clics de publicidad",
-    "labelPt": "Cliques de anúncios",
-    "labelDe": "Bezahlte Werbeklicks",
+    "labelKey": "category_ads_label",
     "description": "Click IDs from Google Ads, Facebook, TikTok, LinkedIn, Microsoft, Twitter, etc.",
-    "descriptionEs": "IDs de clic de Google Ads, Facebook, TikTok, etc.",
-    "descriptionPt": "IDs de clique do Google Ads, Facebook, TikTok, etc.",
-    "descriptionDe": "Klick-IDs von Google Ads, Facebook, TikTok, etc.",
+    "descriptionKey": "category_ads_desc",
     "params": [
       "fbclid",
       "gclid",
@@ -168,13 +160,9 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
   "email": {
     "label": "Email Marketing",
-    "labelEs": "Email marketing",
-    "labelPt": "E-mail marketing",
-    "labelDe": "E-Mail-Marketing",
+    "labelKey": "category_email_label",
     "description": "Tracking from Klaviyo, HubSpot, Iterable, Marketo, Pardot, ActiveCampaign, etc.",
-    "descriptionEs": "Rastreo de Klaviyo, HubSpot, Iterable, Marketo, etc.",
-    "descriptionPt": "Rastreamento de Klaviyo, HubSpot, Iterable, Marketo, etc.",
-    "descriptionDe": "Tracking von Klaviyo, HubSpot, Iterable, Marketo, etc.",
+    "descriptionKey": "category_email_desc",
     "params": [
       "mc_cid",
       "mc_eid",
@@ -281,13 +269,9 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
   "social": {
     "label": "Social Media",
-    "labelEs": "Redes sociales",
-    "labelPt": "Redes sociais",
-    "labelDe": "Soziale Medien",
+    "labelKey": "category_social_label",
     "description": "Tracking from Instagram, Pinterest, Snapchat, TikTok shares, etc.",
-    "descriptionEs": "Rastreo de Instagram, Pinterest, Snapchat, etc.",
-    "descriptionPt": "Rastreamento de Instagram, Pinterest, Snapchat, etc.",
-    "descriptionDe": "Tracking von Instagram, Pinterest, Snapchat, etc.",
+    "descriptionKey": "category_social_desc",
     "params": [
       "epik",
       "pin_unauth",
@@ -300,13 +284,9 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
   "platform_noise": {
     "label": "Platform Noise",
-    "labelEs": "Ruido de plataforma",
-    "labelPt": "Ruído de plataforma",
-    "labelDe": "Plattform-Rauschen",
+    "labelKey": "category_platform_noise_label",
     "description": "Session IDs, A/B test tokens, internal routing params added by CDNs and platforms.",
-    "descriptionEs": "IDs de sesión, tokens A/B, parámetros internos de CDNs y plataformas.",
-    "descriptionPt": "IDs de sessão, tokens A/B, parâmetros internos de CDNs e plataformas.",
-    "descriptionDe": "Sitzungs-IDs, A/B-Test-Token, interne CDN- und Plattform-Parameter.",
+    "descriptionKey": "category_platform_noise_desc",
     "params": [
       "si",
       "source",
@@ -363,13 +343,9 @@ export const TRACKING_PARAM_CATEGORIES = {
   },
   "generic": {
     "label": "Generic Tracking",
-    "labelEs": "Rastreo genérico",
-    "labelPt": "Rastreamento genérico",
-    "labelDe": "Allgemeines Tracking",
+    "labelKey": "category_generic_label",
     "description": "Common generic tracking params used across many platforms.",
-    "descriptionEs": "Parámetros de rastreo genéricos usados en múltiples plataformas.",
-    "descriptionPt": "Parâmetros de rastreamento genéricos usados em várias plataformas.",
-    "descriptionDe": "Allgemeine Tracking-Parameter, die auf vielen Plattformen verwendet werden.",
+    "descriptionKey": "category_generic_desc",
     "params": [
       "s_cid",
       "wickedid",
