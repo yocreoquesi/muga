@@ -6,7 +6,7 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { loadCleaningContext, cleanForPreview } from "../lib/cleaning-context.js";
-import { getPrefs, sessionStorage, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, sessionStorage } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
@@ -19,8 +19,6 @@ import { computeLengthReduction, computeLengthBar } from "../lib/length-reductio
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
-import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
-import { scopedParamsForHost } from "../lib/remote-rules.js";
 
 /** Creates a clipboard SVG icon (12x12) via createElementNS. */
 function _createClipboardSvg() {
@@ -622,16 +620,8 @@ function _resetPreviewDom() {
     tabBadge.hidden = true;
     tabBadge.textContent = "";
   }
-  const reportLink = el("report-broken");
-  if (reportLink) reportLink.hidden = true;
-  // The opt-in full-URL consent is per-URL and per-render: reset the row +
-  // checkbox every render (like report-broken above) so a prior navigation's
-  // ticked "no sensitive data" attestation never bleeds into a different
-  // URL's report or lingers when the result flips back to untouched.
-  const reportIncludeUrlRow = el("report-include-url-row");
-  if (reportIncludeUrlRow) reportIncludeUrlRow.hidden = true;
-  const reportIncludeUrlCheckbox = el("report-include-url");
-  if (reportIncludeUrlCheckbox) reportIncludeUrlCheckbox.checked = false;
+  // #1355/#1354: the popup's own report-broken link + opt-in full-URL row
+  // are retired along with showReportButton — reporting moved to Settings.
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
   // prior render. The breakdown is dynamic (per-URL), so the
   // reset path must clear it the same way it clears the static slots
@@ -829,60 +819,9 @@ async function showUrlPreview(prefs, lang) {
       removedEl.hidden = false;
     }
 
-    // Report broken site: visible to all users when URL was modified and feature flag is on
-    if (prefs.showReportButton) {
-      // #705 fix: clone the static #report-broken node before binding the
-      // click listener. showUrlPreview is invoked on init AND on every
-      // storage-change / enabled-toggle event — without the clone, the
-      // listener accumulates and a single click opens N GitHub tabs.
-      // The clone drops the accumulated listeners; the subsequent
-      // addEventListener attaches exactly one.
-      // #1229: resolved BEFORE the listener so the click handler stays
-      // synchronous. An await inside it would let the popup close first and
-      // chrome.tabs.create would never run. A failure degrades to "no scoped
-      // params" — the report exactly as it was before this existed, because a
-      // broken report is worse than a less specific one.
-      let scopedParams = [];
-      try {
-        const { remoteRulesMeta } = await getRemoteParams();
-        scopedParams = scopedParamsForHost(
-          new URL(url).hostname,
-          remoteRulesMeta?.scopedFacts,
-        );
-      } catch {
-        scopedParams = [];
-      }
-
-      const oldLink = document.getElementById("report-broken");
-      const reportLink = oldLink.cloneNode(true);
-      oldLink.parentNode.replaceChild(reportLink, oldLink);
-      reportLink.hidden = false;
-      reportLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        // Form-based template (#333). Field IDs in
-        // .github/ISSUE_TEMPLATE/broken-site.yml: hostname, browser, version, params, url.
-        // GitHub forms ignore ?body= when ?template= is set, so we prefill
-        // each field individually. Free-text "symptom" stays empty for the user.
-        const includeCheckbox = document.getElementById("report-include-url");
-        const fields = buildBrokenSiteReportFields({
-          url,
-          includeFullUrl: includeCheckbox?.checked === true,
-          removedParams: result.removedTracking,
-          scopedParams,
-          version: chrome.runtime.getManifest().version,
-          browser: navigator.userAgent,
-        });
-        const params = new URLSearchParams(fields);
-        chrome.tabs.create({ url: `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}` });
-      });
-
-      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
-      // stays the default report contract). Reveal it alongside the report
-      // link; the checkbox itself is never cloned so its checked state
-      // survives re-renders within the same popup session.
-      const includeUrlRow = document.getElementById("report-include-url-row");
-      if (includeUrlRow) includeUrlRow.hidden = false;
-    }
+    // #1355/#1354: the popup's own "report broken site" flow (showReportButton)
+    // is retired. Reporting a problem now lives in Settings (#1353,
+    // section-report), reachable by every user.
 
     // Param breakdown: show removed params grouped by category (#1355/#1354,
     // ADR-0011 Decision 1 — this IS the popup glance, so it always renders

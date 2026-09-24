@@ -49,7 +49,6 @@ const SAMPLE_PREFS = {
   language: "es",
   disabledCategories: ["utm"],
   toastDuration: 30,
-  showReportButton: true,
   domainStats: true,
   showBadge: true,
   resolveShortenersOnClick: true,
@@ -74,26 +73,33 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 19 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 18 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "notifyForeignAffiliate", "stripAllAffiliates",
       "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
-      "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
+      "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled", "hoverPreviewEnabled",
       // referer-beacon-privacy (PR 1, opt-in, default false):
       "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 19);
+    assert.strictEqual(BOOLEAN_KEYS.length, 18);
   });
 
-  // #1355/#1354: paramBreakdown is retired entirely (not just de-controlled
-  // like dnrEnabled) — the popup glance shows the breakdown unconditionally.
+  // #1355/#1354: paramBreakdown and showReportButton are retired entirely
+  // (not just de-controlled like dnrEnabled) — the popup glance shows the
+  // breakdown unconditionally, and reporting moved to Settings (#1353).
   test("paramBreakdown is retired: not in SETTINGS_FIELDS/BOOLEAN_KEYS", () => {
     const field = SETTINGS_FIELDS.find((f) => f.key === "paramBreakdown");
     assert.strictEqual(field, undefined);
     assert.ok(!BOOLEAN_KEYS.includes("paramBreakdown"));
+  });
+
+  test("showReportButton is retired: not in SETTINGS_FIELDS/BOOLEAN_KEYS", () => {
+    const field = SETTINGS_FIELDS.find((f) => f.key === "showReportButton");
+    assert.strictEqual(field, undefined);
+    assert.ok(!BOOLEAN_KEYS.includes("showReportButton"));
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -437,6 +443,14 @@ describe("planImport — paramBreakdown is retired, ignored on import (#1355/#13
     const plan = planImport(validImportData({ paramBreakdown: true }));
     assert.strictEqual(plan.ok, true);
     assert.strictEqual(plan.toSave.paramBreakdown, undefined);
+  });
+});
+
+describe("planImport — showReportButton is retired, ignored on import (#1355/#1354)", () => {
+  test("a legacy export carrying showReportButton imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport(validImportData({ showReportButton: true }));
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.showReportButton, undefined);
   });
 });
 

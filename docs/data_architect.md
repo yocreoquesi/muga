@@ -25,12 +25,11 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `ampRedirect` | boolean | `true` | Redirect AMP pages to canonical URL |
 | `unwrapRedirects` | boolean | `true` | Unwrap tracking redirect URLs (e.g. ?url=, ?redirect=) |
 | `language` | string | `"en"` | UI language. Supported: `"en"`, `"es"`, `"pt"`, `"de"` |
-| `onboardingDone` | boolean | `false` | Whether the user has completed onboarding |
-| `consentVersion` | string\|null | `null` | ToS version accepted (e.g. `"1.0"`). Bump to re-trigger consent on ToS changes |
-| `consentDate` | number\|null | `null` | Unix timestamp (ms) of when the user accepted the ToS |
+| `onboardingDone` | boolean | `false` | **Internal state, not a preference** (#1355, ADR-0011): whether the user has completed onboarding (or implicit acceptance was recorded on install). Canonical value lives in `consent-storage.js` (ADR-0001); this key exists only as the shape of a read `getPrefs()` overlays and discards. No Settings control. |
+| `consentVersion` | string\|null | `null` | **Internal state, not a preference** (#1355, ADR-0011): ToS version accepted (e.g. `"1.0"`). Live and load-bearing (gates remote-rules egress), never user-set. Does NOT re-trigger onboarding on a bump — that versioned-consent/re-acceptance engine was removed by ADR-0007; MUGA never re-prompts an existing user on a ToS change. |
+| `consentDate` | number\|null | `null` | **Internal state, not a preference** (#1355, ADR-0011): Unix timestamp (ms) of when the user accepted, written once. No Settings control. |
 | `disabledCategories` | string[] | `[]` | Param categories to skip stripping (e.g. `["utm", "ads"]`) |
 | `toastDuration` | number | `15` | How long the affiliate notification toast stays visible (seconds, 5–60) |
-| `showReportButton` | boolean | `true` | Show "Report a problem" button in popup |
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `showBadge` | boolean | `true` | Show the tab's running count of stripped tracking params as a native toolbar badge (#910) |
 | `remoteRulesEnabled` | boolean | `true` | On by default (#888): fetches Ed25519-signed rule updates at most once per 7 days (`credentials: "omit"`, no cookies, no identifiers). A fresh install makes this one outbound GET to rules.muga.app; disable in Settings for zero network activity. Supersedes REQ-OPT-1. |

@@ -160,7 +160,7 @@ trusting the extension.
 | `blacklist` | user choice | Per-host opt-out data the user authored. |
 | `whitelist` | user choice | Per-host preserve data the user authored. |
 | `customParams` | user choice | A user-authored always-strip list. |
-| `dnrEnabled` | internal-with-a-default | Selects which of two matchers strips: the declarative network layer or the runtime cleaner. Both implement the same predicate, and `tests/unit/dnr-runtime-parity.test.mjs` exists precisely to keep them from diverging. A user has no basis on which to prefer one, and its honest label would be "clean slightly later, same result". |
+| `dnrEnabled` | internal-with-a-default → **control removed, kept internal (#1355, 2026-09-24)** | Selects which of two matchers strips: the declarative network layer or the runtime cleaner. Both implement the same predicate, and `tests/unit/dnr-runtime-parity.test.mjs` exists precisely to keep them from diverging. A user has no basis on which to prefer one, and its honest label would be "clean slightly later, same result". |
 | `activeDefenseEnabled` | user choice | Its own comment (`prefs.js:27-33`) states the user need: "users can opt out if these scripts break a site (e.g. rt.com comments, #1006)". A real breakage escape hatch. |
 | `contextMenuEnabled` | user choice | Whether MUGA adds an entry to the browser context menu. Visible clutter the user owns. |
 | `blockPings` | user choice | DOM-layer beacon defusing, on by default, with genuine breakage potential on click-tracked navigation. |
@@ -169,29 +169,44 @@ trusting the extension.
 | `ampRedirect` | user choice | Some users prefer AMP pages. Where you land is a preference. |
 | `unwrapRedirects` | user choice | One of MUGA's two identity behaviours, but it rewrites destinations, so the opt-out is legitimate. |
 | `language` | user choice | Seven locales ship. Plainly a choice. |
-| `onboardingDone` | internal-with-a-default | Not a preference: a consent record. Its canonical home is `chrome.storage.local` via `consent-storage.js` (ADR-0001), and `getPrefs` overlays it over the sync read (`prefs.js:220`). It sits in `PREF_DEFAULTS` only as the shape of a read that is then discarded. |
-| `consentVersion` | internal-with-a-default | Same: state, not a control. Live and load-bearing (it gates remote-rules egress, `src/background/remote-rules-wake.js:83`) but never user-set. Its `prefs.js:52` comment "Bump to re-trigger onboarding on ToS changes" is stale — ADR-0007 removed that engine, as `prefs.js:224-229` says. |
-| `consentDate` | internal-with-a-default | Same: a timestamp written once (`service-worker.js:1479`). |
+| `onboardingDone` | internal-with-a-default → **documented as internal state (#1355, 2026-09-24)** | Not a preference: a consent record. Its canonical home is `chrome.storage.local` via `consent-storage.js` (ADR-0001), and `getPrefs` overlays it over the sync read (`prefs.js:220`). It sits in `PREF_DEFAULTS` only as the shape of a read that is then discarded. |
+| `consentVersion` | internal-with-a-default → **documented as internal state, stale comment fixed (#1355, 2026-09-24)** | Same: state, not a control. Live and load-bearing (it gates remote-rules egress, `src/background/remote-rules-wake.js:83`) but never user-set. Its `prefs.js:52` comment "Bump to re-trigger onboarding on ToS changes" is stale — ADR-0007 removed that engine, as `prefs.js:224-229` says. |
+| `consentDate` | internal-with-a-default → **documented as internal state (#1355, 2026-09-24)** | Same: a timestamp written once (`service-worker.js:1479`). |
 | `disabledCategories` | user choice | #1340 names it as already the right shape. Rendered as a dynamic card (`options.html:297`, `options.js:788`), it scales with the rule set instead of adding a pref per category. |
 | `toastDuration` | user choice | How long a notification stays up. An accessibility and taste preference. |
-| `paramBreakdown` | internal-with-a-default | A display sub-toggle whose label says "in the popup". Under Decision 1 the breakdown of what was removed from *this page* is the glance, so a toggle for it is a leftover from when the popup was a report. |
-| `showReportButton` | internal-with-a-default | A display sub-toggle for one button. Decision 3 moves that button out of the popup, which retires the pref's stated job. |
+| `paramBreakdown` | internal-with-a-default → **retired (#1355/#1354, 2026-09-24)** | A display sub-toggle whose label says "in the popup". Under Decision 1 the breakdown of what was removed from *this page* is the glance, so a toggle for it is a leftover from when the popup was a report. |
+| `showReportButton` | internal-with-a-default → **retired (#1355/#1354, 2026-09-24)** | A display sub-toggle for one button. Decision 3 moves that button out of the popup, which retires the pref's stated job. |
 | `domainStats` | user choice | Reads as display but is not: it gates *recording* (`src/background/process-url.js:375`, `src/background/service-worker.js:352`) as well as the panel (`popup.js:921`). Its label, "Record per-domain statistics", is accurate, and a record-keeping opt-out is a real choice. |
 | `showBadge` | user choice | Visual noise on the toolbar icon. Taste. |
 | `remoteRulesEnabled` | **trust-critical** | Named by #1340. The only recurring outbound request MUGA makes. Non-negotiably visible. |
 | `honorCreatorMode` | **trust-critical** | Named by #1340. Its own comment (`prefs.js:73-78`) gives the reason: honoring referral chains "may route through redirect networks the user did not consent to contact otherwise". |
 | `creatorAllowlist` | **trust-critical** | The data `honorCreatorMode` acts on. A user auditing which creators may route them through a redirect network needs the list, not just the switch. Classified here on that evidence, not by #1340's naming. |
-| `canonicalExtractorEnabled` | internal-with-a-default | Its own comment (`prefs.js:86-91`) describes the control's purpose as "Disable here to bypass that tier entirely without uninstalling content scripts" — a reversibility affordance for whoever is debugging the wrapper engine, expressed as a user setting. |
+| `canonicalExtractorEnabled` | internal-with-a-default → **control moved to Developer tools (#1355, 2026-09-24)** | Its own comment (`prefs.js:86-91`) describes the control's purpose as "Disable here to bypass that tier entirely without uninstalling content scripts" — a reversibility affordance for whoever is debugging the wrapper engine, expressed as a user setting. |
 | `crossSiteFrequencyEnabled` | **trust-critical** | The code itself makes the case: "Privacy-sensitive enough to deserve its own toggle even though the data never leaves the device" (`prefs.js:92-98`). That is the trust test in the codebase's own words. |
 | `attributionLedgerEnabled` | **trust-critical** | Same, and stronger: "Privacy-sensitive (it carries URLs), so we expose it as its own toggle even though the data is local-only" (`prefs.js:99-106`). |
-| `experimentalParamClassesEnabled` | internal-with-a-default | A feature flag that shipped. Default off, warns it may break sites, and exists so a risky heuristic could land reversibly (`prefs.js:107-116`). Its honest end state is promotion to always-on once false-positive evidence supports it, or removal — a permanently-experimental toggle is exactly the accumulation #1340 objects to. Listed here even though its label is clear, because the label is not the problem. |
+| `experimentalParamClassesEnabled` | internal-with-a-default → **control moved to Developer tools (#1355, 2026-09-24)** | A feature flag that shipped. Default off, warns it may break sites, and exists so a risky heuristic could land reversibly (`prefs.js:107-116`). Its honest end state is promotion to always-on once false-positive evidence supports it, or removal — a permanently-experimental toggle is exactly the accumulation #1340 objects to. Listed here even though its label is clear, because the label is not the problem. |
 | `userCustomRules` | user choice | User-authored strip rules, written by explicit click. Data, and the highest-consequence data in the bag. |
 | `hoverPreviewEnabled` | user choice | A desktop-only tooltip that appears on a hold. Unobtrusive, but visible behaviour a user may not want. |
-| `hoverPreviewDelayMs` | internal-with-a-default | The clearest case in the table. It has **no control anywhere**, it is deliberately excluded from export (`src/lib/settings-schema.js:152-156`), and its only two readers apply a hardcoded fallback anyway: `(_prefs && _prefs.hoverPreviewDelayMs) \|\| 2500` (`src/content/hover-preview.js:439`, `:481`). It is a constant paying sync-quota, migration and import/export costs as if it were a preference. |
+| `hoverPreviewDelayMs` | internal-with-a-default → **retired, fixed constant (#1355, 2026-09-24)** | The clearest case in the table. It has **no control anywhere**, it is deliberately excluded from export (`src/lib/settings-schema.js:152-156`), and its only two readers apply a hardcoded fallback anyway: `(_prefs && _prefs.hoverPreviewDelayMs) \|\| 2500` (`src/content/hover-preview.js:439`, `:481`). It is a constant paying sync-quota, migration and import/export costs as if it were a preference. |
 | `resolveShortenersOnClick` | **trust-critical** | Named by #1340. Half of the resolution split; performs a network request to a third party. |
 | `resolveShortenersOnHover` | **trust-critical** | Named by #1340, and the more sensitive half: it leaks "the user saw this link" for a link never clicked (`prefs.js:143-166`). Default off for that reason. |
 
 **Totals: 19 user choice, 9 internal-with-a-default, 8 trust-critical.**
+
+**Resolution (#1355 + #1354, maintainer decision 2026-09-24):** every one of
+the 9 internal-with-a-default prefs above now carries its final status in
+the Bucket column — 2 retired with a fixed constant/no successor
+(`hoverPreviewDelayMs`, and `dnrEnabled`'s control, though `dnrEnabled`
+itself stays internal), 2 retired outright (`paramBreakdown`,
+`showReportButton` — the latter closing #1354's stale "in the popup" label
+alongside `paramBreakdown`), 2 moved from the dev-mode-gated Advanced card
+into the devToolsMode-gated Developer tools panel
+(`canonicalExtractorEnabled`, `experimentalParamClassesEnabled`), and 3
+documented in place as consent state rather than preferences
+(`onboardingDone`, `consentVersion`, `consentDate` — the latter's stale
+`prefs.js:52` comment also fixed). This ADR's own decision text above is
+left as the historical record of the classification; only the Bucket column
+was appended to.
 
 #1340 named four trust-critical items by definition; counting the shortener
 split as the two keys it actually is, that is five. The other three

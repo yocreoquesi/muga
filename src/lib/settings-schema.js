@@ -172,11 +172,10 @@ export const SETTINGS_FIELDS = Object.freeze([
   // `dev_tools_disclosure` is the existing label for the Developer tools row
   // (options.html #section-dev-tools), reused rather than introducing a new key.
   { key: "devToolsMode", kind: "local", label: "dev_tools_disclosure" },
-  // paramBreakdown was retired entirely (#1355/#1354, ADR-0011
-  // internal-with-a-default) — see prefs.js. There is no pref left to
-  // describe; a legacy export still carrying the key imports cleanly,
-  // ignored, same precedent as cookieConsentMode above.
-  { key: "showReportButton", kind: "boolean", label: "row_show_report_button_label" },
+  // paramBreakdown and showReportButton were both retired entirely (#1355/
+  // #1354, ADR-0011 internal-with-a-default) — see prefs.js. There is no
+  // pref left to describe for either; a legacy export still carrying either
+  // key imports cleanly, ignored, same precedent as cookieConsentMode above.
   { key: "domainStats", kind: "boolean", label: "row_domain_stats_label" },
   { key: "showBadge", kind: "boolean", label: "row_show_badge_label" },
   // browsewrap Phase 2: the single followShortenersEnabled permission-gated

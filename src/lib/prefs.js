@@ -55,9 +55,27 @@ export const PREF_DEFAULTS = {
   ampRedirect: true,
   unwrapRedirects: true,
   language: "en",
+  // ── Consent-tier state (#1355, ADR-0011 internal-with-a-default) ─────────
+  // The next three keys are internal state, NOT user preferences — they sit
+  // in PREF_DEFAULTS only as the shape of a read that getPrefs() then
+  // overlays from per-device chrome.storage.local via consent-storage.js
+  // (ADR-0001) and discards from here. There is no Settings control for any
+  // of the three, and there never was one to remove.
+  //
+  // onboardingDone: whether the user has completed onboarding (or MUGA
+  // recorded implicit acceptance on install — see service-worker.js
+  // recordImplicitAcceptOnInstall). Canonical value lives in consent-storage.js.
   onboardingDone: false,
-  consentVersion: null,   // e.g. "1.0". Bump to re-trigger onboarding on ToS changes.
-  consentDate: null,      // Unix timestamp (ms) of when the user accepted
+  // consentVersion: ToS version accepted (e.g. "1.0"). Live and load-bearing
+  // (it gates remote-rules egress, see remote-rules-wake.js), but never
+  // user-set. STALE COMMENT FIXED (#1355): this used to say "Bump to
+  // re-trigger onboarding on ToS changes" — that re-acceptance/versioned-
+  // consent policy engine was removed by ADR-0007 (see the "No re-acceptance
+  // gate" note in getPrefs() below). Bumping this value today does nothing;
+  // MUGA never re-prompts or re-gates an existing user on a ToS change.
+  consentVersion: null,
+  // consentDate: Unix timestamp (ms) of when the user accepted, written once.
+  consentDate: null,
   disabledCategories: [],  // e.g. ["utm", "ads"]. Params in these categories are not stripped.
   toastDuration: 15,  // seconds: how long the affiliate notification stays visible
   // paramBreakdown was retired (#1355/#1354, ADR-0011 internal-with-a-default):
@@ -65,7 +83,10 @@ export const PREF_DEFAULTS = {
   // ADR-0011 Decision 1 the removed-parameter breakdown IS the popup glance —
   // it now always renders when there is something to show. Do NOT add it
   // back to PREF_DEFAULTS.
-  showReportButton: true,
+  // showReportButton was retired too (#1355/#1354): reporting a problem now
+  // lives in Settings (#1353, section-report), reachable by every user,
+  // unlike the popup's report link this pref used to gate. Do NOT add it
+  // back to PREF_DEFAULTS.
   domainStats: true,
   // Toolbar badge toggle (#910). Default ON: shows the tab's running count
   // of tracking params stripped as a native browser badge (setBadgeText)

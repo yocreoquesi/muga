@@ -33,9 +33,9 @@ For each source: **what it is**, **latency** (how long after a real problem befo
 
 ### In-extension "Report unclean URL" button (#271)
 
-- **What.** Popup link visible only when MUGA modified the URL and `showReportButton` is on. Opens a pre-filled GitHub issue tagged `unclean-url`. Sends hostname, version, browser, removed params — never the full URL or query string.
+- **What.** Lived in the popup, gated behind `showReportButton`, until #1355/#1354 retired both the pref and the popup link. The flow itself is not gone — it moved to Settings (#1353, section-report), reachable by every user rather than a display sub-toggle most never set. Opens a pre-filled GitHub issue tagged `unclean-url`. Sends hostname, version, browser, removed params — never the full URL or query string.
 - **Latency.** Seconds, but lands in the same GitHub issues stream — so observed latency is the same as GitHub issues.
-- **Baseline.** 0–1 per week. The friction (clicking, confirming the GitHub flow) keeps this rare.
+- **Baseline.** 0–1 per week. The friction (finding Settings, confirming the GitHub flow) keeps this rare.
 - **Signal-to-noise.** Very high. By the time someone walks the unclean-URL path, they are looking at a URL they believed should have been cleaned. Each hit is a coverage gap or a rule miss.
 
 ### In-extension "Report a problem with this URL" button

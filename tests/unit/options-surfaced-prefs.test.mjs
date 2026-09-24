@@ -5,6 +5,8 @@
  *   - Privacy toggles:  canonicalExtractorEnabled, crossSiteFrequencyEnabled,
  *                       attributionLedgerEnabled
  *   - Display toggles:  paramBreakdown, showReportButton, domainStats
+ *     (paramBreakdown and showReportButton were later retired — #1355/#1354 —
+ *     see the dedicated retirement describe blocks below)
  *   - userCustomRules:  view + remove editor (entries come from the popup's
  *                       "Strip locally" button)
  *
@@ -102,7 +104,6 @@ function isNestedInsideDiv(html, containerId, childId) {
 const BOOLEAN_CONTROLS = [
   { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled", ariaKey: "aria_cross_site_frequency" },
   { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled",  ariaKey: "aria_attribution_ledger" },
-  { id: "show-report-button",   prefKey: "showReportButton",          ariaKey: "aria_show_report_button" },
   { id: "domain-stats",         prefKey: "domainStats",               ariaKey: "aria_domain_stats" },
 ];
 
@@ -304,6 +305,35 @@ describe("#1355/#1354 — paramBreakdown is retired", () => {
   });
 });
 
+// #1355/#1354 (ADR-0011 internal-with-a-default): showReportButton is
+// retired entirely along with the popup's own report flow. Reporting now
+// lives in Settings (#1353, section-report) — see
+// tests/unit/report-button.test.mjs for the full retirement coverage
+// (i18n keys, popup markup, popup.js). This block covers the Settings side.
+describe("#1355/#1354 — showReportButton is retired", () => {
+  test("PREF_DEFAULTS no longer has showReportButton", () => {
+    assert.ok(!Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, "showReportButton"));
+  });
+
+  test("options.html has no #show-report-button control", () => {
+    assert.ok(!optionsHtml.includes('id="show-report-button"'));
+  });
+
+  test("options.js no longer binds #show-report-button", () => {
+    assert.ok(!optionsJs.includes('"show-report-button"'));
+  });
+
+  test("showReportButton is not in SETTINGS_FIELDS/BOOLEAN_KEYS", () => {
+    assert.ok(!BOOLEAN_KEYS.includes("showReportButton"));
+  });
+
+  test("a legacy export carrying showReportButton imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport({ muga: true, blacklist: [], whitelist: [], customParams: [], showReportButton: true });
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.showReportButton, undefined);
+  });
+});
+
 describe("#925/#936 — new i18n keys are complete across all locales", () => {
   const newKeys = [
     "section_general", "section_rules_lists", "section_privacy_controls",
@@ -312,7 +342,6 @@ describe("#925/#936 — new i18n keys are complete across all locales", () => {
     "row_canonical_extractor_label", "row_canonical_extractor_hint",
     "row_cross_site_frequency_label", "row_cross_site_frequency_hint",
     "row_attribution_ledger_label", "row_attribution_ledger_hint",
-    "row_show_report_button_label", "row_show_report_button_hint",
     "row_domain_stats_label", "row_domain_stats_hint",
   ];
 

@@ -46,14 +46,15 @@ test.describe("Export / Import", () => {
     expect(data.muga).toBe(true);
     expect(data.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(typeof data.enabled).toBe("boolean");
-    // #1355: dnrEnabled lost its Settings control, so it no longer exports.
+    // #1355: dnrEnabled, paramBreakdown, and showReportButton no longer have
+    // Settings controls (dnrEnabled) or exist at all (paramBreakdown,
+    // showReportButton retired) — none round-trip through export anymore.
     expect(data.dnrEnabled).toBeUndefined();
+    expect(data.paramBreakdown).toBeUndefined();
+    expect(data.showReportButton).toBeUndefined();
     expect(typeof data.blockPings).toBe("boolean");
     expect(typeof data.ampRedirect).toBe("boolean");
     expect(typeof data.unwrapRedirects).toBe("boolean");
-    // #1355: paramBreakdown is retired, so it no longer exports.
-    expect(data.paramBreakdown).toBeUndefined();
-    expect(typeof data.showReportButton).toBe("boolean");
     expect(typeof data.domainStats).toBe("boolean");
     expect(Array.isArray(data.blacklist)).toBe(true);
     expect(Array.isArray(data.whitelist)).toBe(true);
@@ -68,7 +69,10 @@ test.describe("Export / Import", () => {
 
   test("import restores settings from a file", async ({ optionsPage: page }) => {
 
-    // Create a test settings file
+    // Create a test settings file. Deliberately still carries dnrEnabled,
+    // paramBreakdown, and showReportButton (#1355: control removed / pref
+    // retired) — a legacy export made before this change must still import
+    // cleanly, with those three keys simply ignored.
     const settings = {
       muga: true,
       version: "1.0.0",
