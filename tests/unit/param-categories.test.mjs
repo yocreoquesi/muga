@@ -2,7 +2,7 @@
  * MUGA — Param-categories integrity tests
  *
  * Validates the TRACKING_PARAM_CATEGORIES export from affiliates.js:
- *   - Shape: every category has label, labelEs, and params
+ *   - Shape: every category has label, its i18n keys (#1400), and params
  *   - Cross-reference: 100% of TRACKING_PARAMS source entries are covered by some category
  *   - i18n: all new impact-dashboard keys exist in both EN and ES
  *
@@ -28,16 +28,18 @@ describe("TRACKING_PARAM_CATEGORIES — shape validation", () => {
     );
   });
 
-  test("every category has label, labelEs, and params", () => {
+  test("every category has label, labelKey/descriptionKey, and params", () => {
     for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
       assert.ok(
         typeof catData.label === "string" && catData.label.length > 0,
         `Category "${catKey}" must have a non-empty string label`
       );
-      assert.ok(
-        typeof catData.labelEs === "string" && catData.labelEs.length > 0,
-        `Category "${catKey}" must have a non-empty string labelEs`
-      );
+      for (const field of ["labelKey", "descriptionKey"]) {
+        assert.ok(
+          typeof catData[field] === "string" && TRANSLATIONS[catData[field]],
+          `Category "${catKey}" must name an existing locale key in ${field}`
+        );
+      }
       assert.ok(
         Array.isArray(catData.params) && catData.params.length > 0,
         `Category "${catKey}" must have a non-empty params array`
@@ -51,10 +53,12 @@ describe("TRACKING_PARAM_CATEGORIES — shape validation", () => {
         catData.label.length <= 80,
         `Category "${catKey}" label is too long (${catData.label.length} chars): "${catData.label}"`
       );
-      assert.ok(
-        catData.labelEs.length <= 80,
-        `Category "${catKey}" labelEs is too long (${catData.labelEs.length} chars): "${catData.labelEs}"`
-      );
+      for (const [lang, value] of Object.entries(TRANSLATIONS[catData.labelKey])) {
+        assert.ok(
+          value.length <= 80,
+          `Category "${catKey}" label in ${lang} is too long (${value.length} chars): "${value}"`
+        );
+      }
     }
   });
 
@@ -127,14 +131,7 @@ describe("TRACKING_PARAM_CATEGORIES — no cross-category duplicates", () => {
 describe("i18n — impact-dashboard param breakdown keys", () => {
   const REQUIRED_KEYS = [
     "param_breakdown_label",
-    "param_category_analytics",
-    "param_category_social",
-    "param_category_advertising",
-    "param_category_email",
-    "param_category_affiliate",
-    "param_category_marketplace",
     "param_category_other",
-    "param_category_ecommerce",
   ];
 
   for (const key of REQUIRED_KEYS) {
