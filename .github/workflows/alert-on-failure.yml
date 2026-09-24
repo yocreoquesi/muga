@@ -19,6 +19,7 @@ on:
       - "Moat expansion — monthly affiliate-param discovery"
       - "Import upstream tracking params"
       - "Anchored-only globals — monthly report"
+      - "AdGuard global candidates — monthly report"
     types: [completed]
 
 permissions:

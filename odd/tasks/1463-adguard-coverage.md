@@ -112,11 +112,13 @@ rules + rules-source store + live signed channel; see
   bundle rebuild. Route: inline (I already had full context from reading
   the #1443 Step 4c pattern; spinning up a fresh writer would have cost more
   than it saved).
-- [ ] T5 Area 5 — `tools/adguard-global-candidates.mjs` measurement-only
-  report + workflow, mirroring `anchored-only-globals.mjs`. Route: delegated
-  direct (new tool + workflow + test = 3+ files).
-- [ ] T6 Full verification pass: `npm test`, `test:integration`, `lint:js`,
-  `lint` (+ manifest diff check), `fpfn`, network-coverage tests.
+- [x] T5 Area 5 — `tools/adguard-global-candidates.mjs` measurement-only
+  report + workflow, mirroring `anchored-only-globals.mjs`. Route: inline
+  (same reasoning as T4 — I already had the exact sibling file open and
+  understood; a fresh writer would have re-derived the same context from
+  scratch).
+- [x] T6 Full verification pass: `npm test`, `test:integration`, `lint:js`,
+  `lint` (+ manifest diff check), `fpfn`, `typecheck`.
 
 ## Acceptance criteria
 
@@ -133,16 +135,38 @@ rules + rules-source store + live signed channel; see
 
 ## Checks
 
-After T1-T3 (commit: see below):
+After T1-T3 (commit 39bc932):
 - `npm test` — 9094 tests, 9093 pass, 1 skipped (pre-existing), 0 fail.
 - `npm run test:integration` — 233/233 pass.
 - `npm run lint:js` — clean.
 - `npm run lint` — 0 errors, 2 pre-existing unrelated warnings (`lib/i18n.js`).
 - `git diff --stat src/manifest.json` — empty (unchanged).
 - `npm run fpfn` — 0 FP / 0 FN.
-- `node tools/build-rules-store.mjs --check` — to run again after T4/T5.
 
-(full pass at close, T6)
+After T4 (commit aa864bb):
+- `npm test` — 9100 tests, 9099 pass, 1 skipped, 0 fail.
+- `npm run typecheck` — clean (required a `deepFreeze` instead of `Object.freeze`
+  fix so `AFFILIATE_HOST_STRIP_FACTS` was not inferred as a readonly array
+  mismatching `scopedParamsForHostname`'s JSDoc param type).
+- `npm run lint:js` — clean. `npm run lint` — 0 errors, 2 pre-existing warnings.
+- `npm run compile:rules` — no diff (confirms Area 4 stays out of the DNR pipeline).
+- `npm run fpfn` — 0 FP / 0 FN. `npm run test:integration` — 233/233 pass.
+
+T6 — final full pass (after T5, commit: see below):
+- `npm test` — 9189 tests, 9188 pass, 1 skipped (pre-existing), 0 fail.
+- `npm run test:integration` — 233/233 pass.
+- `npm run typecheck` — clean.
+- `npm run lint:js` — clean.
+- `npm run lint` — 0 errors, 2 pre-existing unrelated warnings (`lib/i18n.js`).
+- `git diff --stat src/manifest.json` — empty (unchanged after `lint`).
+- `npm run fpfn` — 0 FP / 0 FN (hard gate: PASSED).
+- `node tools/build-rules-store.mjs --check` — no drift reported.
+- `npm run adguard-global-candidates-report` — live smoke test against the
+  real upstream list: 0 candidates (see T5 progress note).
+- No `AFFILIATE_PARAM_GUARD` member touched (grep-verified: no edits to
+  that set in the whole branch diff). `tools/rules-source/params.json`
+  byte-identical (never touched — verified via `git diff --stat`, absent
+  from every commit's changed-file list).
 
 ## Progress
 
@@ -309,4 +333,25 @@ these 2 exact AdGuard-anchored hosts, so the blast radius is small, but a
 maintainer with product knowledge of tapatalk.com's session model may want
 to double-check this one specifically.
 
-**T5 — see commit for `tools/adguard-global-candidates.mjs`.**
+**T5 — landed.** `tools/adguard-global-candidates.mjs` mirrors
+`tools/anchored-only-globals.mjs` (#1228) in the opposite direction: pure
+decision core (`findNewGlobalCandidates`), reused `assertAdguardNotDegenerate`
+from the sibling module rather than duplicating the degenerate-upstream
+guard, one deduplicated monthly tracking issue
+(`.github/workflows/adguard-global-candidates.yml`, cron `0 10 1 * *` — 2h
+after `anchored-only-globals.yml` so the four monthly jobs never collide),
+never opens a PR, never edits `TRACKING_PARAMS`. Seeded
+`ADJUDICATED_SKIP_GLOBAL` (`src/lib/affiliates-data.js`) from T1's 29
+concrete SKIP decisions so the exact same names do not reappear every
+month (mirrors `ADJUDICATED_KEEP_GLOBAL`'s own stated rationale for the
+opposite direction). Added the matching pin test
+(`adjudicated-skip-global.test.mjs`, mirrors `adjudicated-keep-global.test.mjs`).
+Added the new workflow's `name:` to `alert-on-failure.yml`'s watched list
+(G9 guard, `workflow-hardening.test.mjs`, caught this immediately — a
+scheduled workflow with no failure alert is exactly the #1401 failure mode).
+
+Live smoke-tested against the real upstream list
+(`npm run adguard-global-candidates-report`): **0 candidates** — confirms
+T1's structural exclusions (guard/denylist/landingParams/prefixes) plus the
+seeded `ADJUDICATED_SKIP_GLOBAL` fully account for every name in the
+original 48-entry global-missing measurement.
