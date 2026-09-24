@@ -6,6 +6,14 @@ import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuH
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams, getDomainStats } from "../lib/storage.js";
 import { planDomainStatsView } from "../lib/domain-stats-view.js";
+import { planSuspiciousParamsSettingsView } from "../lib/suspicious-params-view.js";
+import {
+  createTracker as createFrequencyTracker,
+  createChromeLocalAdapter as createFrequencyAdapter,
+  defaultHasher as frequencyHasher,
+} from "../lib/cross-site-frequency.js";
+import { addUserCustomRule } from "../lib/user-custom-rules.js";
+import { buildTrackerFlagDeepLinkUrl } from "../lib/tracker-flag-deeplink.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -373,6 +381,13 @@ async function init() {
       .catch(err => console.error("[MUGA] render domain stats:", err));
   });
   await renderDomainStatsActivity(prefs.domainStats);
+  // #1351: the frequency subgroup shares the same Activity section and is
+  // gated on crossSiteFrequencyEnabled, exactly as it was in the popup.
+  document.getElementById("cross-site-frequency")?.addEventListener("change", () => {
+    prefs.crossSiteFrequencyEnabled = document.getElementById("cross-site-frequency").checked;
+    renderSuspiciousParamsActivity(prefs).catch(err => console.error("[MUGA] render suspicious params:", err));
+  });
+  await renderSuspiciousParamsActivity(prefs);
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
   bindToggle("show-badge", "showBadge", prefs);
@@ -584,6 +599,24 @@ async function initBlocklistMigrationNotice(prefs) {
 }
 
 /**
+ * Shows Settings' Activity section iff at least one of its panels is
+ * visible (#1351 fix). #1350 introduced the section tied to a single pref
+ * (domainStats) because it shipped the section's only panel; once a second,
+ * independently-gated panel (suspicious-params) landed, that section-level
+ * hide had to stop being "hide when domainStats is off" and become "hide
+ * when EVERY panel is hidden" — a panel being off must never hide a
+ * sibling panel that has content.
+ */
+function updateActivitySectionVisibility() {
+  const section = document.getElementById("section-activity");
+  if (!section) return;
+  const panels = ["domain-stats-panel", "suspicious-params-panel"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  section.hidden = !panels.some((panel) => !panel.hidden);
+}
+
+/**
  * Renders the per-domain tracker-stats table in Settings' Activity section
  * (#1350, ADR-0011 Decision 3). Moved here from the popup's showDomainStats
  * (popup.js:920-966, removed) — a ranked table that "rewards study" is a
@@ -594,15 +627,17 @@ async function initBlocklistMigrationNotice(prefs) {
  * @param {boolean} domainStatsEnabled current value of prefs.domainStats
  */
 async function renderDomainStatsActivity(domainStatsEnabled) {
-  const section = document.getElementById("section-activity");
+  const panel = document.getElementById("domain-stats-panel");
   const list = document.getElementById("domain-stats-list");
-  if (!section || !list) return;
+  if (!panel || !list) return;
 
   if (!domainStatsEnabled) {
-    section.hidden = true;
+    panel.hidden = true;
+    updateActivitySectionVisibility();
     return;
   }
-  section.hidden = false;
+  panel.hidden = false;
+  updateActivitySectionVisibility();
 
   let allStats;
   try { allStats = await getDomainStats(); } catch (err) { console.error("[MUGA] getDomainStats:", err); allStats = {}; }
@@ -639,6 +674,273 @@ async function renderDomainStatsActivity(domainStatsEnabled) {
     row.appendChild(urlsEl);
     list.appendChild(row);
   }
+}
+
+// Overlapping renderSuspiciousParamsActivity calls (a toggle flip while a
+// previous render is still awaiting storage, a rapid re-render after
+// import) must not interleave their rows into the same list. Same
+// run-counter/isStale() pattern as initReportFlow's runReportUrlCheck
+// (#1353) — module-scoped here because, unlike that closure-local counter,
+// this function is called from several independent call sites (init, the
+// toggle listener, the import handler) rather than from one initializer.
+let _suspiciousParamsRenderRun = 0;
+
+/**
+ * Renders the cross-site FREQUENCY subgroup of the popup's old
+ * "Suspicious params" section, plus its two actions ("Strip everywhere",
+ * "Report upstream"), in Settings' Activity section (#1351, ADR-0011
+ * Decision 3). Moved here from the popup's showSuspiciousParams
+ * (popup.js, now entropy-only) per the 2026-09-24 maintainer decision: the
+ * ENTROPY subgroup stays read-only in the popup (it has no equivalent
+ * "current page" once opened from Settings); this subgroup is storage-backed
+ * and has no such dependency. Gated on crossSiteFrequencyEnabled exactly as
+ * the popup gated it before.
+ *
+ * #1351 R3-render-interleave: the list is cleared and filled only ONCE,
+ * after every await has resolved AND this call is still the latest one —
+ * never at the top of the function. Clearing early (then awaiting storage)
+ * let a superseded call's rows land after a fresher call's rows, or leave
+ * the list empty while a fresher call was still in flight.
+ *
+ * @param {object} prefs Merged preferences object (mutated in place after
+ *   a successful "Strip everywhere" click, mirroring the popup's old
+ *   in-flight-prefs pattern, so a follow-up render sees the new state).
+ */
+async function renderSuspiciousParamsActivity(prefs) {
+  const panel = document.getElementById("suspicious-params-panel");
+  const list = document.getElementById("suspicious-params-settings-list");
+  if (!panel || !list) return;
+
+  // Bump before the disabled gate: a call that turns the panel off must also
+  // mark any render still awaiting storage as stale, or that render would
+  // refill the list after the feature was disabled.
+  const run = ++_suspiciousParamsRenderRun;
+  const isStale = () => run !== _suspiciousParamsRenderRun;
+
+  const enabled = prefs.crossSiteFrequencyEnabled !== false;
+  panel.hidden = !enabled;
+  updateActivitySectionVisibility();
+  if (!enabled) return;
+
+  // Also fetch the raw tracker state once so "Report upstream" can extract
+  // its privacy-bounded payload (domains, entropyAvg, value-hash count)
+  // without re-reading storage per click — mirrors the popup's old approach.
+  let frequencyFlags = [];
+  let trackerState = null;
+  try {
+    const adapter = createFrequencyAdapter();
+    if (adapter) {
+      const tracker = createFrequencyTracker({ adapter, hasher: frequencyHasher, enabled: true });
+      frequencyFlags = await tracker.getFlagged();
+      try { trackerState = await adapter.get(); } catch { /* best-effort */ }
+    }
+  } catch (err) { console.error("[MUGA] suspicious-params tracker:", err); }
+  if (isStale()) return;
+
+  let submittedParams = {};
+  try {
+    const stored = await new Promise((resolve) => {
+      chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
+    });
+    submittedParams = stored.submittedParams || {};
+  } catch { /* best-effort; dedup is UX, not a privacy gate */ }
+  if (isStale()) return;
+
+  const userCustomRules = Array.isArray(prefs.userCustomRules) ? prefs.userCustomRules : [];
+  const { empty, rows } = planSuspiciousParamsSettingsView({ frequencyFlags, userCustomRules, submittedParams });
+
+  // Every async dependency above has now resolved and this run is still
+  // current: safe to clear and (re)fill the list in one shot.
+  list.replaceChildren();
+
+  if (empty) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "suspicious-params-empty";
+    emptyEl.textContent = t("suspicious_params_settings_empty", _currentLang);
+    list.appendChild(emptyEl);
+    return;
+  }
+
+  const detailTemplate = t("suspicious_params_freq_detail", _currentLang);
+  for (const row of rows) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "suspicious-params-row";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "suspicious-params-name";
+    nameEl.textContent = row.param;
+    rowEl.appendChild(nameEl);
+
+    const detailEl = document.createElement("span");
+    detailEl.className = "suspicious-params-detail";
+    // Avoid innerHTML — replace placeholders manually so the i18n template
+    // can never become an injection vector.
+    detailEl.textContent = detailTemplate
+      .replace("{domains}", String(row.domains))
+      .replace("{values}", String(row.values));
+    rowEl.appendChild(detailEl);
+
+    rowEl.appendChild(buildStripGloballyButton(row.param, row.isPromoted, prefs));
+    rowEl.appendChild(buildReportUpstreamButton(row.param, row.reportedDate, trackerState));
+
+    list.appendChild(rowEl);
+  }
+}
+
+/**
+ * Builds the per-row "Strip everywhere" button/pill (#1351). Writes
+ * `prefs.userCustomRules` (chrome.storage.sync) — the single most
+ * consequential action MUGA offers, per ADR-0011 — through the same
+ * race-safe withSyncMutation/addUserCustomRule path addEntry/removeEntry
+ * already use for that key. The label says "everywhere" deliberately: the
+ * popup's old "Strip locally" copy undersold the fact that this rule
+ * applies on every site, which is exactly the scope clarity #1351 asks for.
+ * @param {string}  paramName  Original-case param name.
+ * @param {boolean} isPromoted Whether the param is already in userCustomRules.
+ * @param {object}  prefs      Mutated in place on a successful click.
+ */
+function buildStripGloballyButton(paramName, isPromoted, prefs) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "strip-globally-btn";
+  btn.dataset.param = paramName;
+
+  if (isPromoted) {
+    btn.textContent = t("strip_globally_btn_done", _currentLang);
+    btn.classList.add("is-done");
+    btn.disabled = true;
+    btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+    return btn;
+  }
+
+  btn.textContent = t("strip_globally_btn", _currentLang);
+  btn.setAttribute("aria-label", t("strip_globally_btn", _currentLang));
+  btn.addEventListener("click", async () => {
+    // #1351 R3-strip-silent-noop: disable immediately so a double-click (or
+    // a click while a previous click on this same button is still in
+    // flight) can never fire two overlapping writes. Re-enabled on any
+    // outcome the user can retry from (cap reached, unexpected failure);
+    // left disabled on the two terminal outcomes (already promoted,
+    // successfully promoted).
+    btn.disabled = true;
+    try {
+      // Shares the lock userCustomRules already serializes through
+      // (addEntry/removeEntry below), so this can never race a manual list
+      // edit or a removal on the receipt list (#928 pattern). withSyncMutation
+      // reads the CURRENT list right before deciding — addUserCustomRule's
+      // duplicate/cap check is never against the stale render-time
+      // `isPromoted` snapshot this button was built with.
+      let error;
+      const next = await withSyncMutation(withListLock, "userCustomRules", [], (list) => {
+        const result = addUserCustomRule(list, paramName);
+        error = result.error;
+        return result.error ? undefined : result.list;
+      });
+
+      if (error === "max") {
+        showToast(t("list_full", _currentLang));
+        btn.disabled = false;
+        return;
+      }
+
+      if (error === "duplicate") {
+        // Fresh read found this already promoted — not a failure, just a
+        // stale render-time isPromoted=false. Flip to the same done state
+        // a fresh render would have shown, instead of leaving an active
+        // button with no feedback at all.
+        btn.textContent = t("strip_globally_btn_done", _currentLang);
+        btn.classList.add("is-done");
+        btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+        // Refresh the snapshot too, so the next render does not offer the
+        // button again from the same stale prefs.
+        const fresh = await chrome.storage.sync.get({ userCustomRules: [] });
+        prefs.userCustomRules = fresh.userCustomRules;
+        return;
+      }
+
+      if (next === undefined) {
+        // Read/write failure inside withSyncMutation (neither duplicate nor
+        // max) — a genuine failure, not a silent no-op.
+        showToast(t("strip_globally_error", _currentLang));
+        btn.disabled = false;
+        return;
+      }
+
+      prefs.userCustomRules = next;
+      btn.textContent = t("strip_globally_btn_done", _currentLang);
+      btn.classList.add("is-done");
+      btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+      // Keep the ungated receipt list (#user-custom-rules) in sync.
+      renderList("user-custom-rules-items", next, "userCustomRules");
+    } catch (err) {
+      console.error("[MUGA] strip-everywhere save:", err);
+      showToast(t("strip_globally_error", _currentLang));
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+/**
+ * Builds the per-row "Report upstream" button, or the "already reported"
+ * label in its place (#1351, moved intact from the popup's
+ * _appendReportUpstreamButton). Opens a deep-linked GitHub issue using the
+ * `tracker-flag.yml` form template, prefilled with ONLY the param name and
+ * first-party-domain-derived counts — never raw values, value hashes, or
+ * timestamps. Local dedup lives in `chrome.storage.local.submittedParams`.
+ * @param {string}      paramName    Original-case param name.
+ * @param {string|null} reportedDate "YYYY-MM-DD" if already reported, else null.
+ * @param {object|null} trackerState Raw cross-site-frequency state ({params:{...}}).
+ */
+function buildReportUpstreamButton(paramName, reportedDate, trackerState) {
+  if (reportedDate) {
+    const label = document.createElement("span");
+    label.className = "report-upstream-already-reported";
+    label.textContent = t("report_upstream_already_reported", _currentLang).replace("{date}", reportedDate);
+    label.setAttribute("title", label.textContent);
+    return label;
+  }
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "report-upstream-btn";
+  btn.dataset.param = paramName;
+  btn.textContent = t("report_upstream_btn", _currentLang);
+  btn.setAttribute("aria-label", t("report_upstream_btn", _currentLang));
+  btn.addEventListener("click", async () => {
+    try {
+      // #1351 R3-tautological-deeplink-tests: URL construction (including
+      // the 50-domain cap and the never-leak-hashes/timestamps contract)
+      // lives in the pure, independently-tested buildTrackerFlagDeepLinkUrl.
+      const url = buildTrackerFlagDeepLinkUrl(paramName, trackerState);
+
+      // Mark submitted BEFORE opening — see the popup's original rationale:
+      // the lesser evil vs. polling the GitHub API, which would break the
+      // zero-telemetry promise.
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const stored = await new Promise((resolve) => {
+          chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
+        });
+        const updated = { ...(stored.submittedParams || {}), [paramName]: today };
+        await new Promise((resolve) => {
+          chrome.storage.local.set({ submittedParams: updated }, resolve);
+        });
+      } catch (storageErr) {
+        console.warn("[MUGA] report-upstream dedup save:", storageErr);
+      }
+
+      const label = document.createElement("span");
+      label.className = "report-upstream-already-reported";
+      label.textContent = t("report_upstream_already_reported", _currentLang).replace("{date}", today);
+      btn.replaceWith(label);
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("[MUGA] report-upstream open:", err);
+    }
+  });
+  return btn;
 }
 
 // Defense-in-depth cap on user-list rendering (#631 item 3): even if
@@ -1250,6 +1552,8 @@ function initExportImport() {
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
       await renderDomainStatsActivity(newPrefs.domainStats);
+      // #1351: keep the Activity frequency panel in sync after import too.
+      await renderSuspiciousParamsActivity(newPrefs);
       document.getElementById("show-badge").checked = newPrefs.showBadge;
       // #964 / browsewrap Phase 2: reflect the gated result for EACH split
       // toggle — each checkbox must match the pref that actually landed

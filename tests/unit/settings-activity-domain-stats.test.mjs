@@ -134,12 +134,16 @@ describe("options.js — renders the Activity domain-stats table", () => {
     );
   });
 
-  test("gates the table on prefs.domainStats", () => {
+  test("gates the panel on prefs.domainStats (#1351: per-panel, not section-level)", () => {
     const fnStart = optionsJs.indexOf("async function renderDomainStatsActivity(");
     assert.ok(fnStart !== -1, "renderDomainStatsActivity must exist");
     const fnEnd = optionsJs.indexOf("\n}", fnStart);
     const fnBody = optionsJs.slice(fnStart, fnEnd);
-    assert.match(fnBody, /section\.hidden\s*=\s*true/, "must hide the section when domain stats is off");
+    // #1351 moved the hide from the whole #section-activity to just this
+    // panel, so a sibling panel (suspicious-params) with content is never
+    // hidden by the domainStats pref being off.
+    assert.match(fnBody, /panel\.hidden\s*=\s*true/, "must hide the domain-stats panel when domain stats is off");
+    assert.match(fnBody, /updateActivitySectionVisibility\(\)/, "must recompute section-level visibility after hiding its panel");
   });
 });
 

@@ -101,4 +101,18 @@ describe("#1260 — CSS custom properties resolve in every extension surface", (
         `${cls} must tint with the themed --surface-2`);
     }
   });
+
+  // #1351 (stacked-PR slice B): Settings' Activity section gains its own
+  // suspicious-params pills (Strip everywhere / Report upstream). The
+  // popup's own pills above are still live at this point — slice C retires
+  // them and replaces the test above with a plain --bg-2 regression guard.
+  test("options.css uses --surface-2 for the suspicious-params pill hovers, the themed sibling token (#1351)", () => {
+    const css = readFileSync(join(__dirname, "../../src/options/options.css"), "utf8");
+    for (const cls of [".strip-globally-btn:hover:not(:disabled)", ".report-upstream-btn:hover:not(:disabled)"]) {
+      const at = css.indexOf(cls);
+      assert.ok(at !== -1, `${cls} must exist`);
+      assert.ok(css.slice(at, at + 120).includes("var(--surface-2)"),
+        `${cls} must tint with the themed --surface-2`);
+    }
+  });
 });
