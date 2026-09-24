@@ -40,6 +40,15 @@ export default Object.freeze({
   strip_locally_btn: "Strip locally",
   strip_locally_btn_done: "Stripped locally ✓",
   strip_locally_active_count: "{n} custom rules active",
+  // #1351 (slice B): Settings' Activity panel adds its own "Strip
+  // everywhere" action, with clearer scope copy than the popup's
+  // "Strip locally". Both this and the popup's strip_locally_* keys are
+  // temporarily live — slice C removes the popup's action and these
+  // now-orphaned keys once the popup no longer needs them.
+  strip_globally_btn: "Strip everywhere",
+  strip_globally_btn_done: "Stripped everywhere ✓",
+  suspicious_params_settings_hint: "Removing one of these strips it on every site, not just where it was seen.",
+  suspicious_params_settings_empty: "No suspicious params flagged yet.",
   dev_tools_disclosure: "Tools for inspecting MUGA itself",
   dev_tools_disclosure_hint: "None of these change how URLs are cleaned. They replay onboarding, preview notifications and dump logs.",
   strip_locally_manage: "Review them",

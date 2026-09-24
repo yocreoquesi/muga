@@ -293,6 +293,75 @@ h2 {
   font-weight: 500;
 }
 
+/* ---------- Activity: suspicious params (#1351) -------------------------- */
+/* The FREQUENCY subgroup of the popup's old "Suspicious params" section,
+   plus the actions that write userCustomRules, move here (ADR-0011 Decision
+   3; 2026-09-24 maintainer decision on #1351: the ENTROPY subgroup stays
+   read-only in the popup). Mirrors the .domain-stats-row shape above and
+   popup.css's removed .strip-locally-btn / .report-upstream-btn rules. */
+.suspicious-params-empty {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.suspicious-params-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-1);
+  font-size: 12.5px;
+}
+.suspicious-params-row:first-child { border-top: none; }
+
+.suspicious-params-name {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suspicious-params-detail {
+  color: var(--text-3);
+  white-space: nowrap;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Strip everywhere" writes the global rule (prefs.userCustomRules); "Report
+   upstream" opens a deep-linked GitHub issue. Same pill aesthetic so they
+   read as a paired action set within the row. */
+.strip-globally-btn,
+.report-upstream-btn {
+  background: transparent;
+  border: 1px solid var(--border-1);
+  color: var(--text-1);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+.strip-globally-btn:hover:not(:disabled),
+.report-upstream-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.strip-globally-btn.is-done,
+.strip-globally-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  border-color: transparent;
+}
+
+.report-upstream-already-reported {
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* ---------- Creator allowlist editor (#445, B13) ----------------------- */
 .creator-allowlist-section {
   border-top: 1px solid var(--border-1);
