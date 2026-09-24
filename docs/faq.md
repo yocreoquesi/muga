@@ -26,12 +26,12 @@ MUGA's design point is narrower and more opinionated:
 
 1. **Remove the same noise parameters those tools remove**, `utm_*`,
    `fbclid`, `gclid`, `msclkid`, `mc_cid`, `igshid`, the rest of the usual
-   set ([`src/lib/affiliates-data.js:18`](../src/lib/affiliates-data.js#L18)).
+   set (`TRACKING_PARAMS` in [`src/lib/affiliates-data.js`](../src/lib/affiliates-data.js)).
 2. **Preserve affiliate parameters that belong to a creator**, even on
-   programs MUGA itself has no commercial relationship with (Booking,
-   Vercel, DigitalOcean, etc.). The preservation table is sourced from
-   MUGA's documented affiliate-program rules
-   ([`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)).
+   programs MUGA itself has no commercial relationship with (Vercel,
+   DigitalOcean, Apple Performance Partners, etc.). The preservation table
+   is sourced from MUGA's documented affiliate-program rules
+   (`AFFILIATE_PATTERNS` in [`src/lib/affiliates.js`](../src/lib/affiliates.js)).
 3. **Never monetize through an affiliate tag of its own.** MUGA does not add
    any affiliate tag; it only recognizes and, by default, preserves the tags
    creators and third-party networks already placed on the link
@@ -50,9 +50,9 @@ identifies **the recommender**, not you. A tracking parameter like
 strips the second and preserves the first.
 
 You can verify the distinction in the code: the `TRACKING_PARAMS` list
-([`src/lib/affiliates-data.js:18`](../src/lib/affiliates-data.js#L18)) and the
+(in [`src/lib/affiliates-data.js`](../src/lib/affiliates-data.js)) and the
 `AFFILIATE_PATTERNS` table
-([`src/lib/affiliates.js:136`](../src/lib/affiliates.js#L136)) are
+(in [`src/lib/affiliates.js`](../src/lib/affiliates.js)) are
 separate sources and are joined by the cleaner only at strip time.
 
 ### Q: What about parameters that are technically "noise" but live inside a redirect wrapper?
@@ -74,7 +74,7 @@ pass-through.
 - The content-script bundle that runs in the page is committed at
   `src/content/cleaner-bundle.js` so reviewers can diff it against the
   ES module source it is generated from (noted explicitly in the privacy
-  page at [`docs/privacy-page.html:73`](privacy-page.html#L73)).
+  page's "What data does MUGA handle?" section, [`docs/privacy-page.html`](privacy-page.html)).
 - The unit tests under `tests/unit/` cover the cleaner's behaviour
   exhaustively. Run them locally with `npm test`.
 
@@ -108,8 +108,8 @@ same answer everywhere: the tag stays unless you explicitly enable
 stripping. The detection loop in
 [`src/lib/cleaner.js`](../src/lib/cleaner.js) iterates every pattern that
 matches the host, regardless of MUGA's commercial relationship with that
-program. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and
-Lemon Squeezy ride this path (the `AFFILIATE_PATTERNS` table,
+program. Programs like Vercel, DigitalOcean, Lemon Squeezy and Apple
+Performance Partners ride this path (the `AFFILIATE_PATTERNS` table,
 [`src/lib/affiliates.js`](../src/lib/affiliates.js)).
 
 ### Q: Does my price change if I strip third-party affiliate tags?
@@ -168,18 +168,20 @@ protection against new noise sources without waiting for an extension release.
 - Default: **on** (#888, once the signing infrastructure and defense-in-depth
   verification were ratified as production-ready, see the
   [CHANGELOG](../CHANGELOG.md)). See
-  [`src/lib/prefs.js:65`](../src/lib/prefs.js#L65):
+  [`src/lib/prefs.js`](../src/lib/prefs.js):
   `remoteRulesEnabled: true`. Disable it any time in Settings.
 - Every fetched payload is verified with an **Ed25519 signature** against
   a hardcoded list of trusted public keys before any rule is applied.
-  The verification is at
-  [`src/lib/remote-rules.js:214-248`](../src/lib/remote-rules.js#L214-L248);
-  the orchestrator that calls it is at
-  [`src/lib/remote-rules.js:629-636`](../src/lib/remote-rules.js#L629-L636).
+  The verification is `verifySignature` in
+  [`src/lib/remote-rules.js`](../src/lib/remote-rules.js);
+  the orchestrator that calls it is `runRemoteRulesFetch` in the same
+  file.
 - On verification failure the previous ruleset is left untouched
-  ([`src/lib/remote-rules.js:632-635`](../src/lib/remote-rules.js#L632-L635)).
+  (`runRemoteRulesFetch` in
+  [`src/lib/remote-rules.js`](../src/lib/remote-rules.js)).
 - The fetch is size-capped and timeout-capped before the signature check
-  even runs ([`src/lib/remote-rules.js:594-606`](../src/lib/remote-rules.js#L594-L606)).
+  even runs (`fetchWithCap` in
+  [`src/lib/remote-rules.js`](../src/lib/remote-rules.js)).
 
 ### Q: Does any of this leak my browsing history?
 
