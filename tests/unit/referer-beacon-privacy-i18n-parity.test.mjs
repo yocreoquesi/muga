@@ -11,17 +11,16 @@ import assert from "node:assert/strict";
 import { TRANSLATIONS, SUPPORTED_LANGS } from "../../src/lib/i18n.js";
 
 // Every new key introduced by the referer-beacon-privacy Options UI slice
-// (section title, both toggle labels/hints/aria-labels, the affiliate nudge,
+// (section title, both toggle labels/hints (their aria-labels are now the
+// visible labels, #1407), the affiliate nudge,
 // the shared "view settings" link, the blocklist disclosure line, the
 // one-time migration notice, and the onboarding blurb).
 const NEW_KEYS = [
   "section_aggressive_privacy",
   "row_suppress_referer_label",
   "row_suppress_referer_hint",
-  "aria_suppress_referer",
   "row_block_beacons_label",
   "row_block_beacons_hint",
-  "aria_block_beacons",
   "nudge_aggressive_privacy_text",
   "aggressive_privacy_view_link",
   "disclosure_blocklist_referer_beacon",

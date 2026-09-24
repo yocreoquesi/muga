@@ -94,7 +94,8 @@ function isNestedInsideDiv(html, containerId, childId) {
   return childIdx > openTagEnd && childIdx < closeIdx;
 }
 
-// Each surfaced boolean pref → { id, prefKey, ariaKey }
+// Each surfaced boolean pref → { id, prefKey }. #1407: every switch is
+// aria-labelledby its visible row label (`${id}-label`), not a separate key.
 // #1355: canonicalExtractorEnabled moved into the devToolsMode-gated
 // Developer tools panel — see the dedicated describe block below — so it is
 // no longer part of the dev-mode-gated-Advanced-card group tested here.
@@ -102,9 +103,9 @@ function isNestedInsideDiv(html, containerId, childId) {
 // the breakdown unconditionally now) — see the retirement describe block
 // below instead of listing it here.
 const BOOLEAN_CONTROLS = [
-  { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled", ariaKey: "aria_cross_site_frequency" },
-  { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled",  ariaKey: "aria_attribution_ledger" },
-  { id: "domain-stats",         prefKey: "domainStats",               ariaKey: "aria_domain_stats" },
+  { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled" },
+  { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled" },
+  { id: "domain-stats",         prefKey: "domainStats" },
 ];
 
 // #1355 (ADR-0011 internal-with-a-default): canonicalExtractorEnabled's
@@ -113,8 +114,8 @@ const BOOLEAN_CONTROLS = [
 // same as the ones above). Both stay real, user-settable, exported prefs —
 // only their Settings location changed.
 const DEV_TOOLS_CONTROLS = [
-  { id: "canonical-extractor",      prefKey: "canonicalExtractorEnabled",       ariaKey: "aria_canonical_extractor" },
-  { id: "experimental-param-classes", prefKey: "experimentalParamClassesEnabled", ariaKey: "aria_experimental_params" },
+  { id: "canonical-extractor",      prefKey: "canonicalExtractorEnabled" },
+  { id: "experimental-param-classes", prefKey: "experimentalParamClassesEnabled" },
 ];
 
 describe("#925 — the remaining surfaced boolean prefs are all ON by default", () => {
@@ -129,15 +130,15 @@ describe("#925 — the remaining surfaced boolean prefs are all ON by default", 
 });
 
 describe("#925 — each surfaced toggle has an HTML row and a bindToggle wiring", () => {
-  for (const { id, prefKey, ariaKey } of BOOLEAN_CONTROLS) {
-    test(`#${id} checkbox exists with data-i18n-aria-label="${ariaKey}"`, () => {
+  for (const { id, prefKey } of BOOLEAN_CONTROLS) {
+    test(`#${id} checkbox exists, labelled by its visible row label`, () => {
       assert.ok(
         optionsHtml.includes(`id="${id}"`),
         `options.html must contain a checkbox with id="${id}"`
       );
       assert.ok(
-        optionsHtml.includes(`data-i18n-aria-label="${ariaKey}"`),
-        `the #${id} row must carry data-i18n-aria-label="${ariaKey}"`
+        optionsHtml.includes(`id="${id}" aria-labelledby="${id}-label"`),
+        `the #${id} switch must be aria-labelledby its visible row label`
       );
     });
 
@@ -151,12 +152,12 @@ describe("#925 — each surfaced toggle has an HTML row and a bindToggle wiring"
 });
 
 describe("#1355 — canonical-extractor / experimental-param-classes have an HTML row and bindToggle wiring", () => {
-  for (const { id, prefKey, ariaKey } of DEV_TOOLS_CONTROLS) {
-    test(`#${id} checkbox exists with data-i18n-aria-label="${ariaKey}"`, () => {
+  for (const { id, prefKey } of DEV_TOOLS_CONTROLS) {
+    test(`#${id} checkbox exists, labelled by its visible row label`, () => {
       assert.ok(optionsHtml.includes(`id="${id}"`), `options.html must contain a checkbox with id="${id}"`);
       assert.ok(
-        optionsHtml.includes(`data-i18n-aria-label="${ariaKey}"`),
-        `the #${id} row must carry data-i18n-aria-label="${ariaKey}"`
+        optionsHtml.includes(`id="${id}" aria-labelledby="${id}-label"`),
+        `the #${id} switch must be aria-labelledby its visible row label`
       );
     });
 
@@ -345,7 +346,6 @@ describe("#925/#936 — new i18n keys are complete across all locales", () => {
   const newKeys = [
     "section_general", "section_rules_lists", "section_privacy_controls",
     "section_display", "section_user_custom_rules", "user_custom_rules_hint",
-    ...BOOLEAN_CONTROLS.flatMap(({ ariaKey }) => ariaKey),
     "row_canonical_extractor_label", "row_canonical_extractor_hint",
     "row_cross_site_frequency_label", "row_cross_site_frequency_hint",
     "row_attribution_ledger_label", "row_attribution_ledger_hint",

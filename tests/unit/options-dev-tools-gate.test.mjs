@@ -163,10 +163,19 @@ describe("options.html — Developer tools lives outside the Advanced/dev-mode g
     );
   });
 
-  test("#dev-tools-mode has its own aria-label, distinct from #dev-mode", () => {
+  test("#dev-tools-mode has its own accessible name, distinct from #dev-mode", () => {
+    // #1407: each switch is named by its own visible row label.
     assert.ok(
-      optionsHtml.includes('data-i18n-aria-label="aria_dev_tools_mode"'),
-      "the #dev-tools-mode row must carry data-i18n-aria-label=\"aria_dev_tools_mode\""
+      optionsHtml.includes('id="dev-tools-mode" aria-labelledby="dev-tools-mode-label"'),
+      "the #dev-tools-mode switch must be aria-labelledby its own row label"
+    );
+    assert.ok(
+      optionsHtml.includes('<strong id="dev-tools-mode-label" data-i18n="dev_tools_disclosure">'),
+      "#dev-tools-mode-label must be the Developer tools row label"
+    );
+    assert.ok(
+      optionsHtml.includes('id="dev-mode" aria-labelledby="dev-mode-label"'),
+      "#dev-mode must be labelled by its own row label, not the Developer tools one"
     );
   });
 
@@ -254,12 +263,12 @@ describe("advanced_mode_hint no longer mentions developer tools (#1271 item 1)",
     );
   });
 
-  test("all 7 locales define aria_dev_tools_mode with a non-empty value", () => {
+  test("all 7 locales define dev_tools_disclosure (the switch's name) with a non-empty value", () => {
     for (const code of ["en", "es", "de", "fr", "it", "ja", "pt"]) {
       const src = readFileSync(join(ROOT, `src/lib/locales/${code}.mjs`), "utf8");
-      const m = src.match(/aria_dev_tools_mode:\s*"([^"]*)"/);
-      assert.ok(m, `${code}.mjs must define aria_dev_tools_mode`);
-      assert.ok(m[1].trim().length > 0, `${code}.mjs aria_dev_tools_mode must not be empty`);
+      const m = src.match(/\bdev_tools_disclosure:\s*"([^"]*)"/);
+      assert.ok(m, `${code}.mjs must define dev_tools_disclosure`);
+      assert.ok(m[1].trim().length > 0, `${code}.mjs dev_tools_disclosure must not be empty`);
     }
   });
 });

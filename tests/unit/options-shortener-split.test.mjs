@@ -50,8 +50,8 @@ describe("browsewrap Phase 2 — options.html has two independent toggles", () =
       "options.html must contain a checkbox with id=\"resolveShortenersOnClick\""
     );
     assert.ok(
-      optionsHtml.includes('data-i18n-aria-label="enable_resolve_on_click_cta"'),
-      "the #resolveShortenersOnClick row must carry data-i18n-aria-label=\"enable_resolve_on_click_cta\""
+      optionsHtml.includes('aria-labelledby="resolveShortenersOnClick-label"'),
+      "the #resolveShortenersOnClick switch must be aria-labelledby its visible label (#1407/#1414)"
     );
   });
 
@@ -61,8 +61,8 @@ describe("browsewrap Phase 2 — options.html has two independent toggles", () =
       "options.html must contain a checkbox with id=\"resolveShortenersOnHover\""
     );
     assert.ok(
-      optionsHtml.includes('data-i18n-aria-label="enable_resolve_on_hover_cta"'),
-      "the #resolveShortenersOnHover row must carry data-i18n-aria-label=\"enable_resolve_on_hover_cta\""
+      optionsHtml.includes('aria-labelledby="resolveShortenersOnHover-label"'),
+      "the #resolveShortenersOnHover switch must be aria-labelledby its visible label (#1407/#1414)"
     );
   });
 
@@ -115,8 +115,8 @@ describe("browsewrap Phase 2 — options.js wires both toggles to the permission
 
 describe("browsewrap Phase 2 — new i18n keys are complete across all locales", () => {
   const newKeys = [
-    "resolve_on_click_label", "enable_resolve_on_click_cta",
-    "resolve_on_hover_label", "enable_resolve_on_hover_cta",
+    "resolve_on_click_label",
+    "resolve_on_hover_label",
   ];
 
   for (const key of newKeys) {
