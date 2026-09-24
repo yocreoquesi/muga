@@ -63,16 +63,25 @@ export async function serveFixturePage(html) {
  * "destination" that FF smoke specs can allowlist/blocklist by hostname and
  * inspect for header presence (Referer) or arrival (ping/sendBeacon).
  *
- * Responds 204 to every request (no body needed by the fixture pages; also
- * satisfies navigator.sendBeacon()'s expectation of a quick, cheap response).
+ * Responds 204 to every request by default (no body needed by the fixture
+ * pages; also satisfies navigator.sendBeacon()'s expectation of a quick, cheap
+ * response). Pass `html` to answer 200 with a page instead, for specs that
+ * NAVIGATE to this server and inspect which URL actually went on the wire
+ * (navigation-strip.smoke.mjs, #1408).
  *
+ * @param {{html?: string}} [opts]
  * @returns {Promise<{url:string, origin:string, requests: Array<{method:string, path:string, headers: object}>, close: () => Promise<void>}>}
  */
-export async function serveCapturingServer() {
+export async function serveCapturingServer({ html } = {}) {
   const requests = [];
   const server = http.createServer((req, res) => {
     requests.push({ method: req.method, path: req.url, headers: req.headers });
     res.setHeader("Connection", "close");
+    if (typeof html === "string") {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
     res.writeHead(204);
     res.end();
   });

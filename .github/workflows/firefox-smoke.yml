@@ -48,5 +48,5 @@ jobs:
       # add a browser-actions/setup-geckodriver step here (SHA-pinned) as a
       # fallback before this step.
 
-      - name: Run Firefox smoke tests (referer + beacon privacy)
+      - name: Run Firefox smoke tests (navigation strip, referer, beacon privacy)
         run: npm run test:firefox-smoke
