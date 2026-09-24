@@ -262,27 +262,3 @@ export function getPathAffiliatePolicy(url, pathAffiliateRules) {
 
   return NO_MATCH;
 }
-
-/**
- * Accepts raw parsed path-strip-rules.json array and pre-compiles all regexes
- * by warming the WeakMap cache. Called once at SW boot.
- *
- * @param {Array} rawArray  Parsed JSON array.
- * @returns {Array}         The same array (pass-through; cache is internal).
- */
-export function loadPathStripRules(rawArray) {
-  _ensureStripIndex(rawArray);
-  return rawArray;
-}
-
-/**
- * Accepts raw parsed path-affiliate-rules.json array and pre-compiles all
- * referralPaths regexes by warming the WeakMap cache. Called once at SW boot.
- *
- * @param {Array} rawArray  Parsed JSON array.
- * @returns {Array}         The same array (pass-through; cache is internal).
- */
-export function loadPathAffiliateRules(rawArray) {
-  _ensureAffiliateIndex(rawArray);
-  return rawArray;
-}

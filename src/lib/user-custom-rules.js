@@ -1,17 +1,18 @@
 /**
  * MUGA — Pure add-logic for prefs.userCustomRules (#1099 fix).
  *
- * The popup's "Strip locally" button (#536) promotes a flagged suspicious
- * param straight into prefs.userCustomRules (chrome.storage.sync). Before
+ * The "Strip everywhere" button in Settings > Activity (#536, moved from
+ * the popup in #1351) promotes a flagged suspicious param straight into
+ * prefs.userCustomRules (chrome.storage.sync). Before
  * this fix, the click-handler appended to that array with NO cap at all,
  * while every other write path that touches a synced list — options.js's
  * manual "Add" button and the settings-import path in settings-schema.js —
  * already enforces IMPORT_LIST_CAPS.customParams (200 entries). An
  * uncapped list can exceed chrome.storage.sync's ~8 KB per-item quota and
- * fail to persist, silently, the very next time the popup tries to save it.
+ * fail to persist, silently, the very next time the caller tries to save it.
  *
  * This module extracts the same cap + dedupe contract into a small, pure,
- * DOM/chrome-free function so the popup's click-handler (and any future
+ * DOM/chrome-free function so the Settings click-handler (and any future
  * caller) shares exactly one source of truth — mirrors creator-allowlist.js's
  * addEntry() shape ({ list, error }).
  */
