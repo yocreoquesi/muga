@@ -138,3 +138,40 @@ Re-run live CLI after the fix (2026-09-24): 366 `TRACKING_PARAMS`,
 **0 candidates**. Checks: `npm test` 8497/8497, `npm run test:integration`
 233/233, `npm run lint:js` clean, `npm run typecheck` clean (after fixing a
 stale `buildExclusions()` JSDoc `@returns` the new fields tripped).
+
+**Second follow-up fix (native review R3, on `feat/1228-a`):**
+1. `main()` now refuses (non-zero exit) when parsed upstream looks
+   degenerate: `assertAdguardNotDegenerate`/`assertClearurlsNotDegenerate`
+   (new exports) check combined AdGuard fact counts and ClearURLs
+   global/anchored counts against conservative floors
+   (`MIN_ADGUARD_FACTS=500`, `MIN_CLEARURLS_GLOBAL_PATTERNS=15`,
+   `MIN_CLEARURLS_ANCHORED=100`) derived from a live measurement
+   (2026-09-24: 2322 AdGuard facts, 48 ClearURLs global patterns, 621
+   anchored facts) — well below real counts so ordinary upstream drift
+   never trips it, but an empty/truncated/HTML-200 response does.
+2. `parseRemoveparamRules` gained `bareRegexes`: an UNANCHORED AdGuard
+   regex removeparam spec (e.g. `/^at_custom/`) now counts as global
+   evidence, full-match/case-insensitive (same convention as ClearURLs'
+   `globalPatterns`), wired into `findAnchoredOnlyGlobals`. Required a
+   correctness fix mid-implementation: a naive "whole spec as one regex,
+   else split on `|`" approach either merged two top-level pipe-joined
+   regexes into one nonsense pattern (greedy `.*`) or shredded a single
+   regex's own internal alternation (`/tour|campaign/`) — replaced with a
+   delimiter-state tokenizer (`splitOutsideRegexDelimiters`) that only
+   splits on a `|` sitting outside a `/.../ ` pair. `skipped` still counts
+   every regex/negation spec exactly as before (purely additive). Full-match
+   is deliberately conservative relative to AdGuard's own prefix-style regex
+   semantics — documented in the source, can under-count, never over-count.
+3. New `buildExclusions (#1228 R3)` describe block: each of the 5 exclusion
+   sources (`AFFILIATE_PARAM_GUARD`, `REMOTE_PARAM_DENYLIST`,
+   `PATH_ANCHORED_STAY_GLOBAL`, `HOT_PATH_REQUIRED`,
+   `ADJUDICATED_KEEP_GLOBAL`) is checked present in `buildExclusions()`'s
+   output, plus one end-to-end test excluding a representative member of
+   each through `findAnchoredOnlyGlobals`.
+
+RED confirmed for all three fixes' new tests before implementing (module-
+scoped `git stash` on `tools/import-upstream.mjs` for the regex fix; new
+exports simply didn't exist yet for the other two), then GREEN. Checks:
+`npm test` 8549/8549, `npm run test:integration` 233/233, `npm run lint:js`
+clean, `npm run typecheck` clean. Live CLI re-run (2026-09-24): 362
+`TRACKING_PARAMS`, **0 candidates**.

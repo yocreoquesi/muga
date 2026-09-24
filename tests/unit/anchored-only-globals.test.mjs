@@ -14,7 +14,19 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 
-import { findAnchoredOnlyGlobals, renderIssueBody } from "../../tools/anchored-only-globals.mjs";
+import {
+  findAnchoredOnlyGlobals,
+  renderIssueBody,
+  buildExclusions,
+  assertAdguardNotDegenerate,
+  assertClearurlsNotDegenerate,
+  MIN_ADGUARD_FACTS,
+  MIN_CLEARURLS_GLOBAL_PATTERNS,
+  MIN_CLEARURLS_ANCHORED,
+} from "../../tools/anchored-only-globals.mjs";
+import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../../src/lib/remote-rules.js";
+import { PATH_ANCHORED_STAY_GLOBAL, ADJUDICATED_KEEP_GLOBAL } from "../../src/lib/affiliates-data.js";
+import { HOT_PATH_REQUIRED } from "../../src/lib/hot-path-strip.js";
 
 const emptyAdguard = () => ({ bareNames: new Set(), scoped: [], pathAnchored: [] });
 const emptyClearurls = () => ({ globalPatterns: [], anchored: [] });
@@ -51,6 +63,38 @@ describe("findAnchoredOnlyGlobals (#1228)", () => {
     const clearurls = { globalPatterns: [/^fbclid$/i], anchored: [] };
     const result = findAnchoredOnlyGlobals(["fbclid"], adguard, clearurls, emptyExclusions());
     assert.deepEqual(result, []);
+  });
+
+  // ── R3 review: an unanchored AdGuard REGEX removeparam rule is global
+  // evidence too, same as bareNames and ClearURLs globalPatterns.
+  test("a param matched by an AdGuard bareRegexes entry (global evidence) is NOT a candidate, even alongside an anchor", () => {
+    const adguard = {
+      bareNames: new Set(),
+      scoped: [{ param: "at_custom1", scope: "example.com" }],
+      pathAnchored: [],
+      bareRegexes: [/^(?:at_custom\d+)$/i],
+    };
+    const result = findAnchoredOnlyGlobals(["at_custom1"], adguard, emptyClearurls(), emptyExclusions());
+    assert.deepEqual(result, []);
+  });
+
+  test("bareRegexes matching is case-insensitive and full-string, mirroring the ClearURLs side", () => {
+    const adguard = {
+      bareNames: new Set(),
+      scoped: [{ param: "foo", scope: "example.com" }],
+      pathAnchored: [],
+      bareRegexes: [/^(?:foo)$/i],
+    };
+    const caseResult = findAnchoredOnlyGlobals(["FOO"], adguard, emptyClearurls(), emptyExclusions());
+    assert.deepEqual(caseResult, [], "case-insensitive match against the lowercased candidate");
+  });
+
+  test("missing bareRegexes on the adguard fixture defaults to no regex evidence (defensive)", () => {
+    const adguard = { bareNames: new Set(), scoped: [{ param: "napm", scope: "example.com" }], pathAnchored: [] };
+    const result = findAnchoredOnlyGlobals(["napm"], adguard, emptyClearurls(), emptyExclusions());
+    assert.deepEqual(result, [
+      { param: "napm", evidence: [{ source: "adguard", host: "example.com" }] },
+    ]);
   });
 
   test("a param with NO anchored evidence at all is not reported (nothing to remove)", () => {
@@ -217,5 +261,151 @@ describe("renderIssueBody (#1228)", () => {
     assert.match(body, /provider-x/);
     assert.match(body, /#1374/);
     assert.match(body, /DO NOT auto/i);
+  });
+
+  test("mentions how to add a new ADJUDICATED_KEEP_GLOBAL entry after triage", () => {
+    const body = renderIssueBody({
+      generated_at: "2026-09-24T00:00:00.000Z",
+      tracking_params_count: 400,
+      candidate_count: 1,
+      candidates: [{ param: "x", evidence: [{ source: "adguard", host: "example.com" }] }],
+    });
+    assert.match(body, /ADJUDICATED_KEEP_GLOBAL/);
+  });
+});
+
+// ── R3 review: buildExclusions() ─────────────────────────────────────────────
+describe("buildExclusions (#1228 R3)", () => {
+  const exclusions = buildExclusions();
+
+  test("includes a representative AFFILIATE_PARAM_GUARD member", () => {
+    const member = [...AFFILIATE_PARAM_GUARD][0];
+    assert.ok(exclusions.guard.has(member));
+  });
+
+  test("includes a representative REMOTE_PARAM_DENYLIST member", () => {
+    const member = [...REMOTE_PARAM_DENYLIST][0];
+    assert.ok(exclusions.denylist.has(member));
+  });
+
+  test("includes a representative PATH_ANCHORED_STAY_GLOBAL member", () => {
+    assert.ok(exclusions.pathAnchoredStayGlobal.has(PATH_ANCHORED_STAY_GLOBAL[0].toLowerCase()));
+  });
+
+  test("includes a representative HOT_PATH_REQUIRED member", () => {
+    assert.ok(exclusions.hotPathRequired.has(HOT_PATH_REQUIRED[0].toLowerCase()));
+  });
+
+  test("includes a representative ADJUDICATED_KEEP_GLOBAL member", () => {
+    const member = Object.keys(ADJUDICATED_KEEP_GLOBAL)[0];
+    assert.ok(exclusions.adjudicatedKeepGlobal.has(member.toLowerCase()));
+  });
+
+  test("end to end: findAnchoredOnlyGlobals excludes a real member of each set via buildExclusions()", () => {
+    const guardMember = [...AFFILIATE_PARAM_GUARD][0];
+    const denylistMember = [...REMOTE_PARAM_DENYLIST][0];
+    const pathAnchoredMember = PATH_ANCHORED_STAY_GLOBAL[0];
+    const hotPathMember = HOT_PATH_REQUIRED[0];
+    const adjudicatedMember = Object.keys(ADJUDICATED_KEEP_GLOBAL)[0];
+
+    const names = [guardMember, denylistMember, pathAnchoredMember, hotPathMember, adjudicatedMember];
+    const adguard = {
+      bareNames: new Set(),
+      scoped: names.map((param) => ({ param: param.toLowerCase(), scope: "example.com" })),
+      pathAnchored: [],
+    };
+    const result = findAnchoredOnlyGlobals(names, adguard, emptyClearurls(), exclusions);
+    assert.deepEqual(result, [], "every representative member must be excluded end to end");
+  });
+});
+
+// ── R3 review: degenerate-upstream refusal ───────────────────────────────────
+//
+// A "0 candidates" result must only ever come from real upstream data. If
+// the fetch returns something degenerate — empty, truncated, or an HTML
+// error page served with 200 for AdGuard; missing/empty providers or
+// globalRules for ClearURLs — main() must refuse loudly (non-zero exit),
+// never silently report "0 candidates".
+describe("assertAdguardNotDegenerate (#1228 R3)", () => {
+  test("throws on a completely empty parse result", () => {
+    assert.throws(
+      () => assertAdguardNotDegenerate({ bareNames: new Set(), scoped: [], pathAnchored: [] }),
+      /degenerate/i,
+    );
+  });
+
+  test("throws when the total fact count is below the conservative floor", () => {
+    const belowFloor = MIN_ADGUARD_FACTS - 1;
+    assert.throws(
+      () =>
+        assertAdguardNotDegenerate({
+          bareNames: new Set(Array.from({ length: belowFloor }, (_, i) => `p${i}`)),
+          scoped: [],
+          pathAnchored: [],
+        }),
+      /degenerate/i,
+    );
+  });
+
+  test("does NOT throw when the total fact count meets the conservative floor", () => {
+    assert.doesNotThrow(() =>
+      assertAdguardNotDegenerate({
+        bareNames: new Set(Array.from({ length: MIN_ADGUARD_FACTS }, (_, i) => `p${i}`)),
+        scoped: [],
+        pathAnchored: [],
+      }),
+    );
+  });
+
+  test("counts bareNames + scoped + pathAnchored together, not any single field alone", () => {
+    const third = Math.ceil(MIN_ADGUARD_FACTS / 3);
+    assert.doesNotThrow(() =>
+      assertAdguardNotDegenerate({
+        bareNames: new Set(Array.from({ length: third }, (_, i) => `p${i}`)),
+        scoped: Array.from({ length: third }, (_, i) => ({ param: `q${i}`, scope: "example.com" })),
+        pathAnchored: Array.from({ length: third }, (_, i) => ({ param: `r${i}`, host: "example.com", pathPrefix: "/x" })),
+      }),
+    );
+  });
+});
+
+describe("assertClearurlsNotDegenerate (#1228 R3)", () => {
+  test("throws when providers/globalRules are missing (empty globalPatterns AND empty anchored)", () => {
+    assert.throws(
+      () => assertClearurlsNotDegenerate({ globalPatterns: [], anchored: [] }),
+      /degenerate/i,
+    );
+  });
+
+  test("throws when globalPatterns count is below its conservative floor", () => {
+    const belowFloor = MIN_CLEARURLS_GLOBAL_PATTERNS - 1;
+    assert.throws(
+      () =>
+        assertClearurlsNotDegenerate({
+          globalPatterns: Array.from({ length: belowFloor }, () => /x/i),
+          anchored: Array.from({ length: MIN_CLEARURLS_ANCHORED }, (_, i) => ({ param: `p${i}`, scope: "s" })),
+        }),
+      /degenerate/i,
+    );
+  });
+
+  test("throws when anchored count is below its conservative floor", () => {
+    assert.throws(
+      () =>
+        assertClearurlsNotDegenerate({
+          globalPatterns: Array.from({ length: MIN_CLEARURLS_GLOBAL_PATTERNS }, () => /x/i),
+          anchored: Array.from({ length: MIN_CLEARURLS_ANCHORED - 1 }, (_, i) => ({ param: `p${i}`, scope: "s" })),
+        }),
+      /degenerate/i,
+    );
+  });
+
+  test("does NOT throw when both floors are met", () => {
+    assert.doesNotThrow(() =>
+      assertClearurlsNotDegenerate({
+        globalPatterns: Array.from({ length: MIN_CLEARURLS_GLOBAL_PATTERNS }, () => /x/i),
+        anchored: Array.from({ length: MIN_CLEARURLS_ANCHORED }, (_, i) => ({ param: `p${i}`, scope: "s" })),
+      }),
+    );
   });
 });

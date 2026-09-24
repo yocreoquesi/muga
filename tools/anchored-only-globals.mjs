@@ -55,8 +55,11 @@ import { HOT_PATH_REQUIRED } from "../src/lib/hot-path-strip.js";
  * Finds TRACKING_PARAMS entries with anchored-only upstream evidence.
  *
  * @param {string[]} trackingParams Current MUGA TRACKING_PARAMS (any case; deduped and lowercased internally).
- * @param {{ bareNames?: Set<string>, scoped?: Array<{param: string, scope: string}>, pathAnchored?: Array<{param: string, host: string, pathPrefix: string}> }} adguard
- *   Subset of `parseRemoveparamRules`'s return shape.
+ * @param {{ bareNames?: Set<string>, scoped?: Array<{param: string, scope: string}>, pathAnchored?: Array<{param: string, host: string, pathPrefix: string}>, bareRegexes?: RegExp[] }} adguard
+ *   Subset of `parseRemoveparamRules`'s return shape. `bareRegexes` (#1228 R3
+ *   review) is unanchored regex-spec evidence — a name AdGuard strips
+ *   everywhere via regex, tested full-match/case-insensitive same as
+ *   `clearurls.globalPatterns` below.
  * @param {{ globalPatterns?: RegExp[], anchored?: Array<{param: string, scope: string}> }} clearurls
  *   Subset of `extractClearurlsScopeFacts`'s return shape.
  * @param {{ guard?: Iterable<string>, denylist?: Iterable<string>, pathAnchoredStayGlobal?: Iterable<string>, hotPathRequired?: Iterable<string>, adjudicatedKeepGlobal?: Iterable<string> }} [exclusions]
@@ -82,6 +85,7 @@ export function findAnchoredOnlyGlobals(trackingParams, adguard, clearurls, excl
   const adguardBare = adguard?.bareNames ?? new Set();
   const adguardScoped = adguard?.scoped ?? [];
   const adguardPathAnchored = adguard?.pathAnchored ?? [];
+  const adguardBareRegexes = adguard?.bareRegexes ?? [];
   const clearurlsGlobalPatterns = clearurls?.globalPatterns ?? [];
   const clearurlsAnchored = clearurls?.anchored ?? [];
 
@@ -109,7 +113,9 @@ export function findAnchoredOnlyGlobals(trackingParams, adguard, clearurls, excl
     if (evidence.length === 0) continue; // not in this class at all
 
     const hasGlobalEvidence =
-      adguardBare.has(param) || clearurlsGlobalPatterns.some((re) => re.test(param));
+      adguardBare.has(param) ||
+      adguardBareRegexes.some((re) => re.test(param)) ||
+      clearurlsGlobalPatterns.some((re) => re.test(param));
     if (hasGlobalEvidence) continue;
 
     results.push({ param, evidence });
@@ -193,6 +199,77 @@ export function buildExclusions() {
   };
 }
 
+// ── Degenerate-upstream refusal (#1228 R3 review) ────────────────────────────
+//
+// A "0 candidates" result must only ever come from real upstream data. A
+// degenerate response — an empty or truncated fetch, or an HTML error page
+// served with a 200 status for AdGuard; a JSON payload missing or emptying
+// `providers`/`globalRules` for ClearURLs — would otherwise parse down to
+// near-nothing and silently report "everything is fine" instead of failing.
+//
+// The floors below are conservative minimums, NOT an assertion of a
+// specific count: both sources update their lists routinely. They were
+// derived from a live measurement (2026-09-24) —
+//   AdGuard Filter 17:  338 bareNames + 1807 scoped + 177 pathAnchored = 2322 total facts
+//   ClearURLs:          48 globalRules patterns, 621 anchored facts
+// — each floor set well below (roughly a fifth to a third of) that
+// measurement, so ordinary upstream drift never trips it, but a genuinely
+// empty/truncated/wrong-shaped response — which parses down to a handful of
+// facts at most, usually zero — always does.
+
+/** @type {number} Measured ~2322 total AdGuard facts on 2026-09-24. */
+export const MIN_ADGUARD_FACTS = 500;
+/** @type {number} Measured 48 ClearURLs globalRules patterns on 2026-09-24. */
+export const MIN_CLEARURLS_GLOBAL_PATTERNS = 15;
+/** @type {number} Measured 621 ClearURLs anchored facts on 2026-09-24. */
+export const MIN_CLEARURLS_ANCHORED = 100;
+
+/**
+ * Throws when a parsed AdGuard snapshot looks degenerate — too few facts,
+ * combined across `bareNames` + `scoped` + `pathAnchored`, to plausibly be
+ * real upstream data — rather than letting a garbage fetch silently
+ * produce a false "0 candidates".
+ *
+ * @param {{ bareNames?: Set<string>, scoped?: Array<unknown>, pathAnchored?: Array<unknown> }} adguard
+ * @throws {Error} When the total fact count is below MIN_ADGUARD_FACTS.
+ */
+export function assertAdguardNotDegenerate(adguard) {
+  const total =
+    (adguard?.bareNames?.size ?? 0) + (adguard?.scoped?.length ?? 0) + (adguard?.pathAnchored?.length ?? 0);
+  if (total < MIN_ADGUARD_FACTS) {
+    throw new Error(
+      `[anchored-only-globals] AdGuard Filter 17 parsed only ${total} removeparam fact(s) ` +
+        `(bareNames + scoped + pathAnchored), below the conservative floor of ${MIN_ADGUARD_FACTS}. ` +
+        "This looks like a degenerate response (empty, truncated, or an HTML error page served " +
+        "with a 200 status) rather than real upstream data — refusing rather than reporting a false " +
+        "'0 candidates'.",
+    );
+  }
+}
+
+/**
+ * Throws when parsed ClearURLs facts look degenerate — too few global
+ * patterns or anchored facts to plausibly reflect real, populated
+ * `providers`/`globalRules` — rather than letting a garbage fetch silently
+ * produce a false "0 candidates".
+ *
+ * @param {{ globalPatterns?: RegExp[], anchored?: Array<unknown> }} clearurlsFacts
+ * @throws {Error} When either count is below its conservative floor.
+ */
+export function assertClearurlsNotDegenerate(clearurlsFacts) {
+  const globalCount = clearurlsFacts?.globalPatterns?.length ?? 0;
+  const anchoredCount = clearurlsFacts?.anchored?.length ?? 0;
+  if (globalCount < MIN_CLEARURLS_GLOBAL_PATTERNS || anchoredCount < MIN_CLEARURLS_ANCHORED) {
+    throw new Error(
+      `[anchored-only-globals] ClearURLs parsed ${globalCount} globalRules pattern(s) and ` +
+        `${anchoredCount} anchored fact(s), below the conservative floors of ` +
+        `${MIN_CLEARURLS_GLOBAL_PATTERNS} / ${MIN_CLEARURLS_ANCHORED} respectively. This looks like a ` +
+        "degenerate response (missing or empty providers/globalRules) rather than real upstream " +
+        "data — refusing rather than reporting a false '0 candidates'.",
+    );
+  }
+}
+
 async function main() {
   const [adguardText, clearurlsText] = await Promise.all([
     fetchAdGuardFilter17(),
@@ -201,6 +278,10 @@ async function main() {
 
   const adguard = parseRemoveparamRules(adguardText);
   const clearurlsFacts = extractClearurlsScopeFacts(clearurlsText);
+
+  assertAdguardNotDegenerate(adguard);
+  assertClearurlsNotDegenerate(clearurlsFacts);
+
   const exclusions = buildExclusions();
 
   const candidates = findAnchoredOnlyGlobals(TRACKING_PARAMS, adguard, clearurlsFacts, exclusions);
