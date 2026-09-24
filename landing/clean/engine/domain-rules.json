@@ -1990,6 +1990,21 @@
       "kv",
       "kw"
     ],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/y.js"
+        ],
+        "params": [
+          "ad_domain",
+          "ad_provider",
+          "ad_type",
+          "click_metadata",
+          "iurl",
+          "vqd"
+        ]
+      }
+    ],
     "note": "Search query and settings: functional"
   },
   {
@@ -2279,6 +2294,16 @@
       "ls_ref",
       "referral_code",
       "referral_story_type"
+    ],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/marketplace/"
+        ],
+        "params": [
+          "tracking"
+        ]
+      }
     ],
     "note": "Search, post/video/album IDs: functional. Mobile tracking, notification refs, clickthrough tokens, and redirect tracking stripped."
   },
@@ -2799,6 +2824,17 @@
       "event",
       "total_hits"
     ],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/projects"
+        ],
+        "params": [
+          "event",
+          "total_hits"
+        ]
+      }
+    ],
     "note": "Kickstarter. Referral/event tracking stripped."
   },
   {
@@ -2932,6 +2968,28 @@
       "lgtemp",
       "recommendedflavor",
       "origin"
+    ],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/authwall"
+        ],
+        "params": [
+          "originalreferer",
+          "trkinfo"
+        ]
+      },
+      {
+        "pathPrefixes": [
+          "/premium/"
+        ],
+        "params": [
+          "destredirecturl",
+          "isss",
+          "referenceid",
+          "upsellorderorigin"
+        ]
+      }
     ],
     "note": "Job/people search filters: functional. trackingId/lipi/lici/trk are click tracking. refId/eBP/lgCta/lgTemp are CTA/template tracking."
   },
@@ -4376,5 +4434,679 @@
       "linkid"
     ],
     "note": "`linkid` host-anchored via AdGuard `removeparam=linkId`, not global (#1327)."
+  },
+  {
+    "domain": "123chat.jp",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/promotion/"
+        ],
+        "params": [
+          "cid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "ad.doubleclick.net",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/ddm/clk/"
+        ],
+        "params": [
+          "clickorigin",
+          "deeplink",
+          "pid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "adobe.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/download/"
+        ],
+        "params": [
+          "trackingid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "alia-cloudflare.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/launcher/"
+        ],
+        "params": [
+          "ip_address",
+          "is_mobile",
+          "new_session",
+          "user_agent"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "api.cxense.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/public/widget/data"
+        ],
+        "params": [
+          "experienceid",
+          "getid",
+          "prnd",
+          "trackingid",
+          "usi",
+          "widgetid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "azby.fmworld.net",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/cgi-bin/common/rd.cgi"
+        ],
+        "params": [
+          "affitest"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "blu-ray.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/link/click.php"
+        ],
+        "params": [
+          "c",
+          "tid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "ca.indeed.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/cmp"
+        ],
+        "params": [
+          "attributionid",
+          "fromjk",
+          "tk"
+        ]
+      },
+      {
+        "pathPrefixes": [
+          "/viewjob"
+        ],
+        "params": [
+          "acatk",
+          "ad",
+          "adid",
+          "advn",
+          "camk",
+          "cmp",
+          "i2af",
+          "jrtk",
+          "pub",
+          "rjptk",
+          "sjdu",
+          "tk",
+          "vjs",
+          "xfps",
+          "xkcb",
+          "xpse"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "cc.loginfra.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/cc"
+        ],
+        "params": [
+          "a",
+          "bw",
+          "nsc",
+          "px",
+          "py",
+          "sx",
+          "sy"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "cc.naver.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/cc"
+        ],
+        "params": [
+          "bw",
+          "px",
+          "py",
+          "sx",
+          "sy"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "cdn.modrinth.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/data/"
+        ],
+        "params": [
+          "mr_download_reason",
+          "mr_game_version",
+          "mr_loader"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "click.linksynergy.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/fs-bin/click"
+        ],
+        "params": [
+          "u1",
+          "u2"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "coco.fun",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/share/"
+        ],
+        "params": [
+          "d",
+          "m",
+          "share_to"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "cod.bitrec.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/topocentras-services/js/recs"
+        ],
+        "params": [
+          "externalvisitorid",
+          "r",
+          "visitorid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "d.odsyms15.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/click"
+        ],
+        "params": [
+          "article_id",
+          "ext.referrer",
+          "uid.p"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "edge.curalate.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/v1/img/"
+        ],
+        "params": [
+          "spatialtags"
+        ]
+      },
+      {
+        "pathPrefixes": [
+          "/v1/media/"
+        ],
+        "params": [
+          "appid",
+          "fpcuid",
+          "rid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "heraldcorp.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/view.php"
+        ],
+        "params": [
+          "pos"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "hit.gemius.pl",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/hitredir"
+        ],
+        "params": [
+          "extra"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "lcs.naver.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/m"
+        ],
+        "params": [
+          "bh",
+          "bw",
+          "domcomplete",
+          "domcontentloadedeventend",
+          "domcontentloadedeventstart",
+          "dominteractive",
+          "domloading",
+          "ln",
+          "loadeventend",
+          "loadeventstart",
+          "ls",
+          "navigationstart",
+          "os",
+          "pid",
+          "requeststart",
+          "responseend",
+          "responsestart",
+          "sr",
+          "ts"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "lite.qwant.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/redirect/"
+        ],
+        "params": [
+          "ad",
+          "cachekey",
+          "position",
+          "serp_position",
+          "tgp",
+          "uri"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "media.joj.sk",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/outstream/embed"
+        ],
+        "params": [
+          "ad_params",
+          "ga_account",
+          "gemius_identifier",
+          "tracking_params"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "media01.eu",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/set.aspx"
+        ],
+        "params": [
+          "trackid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "ojrq.net",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/p/"
+        ],
+        "params": [
+          "cid",
+          "tpsync"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "p.liadm.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/click"
+        ],
+        "params": [
+          "_lc2_fpi",
+          "i6",
+          "li",
+          "stpe"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "pixel.adsafeprotected.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/services/pub"
+        ],
+        "params": [
+          "anid",
+          "sessionid",
+          "slot",
+          "sr",
+          "wr"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "podbean.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/pb/"
+        ],
+        "params": [
+          "pbss"
+        ]
+      },
+      {
+        "pathPrefixes": [
+          "/player/"
+        ],
+        "params": [
+          "referrer"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "popin.cc",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/popin_discovery/"
+        ],
+        "params": [
+          "info"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "quora.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/qemail/tc"
+        ],
+        "params": [
+          "al_imp"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "search.naver.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/p/crd/rd"
+        ],
+        "params": [
+          "i",
+          "px",
+          "py",
+          "sx",
+          "sy"
+        ]
+      },
+      {
+        "pathPrefixes": [
+          "/search.naver"
+        ],
+        "params": [
+          "tqi"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "shop.tsukumo.co.jp",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/goods/"
+        ],
+        "params": [
+          "cid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "skt.sh",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/common/share/bridge"
+        ],
+        "params": [
+          "referer"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "sprinklr.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/api/livechat/event/"
+        ],
+        "params": [
+          "cursor"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "target.georiot.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/Proxy.ashx"
+        ],
+        "params": [
+          "tsid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "track.wargaming-aff.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/click"
+        ],
+        "params": [
+          "ref_id"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "trustzonevpn.info",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/r.php"
+        ],
+        "params": [
+          "rid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "websearch.rakuten.co.jp",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/Web"
+        ],
+        "params": [
+          "ref"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "www.baidu.com",
+    "preserveParams": [],
+    "pathStrips": [
+      {
+        "pathPrefixes": [
+          "/link"
+        ],
+        "params": [
+          "eqid"
+        ]
+      }
+    ],
+    "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
   }
 ]

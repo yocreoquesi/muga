@@ -1,7 +1,7 @@
 # ADR-0010: Path-scoped param rules — a literal path-prefix predicate for `domain-rules.json`
 
 **Date**: 2026-09-10
-**Status**: **Accepted** — slices 1 and 2 shipped (schema + mechanism + first real use). Slice 3 (ingesting the 325 params #1326 measured) is **out of scope**.
+**Status**: **Accepted** — slices 1, 2, and 3 shipped (schema + mechanism + first real use + a reviewable importer landing a first real batch of upstream facts, `tools/import-path-anchors.mjs`).
 **Issue**: [#1326](https://github.com/yocreoquesi/muga/issues/1326)
 **Builds on**: [ADR-0008](./0008-host-scoped-facts.md) (host-scoped facts leaving quarantine), [ADR-0005](./0005-rule-scaling-pipeline.md) (the gate stack that still governs ingestion)
 **Amends**: nothing structurally — additive to the `domain-rules.json` schema and to `tools/generate-rules.mjs`'s DNR projection
@@ -295,9 +295,24 @@ mechanism, landing one real use).
 **Neutral.**
 - `sca_esv` and `gs_lcp` were never in the remote channel's global list (only
   `ved` was), so they do not carry the residual overlap above.
-- Slice 3 (ingesting the other 322 of the measured 325) is unstarted. Nothing
-  here blocks it; the mechanism this ADR ships is exactly what that
-  ingestion would need to target.
+- **Update (slice 3, shipped):** `tools/import-path-anchors.mjs` reuses
+  `parseRemoveparamRules`'s `pathAnchored` extraction (#1326 slice 3) and the
+  same absolute guards `land-scoped.mjs` applies to host-scoped facts
+  (`AFFILIATE_PARAM_GUARD`, `REMOTE_PARAM_DENYLIST`, host `preserveParams`),
+  plus an already-global check. It is a manually-run, dry-run-by-default CLI
+  — deliberately NOT wired into the weekly automated `tools/rule-ingestion/`
+  pipeline, since decision 5 above keeps path predicates out of that signed
+  channel and frames them as release-cadence, not weekly-fetch. Its first
+  real run (2026-09-24, against upstream measured fresh rather than the
+  issue's original 2026-09-10 snapshot) landed 46 `(host, pathPrefix)` groups
+  across 37 new hosts — fewer than the issue's original 325/94 estimate,
+  because that estimate predated this ADR's decision 2 (literal-prefix-only,
+  no query anchors, no wildcard/TLD-family hosts) and included many shapes
+  the accepted schema does not support. `domain-rules.json` grew from 252 to
+  289 entries; the DNR path-scoped rule count is 48/100
+  (`DNR_PATH_SCOPED_MAX_RULES`), so no cap-raising decision was needed for
+  this batch. `tools/rules-source/params.json` (the signed remote channel)
+  is untouched by this run.
 
 ## Verification
 

@@ -90,18 +90,24 @@ review and commit as an ordinary PR — not automation.
 - [x] T3 — Extend `parseRemoveparamRules` with `pathAnchored` (RED → GREEN),
       export `PATH_PREFIX_RE` from `tools/rules-store.mjs`, export
       `fetchAdGuardFilter17` from `tools/import-upstream.mjs`.
-- [ ] T4 — `tools/import-path-anchors.mjs`: pure grouping/filter/apply
+- [x] T4 — `tools/import-path-anchors.mjs`: pure grouping/filter/apply
       functions + CLI (dry-run default, `--apply` writes), with tests
-      (RED → GREEN).
-- [ ] T5 — Run `--apply` against real upstream; regenerate all projections
-      and bundles; update `config-integrity.test.mjs`'s pinned count and
-      preserve-or-strip check.
-- [ ] T6 — Full check suite: `npm test`, `npm run lint:js`, `npm run
-      typecheck`, `npm run compile:rules`, `npm run build:dnr`, `npm run
-      build:content`, `npm run build:web`; fpfn harness if rules changed.
-- [ ] T7 — ADR-0010 "slice 3" status note update.
-- [ ] T8 — Final report: measured counts, excluded-by-guard list, DNR rule
-      totals vs limits, open questions.
+      (RED → GREEN, 22 tests).
+- [x] T5 — Run `--apply` against real upstream; regenerate all projections
+      and bundles; update `config-integrity.test.mjs` and
+      `domain-rules.test.mjs`'s pinned count and preserve-or-strip checks;
+      update CONTEXT.md/README domain counts. Bug found and fixed during this
+      step: a bare root-path anchor (`||host/?query=v`) computed to a `/`
+      prefix that would have over-claimed the whole host — excluded at the
+      source instead (own commit, own test).
+- [x] T6 — Full check suite green: `npm test` (8137/8138, 1 pre-existing
+      skip), `npm run lint:js`, `npm run typecheck`, `npm run compile:rules`,
+      `npm run build:dnr`, `npm run build:content`, `npm run build:web`,
+      `npm run fpfn` (0 false positives, unchanged). CRLF-only noise in
+      `src/rules/wrapper-dnr-rules.json` reverted (unrelated to this change).
+- [x] T7 — ADR-0010 "slice 3" status updated from "out of scope" to shipped,
+      with the real measured numbers.
+- [x] T8 — Final report delivered to the requester.
 
 ## Acceptance criteria
 
@@ -150,3 +156,26 @@ before GREEN for parsing/filtering logic added in this slice.
   then GREEN (45/45 passing). `PATH_PREFIX_RE` exported from
   `tools/rules-store.mjs`; `fetchAdGuardFilter17` exported from
   `tools/import-upstream.mjs` for reuse.
+- 2026-09-24 (continued): T4 done — `tools/import-path-anchors.mjs` (pure
+  filter/group/select/apply functions + dry-run/`--apply` CLI), RED observed
+  (module missing, 1 failing suite), then GREEN (22/22 passing). T5 done —
+  first dry run matched the earlier measurement (50 groups); the real
+  `--apply` run then surfaced a real bug the earlier throwaway script had
+  not modeled: `||game-i.daa.jp/?cmd=ad_mode$removeparam=cmd` computes an
+  empty path token, i.e. a "/" prefix, which matches every path on the host
+  — fixed at the source (own commit + regression test), re-measured. Final
+  real numbers: 177 raw path-anchored facts parsed; excluded — alreadyGlobal
+  3, AFFILIATE_PARAM_GUARD 4 (`aff`, `clickref`, `sid`, `u`), REMOTE_PARAM_
+  DENYLIST 25 (`from`, `hl`, `id`, `locale`, `origin`, `p`, `q`, `query`,
+  `s`, `state`, `t`, `time`, `timezone`, `uid`, `url`, `userid`, …), host
+  preserve 2; landed 46 new `(host, pathPrefix)` groups across 37 new
+  `domain-rules.json` hosts (252 → 289 entries). DNR path-scoped rule count:
+  48/100 (`DNR_PATH_SCOPED_MAX_RULES`) — no cap-raising decision needed.
+  `tools/rules-source/params.json` (signed remote channel) untouched, per
+  ADR-0010 decision 5. config-integrity.test.mjs and domain-rules.test.mjs's
+  preserve-or-strip checks extended to accept pathStrips-only entries;
+  CONTEXT.md/README counts updated. T6: full suite green (8137/8138 pass, 1
+  pre-existing skip), lint:js clean, typecheck clean, fpfn 0 false
+  positives (unchanged). T7: ADR-0010 status updated to shipped. Idempotency
+  verified: a second `--apply` run against unchanged upstream wrote nothing
+  ("0 new group(s)").

@@ -720,8 +720,14 @@ describe("domain-rules.json structure", () => {
         rule.stripParams === undefined || Array.isArray(rule.stripParams),
         `stripParams must be an array when present in: ${rule.domain}`,
       );
+      // #1326 slice 3: a path-scoped-only host (landed purely for a
+      // pathStrips group) has no whole-host preserve or strip of its own —
+      // it genuinely strips something, just only on a path, the same shape
+      // one level narrower than a host-anchored strip-only entry (#1328).
       assert.ok(
-        rule.preserveParams.length > 0 || (rule.stripParams ?? []).length > 0,
+        rule.preserveParams.length > 0 ||
+          (rule.stripParams ?? []).length > 0 ||
+          (rule.pathStrips ?? []).length > 0,
         `${rule.domain} neither preserves nor strips anything, so it does nothing at all`,
       );
     }
