@@ -203,7 +203,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Canada: same rules as other Amazon TLDs"
   },
@@ -283,7 +288,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Japan: same rules as other Amazon TLDs"
   },
@@ -363,7 +373,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -443,7 +458,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -523,7 +543,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Australia: same rules as other Amazon TLDs"
   },
@@ -603,7 +628,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Brazil: same rules as other Amazon TLDs"
   },
@@ -683,7 +713,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Mexico: same rules as other Amazon TLDs"
   },
@@ -763,7 +798,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -843,7 +883,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -923,7 +968,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -1003,7 +1053,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "India: same rules as other Amazon TLDs"
   },
@@ -1083,7 +1138,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
   },
@@ -1163,7 +1223,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Netherlands: same rules as other Amazon TLDs"
   },
@@ -1243,7 +1308,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Poland: same rules as other Amazon TLDs"
   },
@@ -1323,7 +1393,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Sweden: same rules as other Amazon TLDs"
   },
@@ -1403,7 +1478,12 @@ export const DOMAIN_RULES = [
       "storetype",
       "pagetype",
       "reftag",
-      "ld"
+      "ld",
+      "spla",
+      "asc_contentid",
+      "asc_contenttype",
+      "bl_grd_status",
+      "sbo"
     ],
     "note": "Singapore: same rules as other Amazon TLDs"
   },

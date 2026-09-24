@@ -183,17 +183,6 @@
       "category": "generic"
     },
     {
-      "param": "ab_channel",
-      "category": "platform_noise",
-      "preservedOnDomains": [
-        "youtube.com"
-      ]
-    },
-    {
-      "param": "ab_version",
-      "category": "platform_noise"
-    },
-    {
       "param": "action_object_map",
       "category": "ads"
     },
@@ -322,10 +311,6 @@
       "category": "ads"
     },
     {
-      "param": "afsmartredirect",
-      "category": "platform_noise"
-    },
-    {
       "param": "aiad_clid",
       "category": "ads"
     },
@@ -336,14 +321,6 @@
     {
       "param": "analytics_trace_id",
       "category": "generic"
-    },
-    {
-      "param": "asc_contentid",
-      "category": "platform_noise"
-    },
-    {
-      "param": "asc_contenttype",
-      "category": "platform_noise"
     },
     {
       "param": "asgtbndr",
@@ -420,10 +397,6 @@
     {
       "param": "beyond_uzmcvid",
       "category": "generic"
-    },
-    {
-      "param": "bl_grd_status",
-      "category": "platform_noise"
     },
     {
       "param": "bsft_aaid",
@@ -537,10 +510,6 @@
     {
       "param": "dpg_source",
       "category": "email"
-    },
-    {
-      "param": "e_t",
-      "category": "social"
     },
     {
       "param": "ebisadid",
@@ -674,10 +643,6 @@
     {
       "param": "gad_source",
       "category": "ads"
-    },
-    {
-      "param": "gatewayadapt",
-      "category": "platform_noise"
     },
     {
       "param": "gbraid",
@@ -818,10 +783,6 @@
     {
       "param": "ir_partnerid",
       "category": "ads"
-    },
-    {
-      "param": "is_copy_url",
-      "category": "platform_noise"
     },
     {
       "param": "is_retargeting",
@@ -1060,10 +1021,6 @@
       "category": "ads"
     },
     {
-      "param": "n_ad",
-      "category": "ads"
-    },
-    {
       "param": "n_ad_group",
       "category": "ads"
     },
@@ -1080,19 +1037,7 @@
       "category": "ads"
     },
     {
-      "param": "n_match",
-      "category": "ads"
-    },
-    {
       "param": "n_media",
-      "category": "ads"
-    },
-    {
-      "param": "n_query",
-      "category": "ads"
-    },
-    {
-      "param": "n_rank",
       "category": "ads"
     },
     {
@@ -1187,10 +1132,6 @@
       "category": "generic"
     },
     {
-      "param": "psc",
-      "category": "platform_noise"
-    },
-    {
       "param": "rb_clickid",
       "category": "ads"
     },
@@ -1219,14 +1160,6 @@
       "category": "ads"
     },
     {
-      "param": "sb_referer_host",
-      "category": "generic"
-    },
-    {
-      "param": "sbo",
-      "category": "platform_noise"
-    },
-    {
       "param": "sc_channel",
       "category": "social"
     },
@@ -1249,10 +1182,6 @@
     {
       "param": "sccid",
       "category": "ads"
-    },
-    {
-      "param": "sender_web_id",
-      "category": "platform_noise"
     },
     {
       "param": "sfdcimpactsrc",
@@ -1289,10 +1218,6 @@
     {
       "param": "spjobid",
       "category": "email"
-    },
-    {
-      "param": "spla",
-      "category": "platform_noise"
     },
     {
       "param": "spmailingid",
@@ -1365,18 +1290,6 @@
     {
       "param": "toolid",
       "category": "platform_noise"
-    },
-    {
-      "param": "trk_contact",
-      "category": "email"
-    },
-    {
-      "param": "trk_module",
-      "category": "email"
-    },
-    {
-      "param": "trk_msg",
-      "category": "email"
     },
     {
       "param": "trk_sid",
@@ -1842,7 +1755,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Canada: same rules as other Amazon TLDs"
     },
@@ -1922,7 +1840,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Japan: same rules as other Amazon TLDs"
     },
@@ -2002,7 +1925,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2082,7 +2010,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2162,7 +2095,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Australia: same rules as other Amazon TLDs"
     },
@@ -2242,7 +2180,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Brazil: same rules as other Amazon TLDs"
     },
@@ -2322,7 +2265,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Mexico: same rules as other Amazon TLDs"
     },
@@ -2402,7 +2350,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2482,7 +2435,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2562,7 +2520,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2642,7 +2605,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "India: same rules as other Amazon TLDs"
     },
@@ -2722,7 +2690,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Search/browse functional params preserved. ref moved to stripParams: Amazon tracking ref values (cm_sw_r_*) outweigh functional uses."
     },
@@ -2802,7 +2775,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Netherlands: same rules as other Amazon TLDs"
     },
@@ -2882,7 +2860,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Poland: same rules as other Amazon TLDs"
     },
@@ -2962,7 +2945,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Sweden: same rules as other Amazon TLDs"
     },
@@ -3042,7 +3030,12 @@
         "storetype",
         "pagetype",
         "reftag",
-        "ld"
+        "ld",
+        "spla",
+        "asc_contentid",
+        "asc_contenttype",
+        "bl_grd_status",
+        "sbo"
       ],
       "note": "Singapore: same rules as other Amazon TLDs"
     },
