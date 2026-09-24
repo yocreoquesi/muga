@@ -284,6 +284,7 @@ const BASELINE = {
   "popup-honored-creator-badge.test.mjs": 7,
   "popup-length-bar-guard.test.mjs": 7,
   "popup-rerender-leaks.test.mjs": 2,
+  "popup-section-order.test.mjs": 6, // audit 2026-09-24 reorder: DOM order (indexOf) is the subject under test itself — no jsdom in this suite, so there is no behavioral proxy for "renders before" other than reading the static HTML order.
   "popup-suspicious-section.test.mjs": 21,
   "prev-version-persistence-1100.test.mjs": 5,
   "redirect-unwrap.test.mjs": 26,

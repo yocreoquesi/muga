@@ -171,6 +171,7 @@ export default [
         document: "readonly",
         location: "readonly",
         self: "readonly",  // ServiceWorkerGlobalScope in sw.evaluate() callbacks
+        Node: "readonly",  // DOM Node constants (e.g. Node.DOCUMENT_POSITION_FOLLOWING) in page.evaluate() callbacks
       },
     },
     rules: RULES,
