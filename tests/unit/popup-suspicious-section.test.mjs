@@ -1,23 +1,22 @@
 /**
  * MUGA — Popup wiring for the "Suspicious params" section (#446, B16).
  *
- * The section surfaces TWO classes of suspicious URL params to the user
- * in a single, scannable block:
+ * #1351 (2026-09-24 maintainer decision, ADR-0011 Decision 1/3) narrowed
+ * this section to the ENTROPY heuristic flags ONLY (B15, #436) — values on
+ * the CURRENT page's URL that look like opaque tracking IDs by shape alone.
+ * The cross-site FREQUENCY subgroup (B16, #446) and every action that
+ * writes `prefs.userCustomRules` moved to Settings' Activity section (see
+ * tests/unit/settings-activity-suspicious-params.test.mjs); the popup keeps
+ * the entropy subgroup specifically because it depends on the CURRENT tab's
+ * URL, something Settings — opened in its own tab — has no way to reproduce.
  *
- *   1. Entropy heuristic flags (B15, #436) — values that look like opaque
- *      tracking IDs by their shape alone.
- *   2. Cross-site frequency flags (B16, #446) — params that have been
- *      observed against 3+ first-party domains AND 3+ distinct values
- *      (local-only correlation tracker).
- *
- * Both classes are INFORMATIONAL — they do NOT trigger auto-stripping,
- * because auto-stripping unknown params is exactly what breaks creator
- * referrals (#160).
+ * READ-ONLY: no button here promotes a param to a permanent strip rule or
+ * opens a report. This just surfaces the signal.
  *
  * These tests pin down:
  *   - the i18n keys exist with EN + ES values
  *   - the popup HTML exposes the section, hidden-by-default
- *   - the popup JS imports the cross-site-frequency module and wires it
+ *   - the popup JS renders it read-only, entropy-only
  */
 
 import { test } from "node:test";
@@ -50,11 +49,12 @@ test("suspicious_params_entropy_group: i18n key exists with en + es non-empty", 
   assert.ok(typeof k.es === "string" && k.es.length > 0, "es non-empty");
 });
 
-test("suspicious_params_frequency_group: i18n key exists with en + es non-empty", () => {
-  const k = TRANSLATIONS.suspicious_params_frequency_group;
-  assert.ok(k, "suspicious_params_frequency_group must exist");
-  assert.ok(typeof k.en === "string" && k.en.length > 0, "en non-empty");
-  assert.ok(typeof k.es === "string" && k.es.length > 0, "es non-empty");
+test("entropy_score_label: i18n key exists with en + es and {score} placeholder", () => {
+  const k = TRANSLATIONS.entropy_score_label;
+  assert.ok(k, "entropy_score_label must exist");
+  for (const lang of ["en", "es"]) {
+    assert.ok(typeof k[lang] === "string" && k[lang].includes("{score}"), `${lang} must carry {score}`);
+  }
 });
 
 // ── HTML surface ─────────────────────────────────────────────────────────────
@@ -78,35 +78,44 @@ test("popup.html declares a list container inside the suspicious-params section"
   );
 });
 
+test("popup.html no longer hosts a strip-locally counter (retired with the moved action, #1351)", () => {
+  const html = readFileSync(resolve(root, "src/popup/popup.html"), "utf8");
+  assert.doesNotMatch(html, /id="strip-locally-count"/);
+});
+
 // ── JS wiring ────────────────────────────────────────────────────────────────
 
-test("popup.js imports the cross-site-frequency module and the entropy heuristic", () => {
+test("popup.js imports the entropy heuristic", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
-  assert.ok(
-    /from\s+"\.\.\/lib\/cross-site-frequency\.js"/.test(popupSrc),
-    "popup.js must import from cross-site-frequency.js"
-  );
   assert.ok(
     /from\s+"\.\.\/lib\/entropy-heuristic\.js"/.test(popupSrc),
-    "popup.js must import from entropy-heuristic.js (B15 surfaced via B16)"
+    "popup.js must import from entropy-heuristic.js (B15)"
   );
 });
 
-test("popup.js declares a renderer for the suspicious-params section", () => {
+test("popup.js no longer imports the cross-site-frequency module (#1351: moved to options.js)", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
   assert.ok(
-    /function\s+showSuspiciousParams|function\s+_renderSuspiciousParams/.test(popupSrc),
-    "popup.js must declare a showSuspiciousParams or _renderSuspiciousParams helper"
+    !/from\s+"\.\.\/lib\/cross-site-frequency\.js"/.test(popupSrc),
+    "popup.js must not import cross-site-frequency.js anymore"
   );
 });
 
-test("popup.js gates the section on the crossSiteFrequencyEnabled pref for the freq subgroup", () => {
+test("popup.js declares a renderer for the suspicious-params section, entropy-only signature", () => {
   const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
-  // The pref toggle must be referenced by name somewhere in popup.js so a
-  // user who disables the local frequency tracker sees the entropy-only
-  // view. Accepts either a guard or a destructure.
   assert.ok(
-    /crossSiteFrequencyEnabled/.test(popupSrc),
-    "popup.js must reference crossSiteFrequencyEnabled to gate the frequency subgroup"
+    /async function\s+showSuspiciousParams\s*\(lang\)/.test(popupSrc),
+    "popup.js must declare showSuspiciousParams(lang) — no prefs param needed once read-only"
   );
+});
+
+test("popup.js's suspicious-params section renders no strip/report action (#1351)", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  const start = popupSrc.indexOf("async function showSuspiciousParams(lang)");
+  assert.ok(start !== -1);
+  const end = popupSrc.indexOf("\n}", start);
+  const body = popupSrc.slice(start, end);
+  assert.doesNotMatch(body, /userCustomRules/);
+  assert.doesNotMatch(body, /strip-locally-btn|strip-globally-btn/);
+  assert.doesNotMatch(body, /report-upstream-btn/);
 });

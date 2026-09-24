@@ -10,21 +10,14 @@
  * ENTROPY subgroup stays in the popup, READ-ONLY; the FREQUENCY subgroup and
  * every action that writes userCustomRules move to Settings.
  *
- * Sliced delivery note (#1351 stacked-PR re-slice): this is slice B — the
- * Settings-side build-out. The popup keeps its old behaviour at this point
- * (slice C retires it), so this file pins ONLY the Settings-side contract
- * (sections 1-3 below). The "popup no longer writes userCustomRules" guard
- * (the issue's explicit closing condition) is added in slice C, once it is
- * actually true — asserting it here would fail against the still-live
- * popup action.
- *
  * These tests pin:
  *   1. options.html hosts the frequency panel inside #section-activity,
  *      under its own id (no collision with the popup's #suspicious-params).
  *   2. options.js wires the panel from the extracted view module and the
  *      cross-site-frequency tracker, and shares the per-panel visibility
  *      helper #1351 introduced.
- *   3. #section-activity's visibility is per-panel, not tied to one pref.
+ *   3. popup.js/popup.html no longer render any action that writes
+ *      userCustomRules — the issue's explicit closing condition.
  */
 
 import { test, describe } from "node:test";
@@ -38,6 +31,8 @@ const ROOT = join(__dirname, "../..");
 
 const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
+const popupHtml = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
+const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
 
 // ── 1. options.html hosts the frequency panel ──────────────────────────────
 
@@ -209,5 +204,45 @@ describe("options.js — renderSuspiciousParamsActivity does not interleave over
       isStaleIndices.some((idx) => idx > lastAwait && idx < replaceIdx),
       "an isStale() check must sit between the last await and the list clear",
     );
+  });
+});
+
+// ── 5. Popup no longer writes userCustomRules (issue #1351 closing condition) ──
+
+describe("popup.js / popup.html — userCustomRules can no longer be written from the popup (#1351)", () => {
+  test("popup.js never calls chrome.storage.sync.set with userCustomRules", () => {
+    assert.doesNotMatch(
+      popupJs,
+      /chrome\.storage\.sync\.set\(\s*\{\s*userCustomRules/,
+      "popup.js must not write userCustomRules to chrome.storage.sync",
+    );
+  });
+
+  test("popup.js no longer imports addUserCustomRule", () => {
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/user-custom-rules\.js"/);
+  });
+
+  test("popup.js no longer declares a strip-everywhere/strip-locally click handler", () => {
+    assert.doesNotMatch(popupJs, /_appendStripLocallyButton/);
+    assert.doesNotMatch(popupJs, /strip-locally-btn/);
+    assert.doesNotMatch(popupJs, /strip-globally-btn/);
+  });
+
+  test("popup.js no longer imports the cross-site-frequency tracker (moved to options.js)", () => {
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/cross-site-frequency\.js"/);
+  });
+
+  test("popup.js no longer declares the report-upstream button builder", () => {
+    assert.doesNotMatch(popupJs, /_appendReportUpstreamButton/);
+    assert.doesNotMatch(popupJs, /report-upstream-btn/);
+  });
+
+  test("popup.html no longer declares the retired strip-locally-count deep link host", () => {
+    assert.doesNotMatch(popupHtml, /id="strip-locally-count"/);
+  });
+
+  test("popup.js's showSuspiciousParams keeps the entropy heuristic, read-only", () => {
+    assert.match(popupJs, /from\s+"\.\.\/lib\/entropy-heuristic\.js"/);
+    assert.match(popupJs, /async function\s+showSuspiciousParams\s*\(lang\)/);
   });
 });

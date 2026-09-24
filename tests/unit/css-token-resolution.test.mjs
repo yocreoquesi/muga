@@ -87,26 +87,17 @@ describe("#1260 — CSS custom properties resolve in every extension surface", (
     });
   }
 
-  test("popup.css uses --surface-2 for pill hovers, the themed sibling token", () => {
-    // The specific regression. --surface-2 is what .recent-activity-copy:hover
-    // already used, and it has a dark-mode value, so the pills now follow the
-    // theme with the rest of the popup.
+  test("popup.css does not reintroduce the marketing-only --bg-2 token", () => {
     const css = readFileSync(join(__dirname, "../../src/popup/popup.css"), "utf8");
     assert.ok(!css.includes("--bg-2"),
       "--bg-2 is a marketing-stylesheet token and is not defined in the popup");
-    for (const cls of [".strip-locally-btn:hover:not(:disabled)", ".report-upstream-btn:hover:not(:disabled)"]) {
-      const at = css.indexOf(cls);
-      assert.ok(at !== -1, `${cls} must still exist`);
-      assert.ok(css.slice(at, at + 120).includes("var(--surface-2)"),
-        `${cls} must tint with the themed --surface-2`);
-    }
   });
 
-  // #1351 (stacked-PR slice B): Settings' Activity section gains its own
-  // suspicious-params pills (Strip everywhere / Report upstream). The
-  // popup's own pills above are still live at this point — slice C retires
-  // them and replaces the test above with a plain --bg-2 regression guard.
   test("options.css uses --surface-2 for the suspicious-params pill hovers, the themed sibling token (#1351)", () => {
+    // The specific regression, relocated: the strip/report pills moved from
+    // the popup to Settings' Activity section (#1351). --surface-2 is what
+    // .recent-activity-copy:hover already used in the popup and has a
+    // dark-mode value, so the pills follow the theme in their new home too.
     const css = readFileSync(join(__dirname, "../../src/options/options.css"), "utf8");
     for (const cls of [".strip-globally-btn:hover:not(:disabled)", ".report-upstream-btn:hover:not(:disabled)"]) {
       const at = css.indexOf(cls);

@@ -123,27 +123,65 @@ ledgers (#1352), report flow / `#section-report` (#1353).
 
 - [x] T1 — Feature document created and committed alone.
 - [x] T2 — Maintainer decision recorded (see above); unblocked.
-- [ ] T3 — `src/lib/suspicious-params-view.js` pure module (Settings-side
+- [x] T3 — `src/lib/suspicious-params-view.js` pure module (Settings-side
       frequency row shaping) + RED-first unit test.
-- [ ] T4 — `popup.js`/`popup.html`/`popup.css`: simplify to entropy-only,
-      read-only; delete the 4 strip/report helpers, their call sites, the
-      dead deep link, and their CSS; drop the `userCustomRules` reactive
+- [x] T4 — `popup.js`/`popup.html`/`popup.css`: simplified to entropy-only,
+      read-only; deleted the 4 strip/report helpers, their call sites, the
+      dead deep link, and their CSS; dropped the `userCustomRules` reactive
       re-render branch.
-- [ ] T5 — `options.html`: `suspicious-params-panel` inside
+- [x] T5 — `options.html`: `suspicious-params-panel` inside
       `#section-activity` with scope-hint copy; locale keys added/removed
       in all 7 locales.
-- [ ] T6 — `options.js`: render the frequency panel + strip-everywhere +
-      report-upstream actions (via `withSyncMutation`/`withListLock`), wire
-      at init and after import; make `#section-activity` visibility
-      per-panel (hide iff all panels hidden).
-- [ ] T7 — Guard tests: no duplicate ids, `userCustomRules` unwritable from
-      popup.js, per-panel Activity visibility; update/replace the superseded
+- [x] T6 — `options.js`: renders the frequency panel + strip-everywhere +
+      report-upstream actions (via `withSyncMutation`/`withListLock`), wired
+      at init and after import; `#section-activity` visibility is per-panel
+      (hide iff all panels hidden).
+- [x] T7 — Guard tests: no duplicate ids, `userCustomRules` unwritable from
+      popup.js, per-panel Activity visibility; superseded
       `popup-strip-locally-button.test.mjs` / `popup-report-upstream-button.test.mjs`
-      / `popup-suspicious-section.test.mjs`.
-- [ ] T8 — Full check suite: `npm test`, `npm run lint:js`, `npm run
-      typecheck`, `npm run check:i18n`, `npm run lint` (web-ext, then
-      confirm `git diff --quiet src/manifest.json`); e2e spec check for any
-      popup suspicious-params coverage.
+      replaced by options-side equivalents; `popup-suspicious-section.test.mjs`
+      rewritten for the entropy-only, read-only contract.
+- [x] T8 — Full check suite green (see Progress).
+
+## Delivery: re-sliced into stacked PRs (2026-09-24)
+
+The single-branch delivery above landed as one ~1900-line diff against
+`origin/main`. The maintainer chose **stacked PRs to main** (over the
+~400-line budget) and asked for the SAME final result re-sliced into three
+sequential, independently-green branches, each built on the previous one.
+Re-slicing did not change one line of the final result — it only changed
+which commit each already-written line landed in. The three branches:
+
+1. **`feat/1351-a-view-model`** (on `origin/main`) — `src/lib/suspicious-params-view.js`
+   + its RED-first unit test, pure and unwired, plus the two feature-doc
+   commits (plan + maintainer decision). +341 lines vs `origin/main`.
+2. **`feat/1351-b-settings-panel`** (on slice A) — the Settings-side build:
+   `suspicious-params-panel` in `#section-activity`, `updateActivitySectionVisibility()`
+   (per-panel visibility), the new locale keys (`strip_globally_btn`/`_done`,
+   `suspicious_params_settings_hint`/`_empty`) added ALONGSIDE the still-live
+   popup `strip_locally_*` keys, and the options-side tests. The popup keeps
+   its original "Strip locally" behaviour unchanged at this point —
+   deliberate, temporary duplication so this slice is green on its own.
+   +897 lines vs slice A (over the ~400 advisory budget: kept as one
+   cohesive commit rather than split, since options.html/options.js/options.css
+   and their tests are one indivisible unit of behaviour — reported honestly
+   rather than force-split or trimmed).
+3. **`feat/1351-c-popup-retire`** (on slice B) — retires the popup's
+   strip/report actions: `popup.js`/`popup.html`/`popup.css` become
+   entropy-only and read-only, the four helpers + dead deep link + their CSS
+   are deleted, the now-orphaned `strip_locally_*` keys are removed from all
+   7 locales, the two superseded popup-side test files are deleted, and the
+   "`userCustomRules` can no longer be written from the popup" guard (the
+   issue's explicit closing condition) is added. This branch's tree is
+   byte-identical to the original single-branch tip (verified via
+   `git diff <original-tip> feat/1351-c-popup-retire --stat`, empty except
+   for this doc's own narrative, which was rewritten to describe the
+   3-slice delivery instead of the 1-slice one).
+
+Each branch was verified green at its own tip: `npm test`, `npm run lint:js`,
+`npm run typecheck`, `npm run check:i18n` (see Progress for exact numbers).
+Delivery (push/PR) is a separate, later decision under ordinary repository
+policy — this pass only re-sliced the already-authored commits.
 
 ## Acceptance criteria (from issue #1351)
 
@@ -223,7 +261,26 @@ by keeping both slices' additions.
   `popup-report-upstream-button.test.mjs`). Found the entropy-subgroup /
   current-tab gap above and stopped to ask before implementing the panel.
 - 2026-09-24: Maintainer decision received (recorded above). Proceeding with
-  T3 onward.
-- 2026-09-24: Native review R3 fixes landed on `feat/1351-b-settings-panel`
-  (see "Native review fixes" above). Checks at the new B tip: `npm test`
-  8228/8228 pass + 1 skip; `lint:js`/`typecheck`/`check:i18n` clean.
+  T3 onward. Implemented T3-T8 as a single-branch delivery (`npm test`
+  8107/8107 pass + 1 known skip, `lint:js`/`typecheck`/`check:i18n` clean,
+  `lint` web-ext 0 errors, manifest untouched); ~1900 lines vs `origin/main`.
+- 2026-09-24: Re-sliced into stacked PRs per maintainer request (see
+  "Delivery: re-sliced into stacked PRs" above). Checks at each tip:
+  - `feat/1351-a-view-model` (+341 vs `origin/main`): `npm test` 8115/8115
+    pass + 1 skip; `lint:js`/`typecheck`/`check:i18n` clean.
+  - `feat/1351-b-settings-panel` (+897/-12 vs slice A): `npm test`
+    8170/8170 pass + 1 skip; `lint:js`/`typecheck`/`check:i18n` clean.
+  - `feat/1351-c-popup-retire` (tree identical to the original single-branch
+    tip except this doc): `npm test` 8142/8142 pass + 1 skip (matches the
+    pre-reslice baseline exactly); `lint:js`/`typecheck`/`check:i18n` clean.
+  Identical-tree check: `git diff --cached <original-tip> --stat` at slice
+  C showed only `odd/tasks/strip-locally-to-settings.md` differing (this
+  doc's own narrative); every source/test file byte-identical.
+- 2026-09-24: Coordinator rebased the stack onto a newer `origin/main`
+  (a=92300b0, b=9369689, c=e536813). Native review of A+B approved with 3
+  advisories (see "Native review fixes" above), fixed as one commit on top
+  of B; checks at the new B tip: `npm test` 8228/8228 pass + 1 skip;
+  `lint:js`/`typecheck`/`check:i18n` clean. `feat/1351-c-popup-retire`
+  rebased onto the new B tip, resolving conflicts in this doc and the two
+  Settings-side test files C also touches (kept both slices' additions in
+  each case — see final tip hashes/counts reported to the user).

@@ -14,13 +14,6 @@
  * popup) — the old label undersold the fact that the rule applies on every
  * site, which is exactly the scope clarity #1351 asks for.
  *
- * Sliced delivery note (#1351 stacked-PR re-slice): this is slice B. The
- * popup still has its own "Strip locally" button at this point (slice C
- * retires it), so the popup-side `strip_locally_*` i18n keys are still
- * live here too — a temporary, deliberate duplication. The orphan-removal
- * guard for those keys is added in slice C, once they are actually
- * unreferenced.
- *
  * These structural tests pin:
  *   - the i18n keys exist (en + es non-empty)
  *   - options.js contains the marker class for the button so future
@@ -28,6 +21,7 @@
  *   - options.js writes userCustomRules through the shared, race-safe
  *     withSyncMutation + addUserCustomRule path
  *   - options.js surfaces the cap error instead of failing silently
+ *   - the retired popup-side keys/classes are gone (no orphans)
  */
 
 import { test } from "node:test";
@@ -72,6 +66,12 @@ test("suspicious_params_settings_empty: i18n key exists with en + es non-empty",
   assert.ok(k, "suspicious_params_settings_empty must exist");
   assert.ok(typeof k.en === "string" && k.en.length > 0, "en non-empty");
   assert.ok(typeof k.es === "string" && k.es.length > 0, "es non-empty");
+});
+
+test("the retired strip_locally_* keys no longer exist (superseded by strip_globally_*, #1351)", () => {
+  for (const key of ["strip_locally_btn", "strip_locally_btn_done", "strip_locally_active_count", "strip_locally_manage"]) {
+    assert.ok(!TRANSLATIONS[key], `${key} must be removed — it is unreferenced since the action moved to Settings`);
+  }
 });
 
 // ── JS surface ───────────────────────────────────────────────────────────────
