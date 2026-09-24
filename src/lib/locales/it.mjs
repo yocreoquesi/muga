@@ -17,7 +17,6 @@ export default Object.freeze({
   history_copy_hint: "Clicca per copiare l'URL ripulita",
   history_copied: "Copiato!",
   history_copy_original: "Copia con rumore",
-  show_history: "Mostra cronologia",
   confirm_cancel: "Annulla",
   confirm_ok: "OK",
   domain_stats_label: "Da dove viene più rumore",

@@ -213,9 +213,6 @@ header {
   letter-spacing: .04em;
 }
 
-.stat-clickable { cursor: pointer; transition: background var(--dur) var(--ease); }
-.stat-clickable:hover { background: var(--surface-3); }
-.stat-clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ---------- URL preview (this page) ------------------------------------- */
 .preview {
@@ -448,108 +445,10 @@ header {
   opacity: 0.8;
 }
 
-/* Domain-stats panel moved to Settings' Activity section (#1350). */
-
-/* ---------- Session history --------------------------------------------- */
-.history { border-top: 1px solid var(--border-1); }
-
-.history-summary {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  font-size: 10px;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-  font-weight: 500;
-}
-.history-summary::-webkit-details-marker { display: none; }
-.history-summary::after {
-  content: '›';
-  margin-left: auto;
-  color: var(--text-3);
-  transition: transform var(--dur) var(--ease);
-}
-.history[open] .history-summary::after { transform: rotate(90deg); }
-
-.history-entry {
-  padding: 8px 14px;
-  border-top: 1px solid var(--border-1);
-  cursor: pointer;
-  transition: background var(--dur) var(--ease);
-}
-.history-entry:hover { background: var(--surface-2); }
-
-.history-url {
-  font-size: 10.5px;
-  font-family: var(--font-mono);
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-all;
-  line-height: 1.5;
-}
-
-.history-url.before {
-  color: var(--diff-strip);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  opacity: .8;
-}
-.history-url.after { color: var(--text-1); }
-
-.history-after-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 4px;
-}
-.history-after-row .history-url.after { flex: 1; }
-
-.history-copy-clean-btn {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 4px;
-  color: var(--text-3);
-  line-height: 1;
-  border-radius: var(--r-sm);
-  display: flex;
-  align-items: center;
-  opacity: .65;
-  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.history-copy-clean-btn:hover { opacity: 1; color: var(--accent-strong); }
-.history-entry.copied .history-copy-clean-btn { color: var(--success); opacity: 1; }
-.history-entry.copied .history-url.after { color: var(--success); }
-
-.history-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 6px;
-}
-
-.history-copy-btn {
-  font-size: 10.5px;
-  padding: 3px 9px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border-2);
-  background: var(--surface-1);
-  color: var(--text-2);
-  cursor: pointer;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-.history-copy-btn:hover { background: var(--surface-2); color: var(--text-1); }
-
-.history-empty {
-  font-size: 12px;
-  color: var(--text-3);
-  font-style: italic;
-  padding: 12px 14px;
-}
+/* Domain-stats panel moved to Settings' Activity section (#1350). Session
+   history ("This session") and the recent-activity ledger both moved to
+   Settings' unified Activity ledger panel too (#1352) — their row styling
+   now lives in options.css. */
 
 /* ---------- Footer ------------------------------------------------------- */
 footer {
@@ -668,13 +567,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-size: 11px;
   color: var(--text-2);
 }
-.history-breakdown {
-  margin: 6px 0 2px;
-  font-size: 11px;
-  color: var(--text-2);
-}
-.preview-breakdown > summary,
-.history-breakdown > summary {
+.preview-breakdown > summary {
   cursor: pointer;
   user-select: none;
   color: var(--text-3);
@@ -684,8 +577,7 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-size: 10px;
   font-weight: 500;
 }
-.preview-breakdown[open] > summary,
-.history-breakdown[open] > summary {
+.preview-breakdown[open] > summary {
   list-style: disclosure-open;
   color: var(--text-2);
 }
@@ -779,7 +671,6 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 }
 
 /* ── Suspicious params section (#446, B16) ───────────────────────────── */
-/* Shares the .history/.recent-activity collapsible-panel shape below. */
 .suspicious-params { border-top: 1px solid var(--border-1); }
 
 .suspicious-params > summary {
@@ -840,96 +731,8 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Recent activity (#460, A2) ─────────────────────────────────────────────
- * Mirrors the .suspicious-params <details> chrome (uppercase summary,
- * chevron, no native marker) so the popup keeps a consistent visual
- * rhythm. The list itself is scrollable: the ring buffer is bounded at
- * ~10 entries today, but a user with a large reading session could see
- * the section grow if the capacity is ever raised.
- */
-.recent-activity { border-top: 1px solid var(--border-1); }
-
-.recent-activity > summary {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  font-size: 10px;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-  font-weight: 500;
-}
-.recent-activity > summary::-webkit-details-marker { display: none; }
-.recent-activity > summary::after {
-  content: '›';
-  margin-left: auto;
-  color: var(--text-3);
-  transition: transform var(--dur) var(--ease);
-}
-.recent-activity[open] > summary::after { transform: rotate(90deg); }
-
-.recent-activity-list {
-  padding: 0 0 6px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.recent-activity-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 8px;
-  align-items: start;
-  padding: 6px 14px;
-  font-size: 11px;
-  border-top: 1px solid var(--border-1);
-}
-
-.recent-activity-url {
-  grid-column: 1;
-  color: var(--text-1);
-  font-family: var(--font-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recent-activity-meta {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 10px;
-  color: var(--text-3);
-}
-
-.recent-activity-badge {
-  background: var(--surface-2);
-  color: var(--text-2);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.recent-activity-creator,
-.recent-activity-network {
-  color: var(--text-3);
-}
-
-.recent-activity-copy {
-  grid-column: 2;
-  grid-row: 1;
-  background: transparent;
-  border: 1px solid var(--border-1);
-  color: var(--text-2);
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.recent-activity-copy:hover { background: var(--surface-2); }
+/* Recent activity (#460, A2) moved to Settings' unified Activity ledger
+   panel (#1352) — its row styling now lives in options.css. */
 
 .stats-empty {
   padding: 8px 14px 10px;
@@ -939,11 +742,4 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   text-align: center;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border-1);
-}
-
-.recent-activity-empty {
-  padding: 8px 14px 12px;
-  color: var(--text-3);
-  font-size: 11px;
-  margin: 0;
 }

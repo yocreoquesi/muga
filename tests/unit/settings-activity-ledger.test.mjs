@@ -33,6 +33,8 @@ const ROOT = join(__dirname, "../..");
 
 const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
+const popupHtml = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
+const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
 
 /** Extracts every `id="..."` value from raw HTML, ignoring HTML comments. */
 function extractIds(html) {
@@ -270,6 +272,93 @@ describe("i18n — new Activity ledger keys exist in all locales", () => {
       for (const [lang, value] of Object.entries(TRANSLATIONS[key])) {
         assert.ok(!value.includes("—"), `${key}.${lang} must not contain an em dash`);
       }
+    }
+  });
+});
+
+// ── The issue's explicit ask: popup no longer renders either ledger ────────
+
+describe("popup.html / popup.js — no longer render either ledger (#1352)", () => {
+  test("popup.html no longer declares #history", () => {
+    assert.doesNotMatch(popupHtml, /id="history"/, "popup.html must not contain id=\"history\" anymore");
+  });
+
+  test("popup.html no longer declares #history-list", () => {
+    assert.doesNotMatch(popupHtml, /id="history-list"/, "popup.html must not contain id=\"history-list\" anymore");
+  });
+
+  test("popup.html no longer declares #recent-activity", () => {
+    assert.doesNotMatch(popupHtml, /id="recent-activity"/, "popup.html must not contain id=\"recent-activity\" anymore");
+  });
+
+  test("popup.html no longer declares #recent-activity-list or #recent-activity-empty", () => {
+    assert.doesNotMatch(popupHtml, /id="recent-activity-list"/);
+    assert.doesNotMatch(popupHtml, /id="recent-activity-empty"/);
+  });
+
+  test("popup.js no longer declares showHistory", () => {
+    assert.doesNotMatch(popupJs, /function\s+showHistory/, "popup.js must not declare showHistory anymore");
+  });
+
+  test("popup.js no longer calls showHistory", () => {
+    assert.doesNotMatch(popupJs, /showHistory\s*\(/, "popup.js must not call showHistory anymore");
+  });
+
+  test("popup.js no longer declares showRecentActivity", () => {
+    assert.doesNotMatch(popupJs, /function\s+showRecentActivity/, "popup.js must not declare showRecentActivity anymore");
+  });
+
+  test("popup.js no longer calls showRecentActivity", () => {
+    assert.doesNotMatch(popupJs, /showRecentActivity\s*\(/, "popup.js must not call showRecentActivity anymore");
+  });
+
+  test("popup.js no longer imports the attribution-ledger presenter/view (moved to options.js)", () => {
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/attribution-ledger\.js"/);
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/attribution-ledger-view\.js"/);
+  });
+
+  test("the stat-urls-wrap tile is no longer clickable (its target, #history, is gone)", () => {
+    assert.doesNotMatch(popupHtml, /class="stat stat-clickable"/);
+    assert.doesNotMatch(popupJs, /statUrlsWrap\.setAttribute\(\s*["']aria-controls["']/);
+  });
+});
+
+// ── i18n for the ledger now rendered in Settings (#1352 review R3-002) ──
+// Ported from the deleted popup-recent-activity.test.mjs, widened to all
+// seven locales since the panel is user-facing in every one of them.
+describe("#1352 — ledger strings the Settings panel renders", async () => {
+  // Some modules touch chrome at import time; a minimal stub is enough here.
+  const { makeChromeMock } = await import("./helpers/chrome-stub.mjs");
+  globalThis.chrome ??= makeChromeMock();
+  const { TRANSLATIONS } = await import("../../src/lib/i18n.js");
+  const LOCALES = ["en", "es", "pt", "de", "fr", "it", "ja"];
+  const REQUIRED_KEYS = [
+    "ledger_section_title",
+    "ledger_empty",
+    "ledger_badge_cleaned",
+    "ledger_badge_preserve_affiliate",
+    "ledger_badge_honor_creator",
+    "ledger_badge_blocked_opaque",
+    "ledger_creator_credit_template",
+    "ledger_network_template",
+    "ledger_copy_btn_label",
+    "ledger_copy_btn_copied",
+  ];
+
+  for (const key of REQUIRED_KEYS) {
+    test(`${key} exists and is non-empty in all 7 locales`, () => {
+      const entry = TRANSLATIONS[key];
+      assert.ok(entry, `${key} must exist in TRANSLATIONS`);
+      for (const lang of LOCALES) {
+        assert.ok(typeof entry[lang] === "string" && entry[lang].length > 0, `${key}.${lang} non-empty`);
+      }
+    });
+  }
+
+  test("the templates keep their placeholders in every locale", () => {
+    for (const lang of LOCALES) {
+      assert.ok(TRANSLATIONS.ledger_creator_credit_template[lang].includes("{creator}"), `creator template (${lang})`);
+      assert.ok(TRANSLATIONS.ledger_network_template[lang].includes("{network}"), `network template (${lang})`);
     }
   });
 });

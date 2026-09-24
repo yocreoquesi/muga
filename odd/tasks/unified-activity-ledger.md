@@ -160,30 +160,46 @@ None of these affects privacy or data retention, so none required stopping.
 
 ## Checklist
 
-- [ ] T1 — Feature document created and committed alone.
-- [ ] T2 — `src/lib/session-history-view.js` (`planSessionHistoryView`) +
-      RED-first unit test `tests/unit/session-history-view.test.mjs`.
-- [ ] T3 — `src/lib/activity-scope-view.js` (`ACTIVITY_SCOPES`,
+- [x] T1 — Feature document created and committed alone. (ae38695)
+- [x] T2 — `src/lib/session-history-view.js` (`planSessionHistoryView`) +
+      RED-first unit test `tests/unit/session-history-view.test.mjs`. RED
+      observed (ERR_MODULE_NOT_FOUND) before the module existed; GREEN
+      after (6/6). (e3aa0eb)
+- [x] T3 — `src/lib/activity-scope-view.js` (`ACTIVITY_SCOPES`,
       `DEFAULT_ACTIVITY_SCOPE`, `isValidActivityScope`,
       `planActivityScopeView`) + RED-first unit test
-      `tests/unit/activity-scope-view.test.mjs`.
-- [ ] T4 — `options.html`: `activity-ledger-panel` inside
+      `tests/unit/activity-scope-view.test.mjs`. RED observed before the
+      module existed; GREEN after (8/8). (e3aa0eb)
+- [x] T4 — `options.html`: `activity-ledger-panel` inside
       `#section-activity` (scope fieldset/radios + two sub-panels); 2 new
       locale keys (`activity_ledger_label`, `activity_ledger_hint`) across
-      all 7 locales; retire `show_history` across all 7 locales.
-- [ ] T5 — `options.js`: port clipboard helpers +
-      `getCopySafeCleanUrl` + `_buildParamIndex`/`_renderParamBreakdown`
-      equivalents, render both scopes, wire the radio group, extend
-      `updateActivitySectionVisibility()`'s panel list, call at init.
-- [ ] T6 — `options.css`: port the row styling for both sub-panels.
-- [ ] T7 — `popup.html`/`popup.js`/`popup.css`: remove both panels, their
+      all 7 locales; retire `show_history` across all 7 locales. (5b12d3f
+      added the panel + keys; bd506bc retired show_history alongside the
+      popup removal it belongs with)
+- [x] T5 — `options.js`: ported clipboard helpers +
+      `getCopySafeCleanUrl` + `_buildActivityParamIndex`/
+      `_renderActivityParamBreakdown` (renamed from the popup's names to
+      avoid a substring collision with an existing paramBreakdown-pref
+      guard test), render both scopes (`renderActivityLedgerPanel`), wire
+      the radio group, extend `updateActivitySectionVisibility()`'s panel
+      list, call at init. (5b12d3f)
+- [x] T6 — `options.css`: ported the row styling for both sub-panels.
+      (5b12d3f)
+- [x] T7 — `popup.html`/`popup.js`/`popup.css`: removed both panels, their
       renderers, call sites, now-orphaned helpers, the stat-tile
-      click-to-open wiring, and the dead CSS.
-- [ ] T8 — Guard tests: `tests/unit/settings-activity-ledger.test.mjs`
-      (new); update/trim `tests/unit/popup-recent-activity.test.mjs` and
-      `tests/unit/popup-copy-safe-history.test.mjs`; remove the obsolete
-      `tests/e2e/popup.spec.mjs` history case.
-- [ ] T9 — Full check suite at each work-unit commit tip (see Progress).
+      click-to-open wiring, and the dead CSS. (bd506bc)
+- [x] T8 — Guard tests: `tests/unit/settings-activity-ledger.test.mjs`
+      (new, extended in bd506bc with the popup-no-longer-renders-either-
+      ledger block); `tests/unit/settings-activity-ledger-copy.test.mjs`
+      (new, ports the copy-affordance coverage); removed
+      `tests/unit/popup-recent-activity.test.mjs`,
+      `tests/unit/popup-copy-safe-history.test.mjs`, and
+      `tests/unit/popup-copy-with-feedback.test.mjs` (all superseded);
+      fixed 3 other tests that referenced the moved code
+      (`copy-no-side-effects-966.test.mjs`, `options-surfaced-prefs.test.mjs`,
+      `popup-aria-i18n.test.mjs`); removed the obsolete
+      `tests/e2e/popup.spec.mjs` history case. (bd506bc)
+- [x] T9 — Full check suite at each work-unit commit tip (see Progress).
 
 ## Acceptance criteria (from issue #1352 + maintainer decision)
 
@@ -209,3 +225,48 @@ and record.
   `service-worker.js`/`process-url.js` recording paths, existing tests.
   Wrote this document. Corrected ADR-0011's stale line numbers against the
   current tree (see Problem section).
+- 2026-09-24: Implemented in 3 work-unit commits on `feat/1352-unified-activity`
+  (branched from `origin/main`). Checks run at EVERY commit tip:
+  - `e3aa0eb` (pure view models, +245 lines): `npm test` 8469/8469 pass + 1
+    known skip; `npm run typecheck` clean (needed a `@returns {value is
+    "session"|"recent"}` JSDoc type predicate on `isValidActivityScope` for
+    `resolved` to narrow); `npm run lint:js` clean; `npm run check:i18n` ok;
+    `npm run test:integration` 233/233; `npm run lint` (web-ext) 0
+    errors/notices, 2 pre-existing `UNSAFE_VAR_ASSIGNMENT` warnings in
+    `lib/i18n.js` (unrelated); manifest unchanged; `npx playwright test`
+    140/141 passed, 1 flake (`popup.spec.mjs` "settings link opens options
+    page", timeout waiting for a new page) confirmed as pre-existing by
+    re-running it alone (passed) — this commit touches no popup/options
+    files at all.
+  - `5b12d3f` (Settings unified panel, +975/-2 lines): `npm test` 8484/8484
+    pass + 1 skip; typecheck/lint:js/check:i18n clean; `test:integration`
+    233/233; `lint` (web-ext) same 2 pre-existing warnings, 0 errors;
+    manifest unchanged; `playwright test` 141/141 passed, 4 skipped (no
+    flake this run). Two guard-test collisions found and fixed here: (1) a
+    literal `"param-breakdown"` substring in a comment/class name collided
+    with an existing guard pinning the retired `paramBreakdown` pref's
+    checkbox id — renamed to `activity-param-breakdown`
+    /`_buildActivityParamIndex`/`_renderActivityParamBreakdown`; (2) a
+    template-literal `aria-label` tripped the JS-set-hardcode i18n guard —
+    fixed by assigning to a named variable first (value still fully
+    resolved through `t()`).
+  - `bd506bc` (popup retirement, +296/-1098 lines net): `npm test`
+    8471/8471 pass + 1 skip; typecheck/lint:js/check:i18n clean;
+    `test:integration` 233/233; `lint` (web-ext) same 2 pre-existing
+    warnings, 0 errors; manifest unchanged; `playwright test` 140/144
+    passed, 4 skipped, 0 failed. Found and fixed 3 collateral test breaks
+    from moving code out of popup.js: `copy-no-side-effects-966.test.mjs`
+    (asserted the copy-safe PROCESS_URL shape against `POPUP_SOURCE`, now
+    `OPTIONS_SOURCE`), `options-surfaced-prefs.test.mjs` (split one
+    "renders breakdown unconditionally" test in two — the per-page one
+    stays on popup.js, the per-history-entry one moved to options.js), and
+    `popup-aria-i18n.test.mjs` (removed the now-dead audit #1042
+    aria-expanded-resync describe block for the retired history
+    `<details>`/stat-tile-click wiring).
+  - No `build:content`/`build:web` rebuild at any tip: confirmed via
+    `git diff --stat origin/main..HEAD -- src/content src/rules
+    src/lib/param-breakdown-view.js src/lib/affiliates-data.js web/`
+    (empty diff) — neither bundler's inputs were touched.
+  - `git log --format='%H %an <%ae> %s' origin/main..HEAD`: all 4 commits
+    authored by `Antonio Rodriguez <yocreoquesi@gmail.com>`, no
+    Co-Authored-By / AI attribution anywhere.

@@ -37,7 +37,11 @@ import { createRequire } from "node:module";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
 const SW_SOURCE = readFileSync(resolve(root, "src/background/service-worker.js"), "utf8");
-const POPUP_SOURCE = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+// #1352: getCopySafeCleanUrl (the copy-safe PROCESS_URL sender this
+// describe block pins) moved from popup.js to options.js along with the
+// "This session" ledger it serves — the popup no longer has any copy
+// affordance that reprocesses via PROCESS_URL at all.
+const OPTIONS_SOURCE = readFileSync(resolve(root, "src/options/options.js"), "utf8");
 const require = createRequire(import.meta.url);
 // Real domain rules — needed for a genuine "detected_foreign" result. The
 // global tracking-param table alone (used by DIRTY_URL below) never produces
@@ -111,9 +115,9 @@ function makeHarness({ domainRules = [], prefsOverrides = {} } = {}) {
 
 describe("#966 — copy-safe reprocessing skips all side effects", () => {
 
-  test("popup sends skipSideEffects:true on the copy-safe PROCESS_URL", () => {
+  test("options.js sends skipSideEffects:true on the copy-safe PROCESS_URL (#1352: moved from popup.js)", () => {
     assert.ok(
-      /type:\s*"PROCESS_URL"[^}]*skipSideEffects:\s*true/.test(POPUP_SOURCE),
+      /type:\s*"PROCESS_URL"[^}]*skipSideEffects:\s*true/.test(OPTIONS_SOURCE),
       "getCopySafeCleanUrl must send skipSideEffects:true",
     );
   });
