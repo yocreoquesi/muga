@@ -507,6 +507,29 @@ export function getLandingParamsForReferrer(referrerHostname) {
 }
 
 /**
+ * Returns the lowercased Set union of `landingParams` across EVERY
+ * REDIRECT_NETWORK_PATTERNS entry, unconditional on referrer/host — the full
+ * 11-network attribution-param family (awc, irclickid, cjevent, sscid, …).
+ *
+ * This is the reusable, source-of-truth version of the computation
+ * `remote-rules.js`'s `AFFILIATE_PARAM_GUARD` already does inline
+ * (`REDIRECT_NETWORK_PATTERNS.flatMap((n) => n.landingParams).map((p) =>
+ * p.toLowerCase())`). Consumed by `handleAffiliatePipeline` (cleaner.js) to
+ * strip these params under `stripAllAffiliates` (maintainer decision #1443:
+ * preserved by default, strippable — all 11 networks — only under
+ * `stripAllAffiliates`).
+ *
+ * @returns {Set<string>} Lowercased param names; a fresh Set on every call.
+ */
+export function getAllLandingParams() {
+  const result = new Set();
+  for (const network of REDIRECT_NETWORK_PATTERNS) {
+    for (const p of network.landingParams) result.add(p.toLowerCase());
+  }
+  return result;
+}
+
+/**
  * Returns the union of landingParams for all redirect-network entries that
  * target the given landing hostname, identified by matching the second-level
  * domain of the hostname against each entry's `id`.

@@ -82,7 +82,7 @@ export default Object.freeze({
   row_notify_label: "M'avertir lorsqu'un lien contient le tag d'affiliation de quelqu'un d'autre",
   row_notify_hint: "Affiche une notification rapide avec des options, puis disparaît automatiquement",
   row_strip_affiliates_label: "Supprimer tous les tags d'affiliation d'autres sources",
-  row_strip_affiliates_hint: "Supprime les tags d'affiliation tiers que MUGA reconnaît. Certains passeront au travers. MUGA n'ajoute jamais le sien.",
+  row_strip_affiliates_hint: "Supprime les tags d'affiliation et les ID de clic tiers que MUGA reconnaît, y compris les ID d'attribution comme awc, irclickid ou sscid. Certains passeront au travers. MUGA n'ajoute jamais le sien.",
   section_custom_params: "Paramètres de pistage personnalisés : toujours supprimer",
   cp_placeholder: "ref_code  ou  promo_id",
   entropy_score_label: "score {score}",

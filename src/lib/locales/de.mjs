@@ -82,7 +82,7 @@ export default Object.freeze({
   row_notify_label: "Mich benachrichtigen, wenn ein Link ein fremdes Affiliate-Tag hat",
   row_notify_hint: "Zeigt eine kurze Benachrichtigung mit Optionen und schließt sich danach automatisch",
   row_strip_affiliates_label: "Alle fremden Affiliate-Tags entfernen",
-  row_strip_affiliates_hint: "Entfernt die Affiliate-Tags Dritter, die MUGA erkennt. Einige werden durchrutschen. MUGA fügt nie ein eigenes hinzu.",
+  row_strip_affiliates_hint: "Entfernt die Affiliate-Tags und Klick-IDs Dritter, die MUGA erkennt, einschließlich Zuordnungs-IDs wie awc, irclickid oder sscid. Einige werden durchrutschen. MUGA fügt nie ein eigenes hinzu.",
   section_custom_params: "Benutzerdefinierte Tracking-Parameter: immer entfernen",
   cp_placeholder: "ref_code  oder  promo_id",
   entropy_score_label: "Wert {score}",

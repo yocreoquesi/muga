@@ -19,6 +19,7 @@ import {
   getRedirectNetworkPatterns,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
+  getAllLandingParams,
 } from "../../src/lib/affiliates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -297,6 +298,46 @@ describe("getLandingParamsForReferrer()", () => {
     const a = getLandingParamsForReferrer("prf.hn");
     a.add("polluted");
     const b = getLandingParamsForReferrer("prf.hn");
+    assert.ok(!b.has("polluted"));
+  });
+});
+
+describe("getAllLandingParams() — union across all 11 networks (#1443)", () => {
+  test("returns a Set", () => {
+    assert.ok(getAllLandingParams() instanceof Set);
+  });
+
+  test("contains every landingParam from every network, lowercased", () => {
+    const union = getAllLandingParams();
+    const expected = new Set(
+      REDIRECT_NETWORK_PATTERNS.flatMap((n) => n.landingParams.map((p) => p.toLowerCase())),
+    );
+    assert.deepStrictEqual([...union].sort(), [...expected].sort());
+  });
+
+  test("includes the issue's named examples: awc, cjevent, sscid", () => {
+    const union = getAllLandingParams();
+    assert.ok(union.has("awc"));
+    assert.ok(union.has("cjevent"));
+    assert.ok(union.has("sscid"));
+  });
+
+  test("includes at least one landingParam from all other 8 networks", () => {
+    const union = getAllLandingParams();
+    for (const network of REDIRECT_NETWORK_PATTERNS) {
+      for (const p of network.landingParams) {
+        assert.ok(
+          union.has(p.toLowerCase()),
+          `${network.id}'s landing param "${p}" missing from getAllLandingParams() union`,
+        );
+      }
+    }
+  });
+
+  test("returned Sets are independent across calls", () => {
+    const a = getAllLandingParams();
+    a.add("polluted");
+    const b = getAllLandingParams();
     assert.ok(!b.has("polluted"));
   });
 });

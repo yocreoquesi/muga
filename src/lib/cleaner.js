@@ -11,6 +11,7 @@ import {
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForHost,
+  getAllLandingParams,
   detectAutoInjectedTag,
   stripAutoInjectedTag,
 } from "./affiliates.js";
@@ -1293,6 +1294,34 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
         // actualKey (not pattern.param) so the surviving values keep their
         // original casing in the output (#1093 — this fix widens the SEARCH,
         // it does not rewrite the stored key's casing).
+        url.searchParams.delete(actualKey);
+        for (const val of kept) url.searchParams.append(actualKey, val);
+        if (action === "untouched") action = "cleaned";
+      }
+    }
+
+    // Step 4c (#1443 maintainer decision 2026-09-24): under stripAllAffiliates,
+    // also strip the REDIRECT_NETWORK_PATTERNS landingParams of ALL 11
+    // networks (awc, irclickid, cjevent, sscid, ...). By default (this block
+    // never runs) they stay preserved exactly as before, via getLandingPolicy
+    // in stripTrackingParams and via AFFILIATE_PARAM_GUARD refusing them from
+    // remote payloads. Deliberately NOT referrer-gated — same as the
+    // AFFILIATE_PATTERNS strip above, this fires regardless of
+    // document.referrer / getLandingPolicy().
+    for (const landingParam of getAllLandingParams()) {
+      const actualKey = findParamKeyCI(url, landingParam);
+      if (!actualKey) continue;
+      const values = url.searchParams.getAll(actualKey);
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        if (isWhitelisted(landingParam, val)) {
+          kept.push(val);
+        } else {
+          strippedAny = true;
+        }
+      }
+      if (strippedAny) {
         url.searchParams.delete(actualKey);
         for (const val of kept) url.searchParams.append(actualKey, val);
         if (action === "untouched") action = "cleaned";

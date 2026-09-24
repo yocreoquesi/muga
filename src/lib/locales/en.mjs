@@ -82,7 +82,7 @@ export default Object.freeze({
   row_notify_label: "Alert me when a link has someone else's affiliate tag",
   row_notify_hint: "Shows a quick notification with options, then auto-dismisses",
   row_strip_affiliates_label: "Remove all affiliate tags from other sources",
-  row_strip_affiliates_hint: "Removes the third-party affiliate tags MUGA recognises. Some will slip through. MUGA never adds its own.",
+  row_strip_affiliates_hint: "Removes the third-party affiliate tags and click IDs MUGA recognises, including attribution IDs like awc, irclickid or sscid. Some will slip through. MUGA never adds its own.",
   section_custom_params: "Custom tracking params: always strip",
   cp_placeholder: "ref_code  or  promo_id",
   entropy_score_label: "score {score}",

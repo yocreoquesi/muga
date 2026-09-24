@@ -56,6 +56,7 @@ export {
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
   getLandingParamsForHost,
+  getAllLandingParams,
   // affiliate-autoinject-notice: platform-auto-injected tag detection.
   AUTOINJECTOR_PATTERNS,
   getAutoInjectorForReferrer,

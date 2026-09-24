@@ -82,7 +82,7 @@ export default Object.freeze({
   row_notify_label: "リンクに他者のアフィリエイトタグがある場合に通知",
   row_notify_hint: "オプション付きの通知を表示し、その後自動的に閉じます",
   row_strip_affiliates_label: "他のソースからのアフィリエイトタグをすべて削除",
-  row_strip_affiliates_hint: "MUGAが認識できるサードパーティのアフィリエイトタグを削除します。見逃すものもあります。MUGAが独自のタグを追加することはありません。",
+  row_strip_affiliates_hint: "MUGAが認識できるサードパーティのアフィリエイトタグやクリックID (awc、irclickid、sscidなどの識別ID) を削除します。見逃すものもあります。MUGAが独自のタグを追加することはありません。",
   section_custom_params: "カスタムトラッキングパラメータ: 常に削除",
   cp_placeholder: "ref_code  または  promo_id",
   entropy_score_label: "スコア {score}",
