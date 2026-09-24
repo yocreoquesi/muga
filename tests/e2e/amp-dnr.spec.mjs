@@ -45,6 +45,22 @@ test.describe("AMP DNR redirect (#410)", () => {
     await page.close();
   });
 
+  // #1441: the shapes users actually receive. Google serves the AMP cache
+  // from a per-publisher subdomain, and viewer URLs use /v/s/.
+  for (const path of ["c", "v"]) {
+    test(`per-publisher AMP cache subdomain /${path}/s/ redirects to the publisher`, async ({ context }) => {
+      const page = await context.newPage();
+      await stubHost(page, "example.com");
+      await stubHost(page, "example-com.cdn.ampproject.org");
+
+      await page.goto(`https://example-com.cdn.ampproject.org/${path}/s/example.com/article`);
+      await page.waitForLoadState("domcontentloaded");
+
+      expect(page.url()).toBe("https://example.com/article");
+      await page.close();
+    });
+  }
+
   test("amp.* subdomain redirects to bare domain", async ({ context }) => {
     const page = await context.newPage();
     await stubHost(page, "example.com");

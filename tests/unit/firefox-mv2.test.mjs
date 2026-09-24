@@ -322,8 +322,11 @@ describe("Firefox MV2 manifest structure", () => {
 //
 // Documented exceptions (rulesets intentionally absent from MV2):
 //
-//   amp_redirect — the content script content/amp-redirect.js (run_at:
-//   document_end) is the documented Firefox fallback for AMP unwrapping.
+//   amp_redirect — on Firefox, the Google AMP shapes (google.<tld>/amp/s/ and
+//   the *.cdn.ampproject.org cache) are unwrapped by processUrl (#1441, see
+//   src/lib/amp-unwrap.js), so the blocking webRequest stripper redirects
+//   them; the content script content/amp-redirect.js (run_at: document_end)
+//   remains the fallback for a publisher's own amp. subdomain.
 //   Whether amp-redirect.json's regexSubstitution rules also work on Firefox
 //   MV2 is unverified; tracked separately. Do not remove it from this list
 //   without a confirmed live Firefox run.

@@ -188,3 +188,82 @@ describe("cleanForPreview matches what the extension actually produces (#1255)",
       "processUrl must not report a foreign-affiliate notification for a preview");
   });
 });
+
+// ── The remote channel travels in the context (#1442) ────────────────────────
+
+describe("cleanForPreview sees the signed channel's global params (#1442)", () => {
+  // Not a built-in tracker: only the remote channel strips it.
+  const REMOTE_ONLY = "taboola_click_id";
+  const URL_WITH_REMOTE = `https://example.com/x?${REMOTE_ONLY}=abc123&keep=1`;
+
+  /** Stands in for storage.getRemoteParams() (chrome.storage.local). */
+  function remoteReader(remoteParams, scopedFacts = []) {
+    let calls = 0;
+    const read = async () => {
+      calls++;
+      return { remoteParams, remoteRulesMeta: { version: 16, scopedFacts } };
+    };
+    return { read, calls: () => calls };
+  }
+
+  test("loadCleaningContext carries remoteParams and scopedFacts", async () => {
+    const resolveUrl = realRuleLoader();
+    const facts = [{ param: "_1ld", hosts: ["boosty.to"] }];
+    const { read } = remoteReader([REMOTE_ONLY], facts);
+    const ctx = await loadCleaningContext({ resolveUrl, readRemote: read });
+
+    assert.deepStrictEqual(ctx.remoteParams, [REMOTE_ONLY]);
+    assert.deepStrictEqual(ctx.scopedFacts, facts);
+  });
+
+  test("the remote half is re-read on every load (it changes; the packaged rules do not)", async () => {
+    const resolveUrl = realRuleLoader();
+    const reader = remoteReader([REMOTE_ONLY]);
+    await loadCleaningContext({ resolveUrl, readRemote: reader.read });
+    await loadCleaningContext({ resolveUrl, readRemote: reader.read });
+    assert.strictEqual(reader.calls(), 2);
+  });
+
+  test("an unreadable remote cache degrades to no remote params, not a failed context", async () => {
+    const resolveUrl = realRuleLoader();
+    const ctx = await loadCleaningContext({
+      resolveUrl,
+      readRemote: async () => { throw new Error("storage unavailable"); },
+    });
+    assert.deepStrictEqual(ctx.remoteParams, []);
+    assert.deepStrictEqual(ctx.scopedFacts, []);
+    assert.ok(ctx.domainRules.length > 0);
+  });
+
+  test("the preview strips a remote-only param exactly like the service-worker path", async () => {
+    const resolveUrl = realRuleLoader();
+    const { read } = remoteReader([REMOTE_ONLY]);
+    const ctx = await loadCleaningContext({ resolveUrl, readRemote: read });
+    // Settings/popup read prefs WITHOUT remoteParams: the SW alone merges them.
+    const prefs = { ...PREF_DEFAULTS, onboardingDone: true };
+
+    const preview = cleanForPreview(URL_WITH_REMOTE, prefs, ctx, { referrer: "" });
+
+    // The service worker's shape: getPrefsWithCache() merges remoteParams in.
+    const navigation = processUrl(
+      URL_WITH_REMOTE,
+      { ...prefs, remoteParams: [REMOTE_ONLY], notifyForeignAffiliate: false },
+      ctx.domainRules, undefined, undefined, "", ctx.pathStripRules, ctx.pathAffiliateRules,
+    );
+
+    assert.strictEqual(navigation.cleanUrl, "https://example.com/x?keep=1", "sanity: the SW path strips it");
+    assert.strictEqual(preview.cleanUrl, navigation.cleanUrl);
+    assert.ok(preview.removedTracking.includes(REMOTE_ONLY),
+      "the report body's removedParams must carry the remote param as evidence");
+  });
+
+  test("remote rules turned off on this device: the preview does not apply them", async () => {
+    const resolveUrl = realRuleLoader();
+    const { read } = remoteReader([REMOTE_ONLY]);
+    const ctx = await loadCleaningContext({ resolveUrl, readRemote: read });
+    const prefs = { ...PREF_DEFAULTS, onboardingDone: true, remoteRulesEnabled: false };
+
+    const preview = cleanForPreview(URL_WITH_REMOTE, prefs, ctx, { referrer: "" });
+    assert.strictEqual(preview.cleanUrl, URL_WITH_REMOTE);
+  });
+});

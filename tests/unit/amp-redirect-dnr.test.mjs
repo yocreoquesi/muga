@@ -91,6 +91,24 @@ describe("amp-redirect.json — ampproject.org cache (rule 101)", () => {
     const r = applyAnyRule("https://cdn.ampproject.org/c/s/example.com/article");
     assert.deepEqual(r, { ruleId: 101, redirect: "https://example.com/article" });
   });
+
+  // #1441: real AMP-cache URLs are served from a per-publisher subdomain, and
+  // viewer URLs use /v/s/. The bare-host /c/s/ form above is the legacy shape.
+  test("per-publisher subdomain /c/s/ → publisher URL", () => {
+    const r = applyAnyRule("https://www-bbc-com.cdn.ampproject.org/c/s/www.bbc.com/news/amp/x");
+    assert.deepEqual(r, { ruleId: 101, redirect: "https://www.bbc.com/news/amp/x" });
+  });
+
+  test("per-publisher subdomain /v/s/ viewer URL → publisher URL (query carried)", () => {
+    const r = applyAnyRule("https://example-com.cdn.ampproject.org/v/s/example.com/a.amp.html?amp_js_v=0.1");
+    assert.deepEqual(r, { ruleId: 101, redirect: "https://example.com/a.amp.html?amp_js_v=0.1" });
+  });
+
+  test("does not match a look-alike host or a non-cache path", () => {
+    assert.equal(applyAnyRule("https://cdn.ampproject.org.evil.example/c/s/example.com/a"), null);
+    assert.equal(applyAnyRule("https://evilcdn.ampproject.org.example/c/s/example.com/a"), null);
+    assert.equal(applyAnyRule("https://example-com.cdn.ampproject.org/v0.js"), null);
+  });
 });
 
 describe("amp-redirect.json — amp.* subdomain (rule 102)", () => {

@@ -21,6 +21,7 @@ import { shouldHonor } from "./honor-creator.js";
 import { classify as classifyParams } from "./param-classifier.js";
 import { applyPathStrip, getPathAffiliatePolicy } from "./path-rules.js";
 import { isSignedUrl } from "./signed-url.js";
+import { unwrapAmpUrl } from "./amp-unwrap.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -1139,6 +1140,20 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
       } catch {
         return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
       }
+      wrapperUnwrapped = true;
+    }
+  }
+
+  // Step 5b: Google AMP detours (#1441), gated on "Skip AMP detours". Chrome
+  // also skips these at the network layer (amp_redirect DNR ruleset); Firefox
+  // has no such ruleset, so this is what redirects them there. Runs after the
+  // wrapper unwrap so a wrapped AMP link is handled in one pass. Counts as an
+  // unwrap for the action promotion (#1439): the URL changed.
+  if (prefs.ampRedirect !== false) {
+    const ampTarget = unwrapAmpUrl(url);
+    if (ampTarget) {
+      rawUrl = ampTarget;
+      url = new URL(ampTarget);
       wrapperUnwrapped = true;
     }
   }

@@ -23,7 +23,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://cdn\\.ampproject\\.org/c/s/(.+)$",
+      "regexFilter": "^https?://(?:[a-z0-9-]+\\.)?cdn\\.ampproject\\.org/[cv]/s/(.+)$",
       "resourceTypes": ["main_frame"]
     }
   },

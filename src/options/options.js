@@ -4,7 +4,7 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams, getDomainStats, sessionStorage } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getDomainStats, sessionStorage } from "../lib/storage.js";
 import { planDomainStatsView } from "../lib/domain-stats-view.js";
 import { planSuspiciousParamsSettingsView } from "../lib/suspicious-params-view.js";
 import { planSessionHistoryView } from "../lib/session-history-view.js";
@@ -2419,6 +2419,96 @@ function initDevTools() {
 
 }
 
+/**
+ * Runs a pasted URL through the cleaner exactly as the extension would and
+ * renders the result. Shared by the Developer tools URL tester and the
+ * "Report a problem" card (#1444), so a fix to this flow lands in both.
+ *
+ * #1442: prefs come from getPrefs(), not a raw chrome.storage.sync read, so
+ * the per-device overlay (remoteRulesEnabled) applies, and the cleaning
+ * context carries the signed channel's params. Before, both surfaces cleaned
+ * without the remote channel and could call a URL clean that MUGA strips.
+ *
+ * #1255: the referrer stays "" deliberately: a URL pasted into Settings
+ * arrives from nowhere, so honor-creator has nothing to honour.
+ *
+ * @param {string} url
+ * @param {{cleanEl: HTMLElement|null, removedEl: HTMLElement|null}} els
+ * @param {() => boolean} [isStale] a superseded run stops before touching the DOM
+ * @returns {Promise<{result: object, scopedParams: string[], url: string}|null>}
+ *   null when the run went stale
+ */
+async function checkPastedUrl(url, { cleanEl, removedEl }, isStale = () => false) {
+  const prefs = await getPrefs();
+  const { loadCleaningContext, cleanForPreview } = await import("../lib/cleaning-context.js");
+  const cleaningContext = await loadCleaningContext();
+  if (isStale()) return null;
+
+  const result = cleanForPreview(url, prefs, cleaningContext, { referrer: "" });
+  if (cleanEl) cleanEl.textContent = result.cleanUrl;
+  if (removedEl) {
+    if (result.removedTracking?.length > 0) {
+      removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
+    } else if (result.cleanUrl === url) {
+      removedEl.textContent = t("dev_url_clean", _currentLang);
+    } else {
+      removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
+    }
+  }
+
+  // #1229: resolved here so the report click handler stays synchronous. A
+  // failure degrades to "no scoped params", the report exactly as it was
+  // before this existed.
+  let scopedParams = [];
+  try {
+    scopedParams = scopedParamsForHost(new URL(url).hostname, cleaningContext.scopedFacts);
+  } catch {
+    scopedParams = [];
+  }
+  return { result, scopedParams, url };
+}
+
+/**
+ * Reveals a report button bound to one checked URL. The button is re-read by
+ * id and replaced by a clone, so repeated checks never accumulate listeners
+ * and a previous run's node is never reused.
+ *
+ * @param {string} buttonId
+ * @param {string} includeCheckboxId opt-in full-URL checkbox for this card
+ * @param {string} url
+ * @param {{result: object, scopedParams: string[]}} checked
+ * @returns {boolean} whether a button was wired
+ */
+function wireReportButton(buttonId, includeCheckboxId, url, { result, scopedParams }) {
+  const currentBtn = document.getElementById(buttonId);
+  if (!currentBtn) return false;
+  const newBtn = currentBtn.cloneNode(true);
+  currentBtn.parentNode.replaceChild(newBtn, currentBtn);
+  newBtn.hidden = false;
+
+  newBtn.addEventListener("click", () => {
+    try {
+      const hostname = new URL(url).hostname;
+      const includeCheckbox = document.getElementById(includeCheckboxId);
+      const body = buildBrokenSiteReportBody({
+        url,
+        includeFullUrl: includeCheckbox?.checked === true,
+        hostname,
+        version: chrome.runtime.getManifest().version,
+        browser: navigator.userAgent,
+        action: result.action,
+        removedParams: result.removedTracking,
+        scopedParams,
+      });
+      const title = encodeURIComponent(`[URL Report] ${hostname}`);
+      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
+    } catch {
+      // Invalid URL, ignore
+    }
+  });
+  return true;
+}
+
 /** Tests a URL against the cleaner and displays results. */
 async function testUrl() {
   const input = document.getElementById("dev-url-input").value.trim();
@@ -2439,68 +2529,14 @@ async function testUrl() {
   if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
   if (!input) return;
   try {
-    const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-    const { loadCleaningContext, cleanForPreview } = await import("../lib/cleaning-context.js");
-    // #1255: this used to pass three of eight arguments -- no path rules and no
-    // referrer -- so the URL tester answered a different question from the one
-    // the extension answers. The referrer stays "" deliberately: a URL typed
-    // into Settings arrives from nowhere, so honor-creator has nothing to
-    // honour, and cleanForPreview says that explicitly rather than by omission.
-    const cleaningContext = await loadCleaningContext();
-    const result = cleanForPreview(input, prefs, cleaningContext, { referrer: "" });
-    cleanEl.textContent = result.cleanUrl;
-    if (result.removedTracking?.length > 0) {
-      removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
-    } else if (result.cleanUrl === input) {
-      removedEl.textContent = t("dev_url_clean", _currentLang);
-    } else {
-      removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
-    }
+    const checked = await checkPastedUrl(input, { cleanEl, removedEl });
     // #858: use hidden attribute to reveal result (no inline style)
     resultDiv.hidden = false;
 
-    // #1229: resolved here rather than in the click handler, for the same
-    // reason as the popup's — the handler stays synchronous. A failure degrades
-    // to "no scoped params", the report exactly as it was before.
-    let scopedParams = [];
-    try {
-      const { remoteRulesMeta } = await getRemoteParams();
-      scopedParams = scopedParamsForHost(new URL(input).hostname, remoteRulesMeta?.scopedFacts);
-    } catch {
-      scopedParams = [];
-    }
-
-    // Show report button after results (clone to avoid listener accumulation)
-    if (reportBtn) {
-      const newBtn = reportBtn.cloneNode(true);
-      reportBtn.parentNode.replaceChild(newBtn, reportBtn);
-      newBtn.hidden = false;
-
-      // Opt-in full-URL checkbox row (unchecked by default — hostname-only
-      // stays the default report contract).
-      const includeUrlRow = document.getElementById("url-report-include-url-row");
-      if (includeUrlRow) includeUrlRow.hidden = false;
-
-      newBtn.addEventListener("click", () => {
-        try {
-          const hostname = new URL(input).hostname;
-          const includeCheckbox = document.getElementById("url-report-include-url");
-          const body = buildBrokenSiteReportBody({
-            url: input,
-            includeFullUrl: includeCheckbox?.checked === true,
-            hostname,
-            version: chrome.runtime.getManifest().version,
-            browser: navigator.userAgent,
-            action: result.action,
-            removedParams: result.removedTracking,
-            scopedParams,
-          });
-          const title = encodeURIComponent(`[URL Report] ${hostname}`);
-          window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
-        } catch {
-          // Invalid URL, ignore
-        }
-      });
+    // Opt-in full-URL checkbox row (unchecked by default — hostname-only
+    // stays the default report contract).
+    if (wireReportButton("dev-url-report-btn", "url-report-include-url", input, checked) && includeUrlRow) {
+      includeUrlRow.hidden = false;
     }
   } catch (e) {
     cleanEl.textContent = t("dev_url_error", _currentLang) + " " + e.message;
@@ -2511,11 +2547,13 @@ async function testUrl() {
 }
 
 /**
- * Wires the Settings-reachable "Report a problem" flow (#1353). Deliberately
- * NOT a call into testUrl()/initDevTools() above: this card is ungated and
- * lives in its own section, with its own `report-url-*` ids, distinct from
- * the QA tester's `dev-url-*` ids (unique-id guard,
- * tests/unit/settings-activity-domain-stats.test.mjs). It mirrors the same
+ * Wires the Settings-reachable "Report a problem" flow (#1353). Not a call
+ * into testUrl()/initDevTools() above: this card is ungated and lives in its
+ * own section, with its own `report-url-*` ids, distinct from the QA tester's
+ * `dev-url-*` ids (unique-id guard,
+ * tests/unit/settings-activity-domain-stats.test.mjs). Both cards share the
+ * clean + render step (checkPastedUrl) and the report binding
+ * (wireReportButton), so a fix lands in both (#1444). It has the same
  * shape (paste a URL, run it through the cleaner, then report) because
  * Settings has no current-tab context the way the popup does — there is no
  * "this page" to report on without asking the user which URL they mean.
@@ -2567,68 +2605,16 @@ function initReportFlow() {
     if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
 
     try {
-      const prefs = await chrome.storage.sync.get(PREF_DEFAULTS);
-      const { loadCleaningContext, cleanForPreview } = await import("../lib/cleaning-context.js");
-      // Referrer stays "" deliberately, same as testUrl(): a URL pasted into
-      // Settings arrives from nowhere, so honor-creator has nothing to honour.
-      const cleaningContext = await loadCleaningContext();
-      if (isStale()) return;
-      const result = cleanForPreview(url, prefs, cleaningContext, { referrer: "" });
-      if (cleanEl) cleanEl.textContent = result.cleanUrl;
-      if (removedEl) {
-        if (result.removedTracking?.length > 0) {
-          removedEl.textContent = t("dev_url_removed", _currentLang).replace("%s", result.removedTracking.join(", "));
-        } else if (result.cleanUrl === url) {
-          removedEl.textContent = t("dev_url_clean", _currentLang);
-        } else {
-          removedEl.textContent = t("dev_url_action", _currentLang).replace("%s", result.action);
-        }
-      }
+      // The shared check (#1444) bails out, before writing any result, when
+      // this run was superseded during its awaits.
+      const checked = await checkPastedUrl(url, { cleanEl, removedEl }, isStale);
+      if (!checked) return;
       if (resultDiv) resultDiv.hidden = false;
 
-      // #1229: resolved here so the click handler stays synchronous. A
-      // failure degrades to "no scoped params" — the report exactly as it
-      // was before this existed.
-      let scopedParams = [];
-      try {
-        const { remoteRulesMeta } = await getRemoteParams();
-        scopedParams = scopedParamsForHost(new URL(url).hostname, remoteRulesMeta?.scopedFacts);
-      } catch {
-        scopedParams = [];
-      }
-      if (isStale()) return;
-
-      // Re-read the button: a previous run may already have replaced the
-      // node captured before the awaits.
-      const currentBtn = document.getElementById("report-url-report-btn");
-      if (currentBtn) {
-        // Clone to avoid listener accumulation across repeated checks,
-        // same as testUrl().
-        const newBtn = currentBtn.cloneNode(true);
-        currentBtn.parentNode.replaceChild(newBtn, currentBtn);
-        newBtn.hidden = false;
-        if (includeUrlRow) includeUrlRow.hidden = false;
-
-        newBtn.addEventListener("click", () => {
-          try {
-            const hostname = new URL(url).hostname;
-            const includeCheckbox = document.getElementById("report-url-include-url");
-            const body = buildBrokenSiteReportBody({
-              url,
-              includeFullUrl: includeCheckbox?.checked === true,
-              hostname,
-              version: chrome.runtime.getManifest().version,
-              browser: navigator.userAgent,
-              action: result.action,
-              removedParams: result.removedTracking,
-              scopedParams,
-            });
-            const title = encodeURIComponent(`[URL Report] ${hostname}`);
-            window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
-          } catch {
-            // Invalid URL, ignore
-          }
-        });
+      // wireReportButton re-reads the button by id: a previous run may
+      // already have replaced the node captured before the awaits.
+      if (wireReportButton("report-url-report-btn", "report-url-include-url", url, checked) && includeUrlRow) {
+        includeUrlRow.hidden = false;
       }
     } catch (e) {
       if (cleanEl) cleanEl.textContent = "";
