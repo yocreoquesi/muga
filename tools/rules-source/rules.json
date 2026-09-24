@@ -792,7 +792,7 @@
       },
       "shopping.naver.com": {
         "emitStripParams": true,
-        "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking."
+        "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking. nclid/sm/sca_esv/n_query/n_rank/n_ad/n_cid/n_match added (2026-09-25 network-layer fix): already in the parent naver.com entry's stripParams (its own AdGuard anchor covers this subdomain — not widening), but the DNR generator's one-rule-per-host handoff excludes this host from naver.com's rule, so these must be carried directly here or they are silently never stripped at the network layer."
       },
       "slickdeals.net": {
         "emitStripParams": true,
@@ -1160,7 +1160,7 @@
       },
       "www.nicovideo.jp": {
         "emitStripParams": true,
-        "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `at` is not global (generic name, high collision risk elsewhere)."
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `at` is not global (generic name, high collision risk elsewhere). `ref` added (2026-09-25 network-layer fix): AdGuard's `||nicovideo.jp^$removeparam=ref` anchor already covers this subdomain — not widening — and the DNR generator's one-rule-per-host handoff excludes this host from the parent `nicovideo.jp` rule, so `ref` must be carried directly on this entry or it is silently never stripped at the network layer (see tests/unit/dnr-rules-sync.test.mjs's superset invariant test)."
       },
       "hotosena.com": {
         "emitStripParams": true,
@@ -3861,6 +3861,14 @@
     {"scope":"shopping.naver.com","param":"adid","action":"strip"},
     {"scope":"shopping.naver.com","param":"nv_chnl","action":"strip"},
     {"scope":"shopping.naver.com","param":"nv_src","action":"strip"},
+    {"scope":"shopping.naver.com","param":"nclid","action":"strip"},
+    {"scope":"shopping.naver.com","param":"sm","action":"strip"},
+    {"scope":"shopping.naver.com","param":"sca_esv","action":"strip"},
+    {"scope":"shopping.naver.com","param":"n_query","action":"strip"},
+    {"scope":"shopping.naver.com","param":"n_rank","action":"strip"},
+    {"scope":"shopping.naver.com","param":"n_ad","action":"strip"},
+    {"scope":"shopping.naver.com","param":"n_cid","action":"strip"},
+    {"scope":"shopping.naver.com","param":"n_match","action":"strip"},
     {"scope":"slickdeals.net","param":"q","action":"preserve"},
     {"scope":"slickdeals.net","param":"sort","action":"preserve"},
     {"scope":"slickdeals.net","param":"page","action":"preserve"},
@@ -4266,6 +4274,7 @@
     {"scope":"websearch.rakuten.co.jp","param":"ref","action":"strip","pathPrefixes":["/Web"]},
     {"scope":"www.baidu.com","param":"eqid","action":"strip","pathPrefixes":["/link"]},
     {"scope":"www.nicovideo.jp","param":"at","action":"strip"},
+    {"scope":"www.nicovideo.jp","param":"ref","action":"strip"},
     {"scope":"hotosena.com","param":"landing","action":"strip"},
     {"scope":"announcements.bybit.com","param":"pid","action":"strip"},
     {"scope":"app.5-delivery.ru","param":"pid","action":"strip"},

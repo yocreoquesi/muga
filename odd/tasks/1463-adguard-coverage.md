@@ -445,3 +445,66 @@ Live smoke-tested against the real upstream list
 T1's structural exclusions (guard/denylist/landingParams/prefixes) plus the
 seeded `ADJUDICATED_SKIP_GLOBAL` fully account for every name in the
 original 48-entry global-missing measurement.
+
+**Post-T3 network-layer defect (2026-09-25, parent review) — found and fixed.**
+
+`tools/generate-rules.mjs` builds each tailored domain's DNR `removeParams`
+ONLY from that domain's OWN `domain-rules.json` entry (`TRACKING_PARAMS`
+minus its own preserves, plus its own extra strips) — it never reads an
+ANCESTOR domain's extra strips. The "one-rule-per-host" mechanism
+(`excludedRequestDomains`) correctly prevents a parent's rule from
+double-matching a more-specific tailored child, by handing the child host
+off exclusively to its own rule — but that handoff assumed the child's own
+rule was already complete. When a child is carved out of a parent whose
+anchor also covers it (e.g. AdGuard's `||nicovideo.jp^$removeparam=ref`
+covers `www.nicovideo.jp` too), the child's own rule silently drops
+whatever extra param only the parent's `domain-rules.json` entry carries —
+Chrome fires exactly one rule per request, so that param is never stripped
+at the network layer for that host (it is still caught by the JS-layer
+`getDomainParamSets` suffix-walk later, so this is a network-coverage gap,
+not a data-exposure one, but it defeats the whole purpose of pre-request
+DNR stripping).
+
+**Scanned the entire GENERATED ruleset** (not just the `ref` entries) for
+every case where a child's rule is excluded from an ancestor's rule and the
+ancestor's `removeParams` is not a subset of the child's own. Found exactly
+2 (both pre-existing, unrelated to any single #1463 area — the `ref`
+landing surfaced the first one):
+
+1. `www.nicovideo.jp` (excluded from `nicovideo.jp`'s rule) was missing
+   `ref`. Fixed: added `ref` to `www.nicovideo.jp`'s own `stripParams`.
+   Not a widening — AdGuard's `nicovideo.jp` anchor already covers this
+   subdomain by AdGuard's own `||host^` semantics; the DNR generator's
+   per-host-rule design is what required carrying it explicitly on the
+   child too.
+2. `shopping.naver.com` (excluded from `naver.com`'s rule) was missing 8
+   params already in `naver.com`'s own `stripParams`: `nclid`, `sm`,
+   `sca_esv`, `n_query`, `n_rank`, `n_ad`, `n_cid`, `n_match`. Fixed: added
+   all 8 to `shopping.naver.com`'s own `stripParams`. Same non-widening
+   rationale — `naver.com`'s anchor already covers this subdomain.
+
+Checked `shopping.naver.com`'s `preserveParams` (`query`, `nv_mid`,
+`cat_id`, `catid`, `productid`, `pagingindex`, `pagingsize`, `viewtype`,
+`sort`) for a conflict with any of the 8 added params — none.
+
+**Not in scope, flagged for awareness only:** the same scan found 6
+instances where a PATH-scoped rule (`#1326`, a different rule mechanism
+entirely — narrow `pathPrefixes` predicate, not a host-anchor) matches a
+subdomain (`ca.indeed.com`, `cc.naver.com`, `lcs.naver.com`,
+`search.naver.com`) that is NOT excluded from its ancestor's domain-profile
+rule — a potential double-match on Chrome's tie-break, but a structurally
+different bug class (path-rule vs. domain-profile-rule priority, not a
+missing-param gap) and pre-existing, unrelated to the `stripParams`
+completeness question asked here. Not touched; a maintainer decision if it
+needs its own fix.
+
+**New guard test**, extending the existing `dnr-rules-sync.test.mjs`
+(not duplicating it — that file already has the exact-match, no-double-
+match, and subdomain-aware "matches exactly one rule" tests; none of them
+checked that the ONE matching rule was COMPLETE). Added
+`"ONE-RULE-PER-HOST — excluded child's rule is a SUPERSET of every ancestor
+rule it was carved out of"`: for every profile rule with
+`excludedRequestDomains`, finds the rule that actually matches each
+excluded host and asserts its `removeParams` is a superset of the
+ancestor's. RED confirmed against the two violations above before the
+`domain-rules.json` fix, GREEN after.
