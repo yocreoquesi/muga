@@ -471,6 +471,157 @@ describe("#1228 step 3 — 28 params stay stripped at the network layer, host-an
 });
 
 /**
+ * #1228 step 4 — 8 params measured against a fresh AdGuard Filter 17 fetch
+ * and ClearURLs `data.min.json` (2026-09-24): every one was in TRACKING_PARAMS
+ * while neither upstream source ever anchors it globally, only to specific
+ * hosts. Same failure class and method as step 1/2/3.
+ *
+ * All 8 were already redundant: every anchored host already carried the
+ * param in its own `domain-rules.json` `stripParams`, so this step removes
+ * only the now-superfluous global entry (426/#1322's `AMAZON_HOST_RE` gate
+ * removal already made that per-host coverage reach the network layer for
+ * every host, not just Amazon).
+ *
+ * `content-id` is worth reading on its own: AdGuard's own broader
+ * `||amazon.*$removeparam=content-id` line is commented out in the current
+ * filter (upstream retracted it itself, same shape as `ref_` in step 3);
+ * ClearURLs' "amazon"/"amazon search" providers are the surviving anchor.
+ *
+ * `spia`, `sxsrf` and `mall_affr` have no AdGuard evidence at all (bare or
+ * anchored) in this fetch — ClearURLs alone anchors them, which the method
+ * has always accepted (either source's anchor is sufficient; see `linkid`/
+ * `ref_` in step 3 for the same single-source shape).
+ *
+ * Deliberately EXCLUDED from this step, and why (recorded so nobody re-adds
+ * them from a shallow re-read of the same raw candidate list):
+ *   - `sprefix`, `ingress` — already correctly pinned in
+ *     `PATH_ANCHORED_STAY_GLOBAL` above. `sprefix`'s only AdGuard line is
+ *     `||amazon.*&linkCode=*&tag=*&linkId=$removeparam=sprefix`, a QUERY
+ *     anchor (no `/`, so it can't even enter `pathAnchored`) narrower than
+ *     "the whole Amazon host" — host-scoping it would over-claim relative to
+ *     upstream. `ingress` has a valid `||gaming.amazon.com^` host anchor
+ *     (already covered by amazon.com's own profile, by suffix) but ALSO a
+ *     `||luna.amazon.*^` wildcard-TLD anchor with no smaller landing spot —
+ *     the exact reasoning #1324 recorded for it originally still holds.
+ *   - `linkcode`, `creativeasin`, `click_id` — `AFFILIATE_PARAM_GUARD`
+ *     members; `extraStrips` filters guard members out, so a host-anchored
+ *     entry would never reach a DNR rule at all (same as `creativeasin` in
+ *     step 1 and `click_id` in step 3).
+ *   - `pk_kwd` — ClearURLs anchors it to one example site ("vivaldi.com"),
+ *     but Piwik/Matomo is self-hosted analytics software running on
+ *     thousands of independent sites under this same param family; MUGA's
+ *     own `pk_campaign`/`pk_source`/`pk_medium`/`pk_cid` siblings stay
+ *     global for the same reason. One example deployment does not establish
+ *     host-exclusivity for a self-hosted platform's own param name.
+ *   - `spjobid`, `spmailingid`, `spreportid`, `spuserid` — same shape:
+ *     ClearURLs anchors them to "moosejaw.com" alone, but MUGA's own comment
+ *     for this family already names it "IBM Acoustic / Silverpop" (a SaaS
+ *     ESP many independent brands embed under their own domains). Held
+ *     global for the same self-hosted/SaaS-platform reasoning as `pk_kwd`.
+ *   - `tt_medium`, `tt_content` — MUGA has documented these as TikTok
+ *     params since #1228 step 3 (comment: "TikTok campaign medium/content").
+ *     The only anchor found here is ClearURLs' "twitch" provider
+ *     (`twitch.com`), which contradicts that attribution, and no AdGuard
+ *     evidence corroborates either host. Host-scoping to `twitch.tv`/
+ *     `twitch.com` on a contradicted, single, weak signal risks silently
+ *     losing coverage on the actual TikTok traffic. Left global pending a
+ *     clearer measurement.
+ *
+ * TRACKING_PARAMS: 395 -> 387.
+ */
+describe("#1228 step 4 — 8 params stay stripped at the network layer, host-anchored", () => {
+  const PARAM_ANCHORED_HOSTS_STEP4 = {
+    _encoding: AMAZON_HOSTS,
+    "content-id": AMAZON_HOSTS,
+    social_share: AMAZON_HOSTS,
+    skiptwisterog: AMAZON_HOSTS,
+    starsleft: AMAZON_HOSTS,
+    spia: AMAZON_HOSTS,
+    sxsrf: ["google.com"],
+    mall_affr: ["aliexpress.com"],
+  };
+
+  test("8 params are covered (sanity on the fixture itself)", () => {
+    assert.equal(Object.keys(PARAM_ANCHORED_HOSTS_STEP4).length, 8);
+  });
+
+  for (const [param, hosts] of Object.entries(PARAM_ANCHORED_HOSTS_STEP4)) {
+    describe(param, () => {
+      test(`"${param}" is absent from TRACKING_PARAMS`, () => {
+        assert.ok(
+          !trackingLc.has(param.toLowerCase()),
+          `"${param}" is back in TRACKING_PARAMS — it was removed by #1228 step 4 because its ` +
+            "coverage is host-anchored; either it belongs in the global list again (revert " +
+            "the removal) or it must come back out.",
+        );
+      });
+
+      for (const host of hosts) {
+        test(`"${param}" is stripped by a DNR profile rule scoped to "${host}"`, () => {
+          const rule = PROFILE_RULES.find((r) =>
+            (r.condition?.requestDomains ?? []).includes(host),
+          );
+          assert.ok(
+            rule,
+            `no DNR profile rule covers "${host}" — "${param}" would stop being stripped ` +
+              "before the request leaves the browser. Run `npm run build:rules`.",
+          );
+
+          const excluded = new Set(rule.condition?.excludedRequestDomains ?? []);
+          assert.ok(
+            !excluded.has(host),
+            `the DNR profile rule covering "${param}" on "${host}" (id ${rule.id}) excludes ` +
+              `"${host}" from itself — "${param}" would stop being stripped before the ` +
+              "request leaves the browser.",
+          );
+
+          const removeParamsLc = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+          assert.ok(
+            removeParamsLc.has(param.toLowerCase()),
+            `"${param}" is not in the removeParams of the DNR profile rule covering "${host}" ` +
+              `(id ${rule.id}) — "${param}" would stop being stripped before the request ` +
+              "leaves the browser. Run `npm run build:rules`.",
+          );
+        });
+      }
+    });
+  }
+
+  describe("deliberately excluded from step 4", () => {
+    test('"pk_kwd" remains in TRACKING_PARAMS (self-hosted Matomo/Piwik family; one anchor does not establish exclusivity)', () => {
+      assert.ok(
+        trackingLc.has("pk_kwd"),
+        '"pk_kwd" left TRACKING_PARAMS — it must stay global. It is part of the self-hosted ' +
+          "Piwik/Matomo pk_* family, deployed independently across many sites; ClearURLs " +
+          "anchoring it to one example site does not make it host-exclusive.",
+      );
+    });
+
+    for (const param of ["spjobid", "spmailingid", "spreportid", "spuserid"]) {
+      test(`"${param}" remains in TRACKING_PARAMS (IBM Acoustic / Silverpop SaaS ESP family; one anchor does not establish exclusivity)`, () => {
+        assert.ok(
+          trackingLc.has(param),
+          `"${param}" left TRACKING_PARAMS — it must stay global. It is part of the IBM ` +
+            "Acoustic / Silverpop SaaS email family, embedded by many independent sites; " +
+            "ClearURLs anchoring it to one example site does not make it host-exclusive.",
+        );
+      });
+    }
+
+    for (const param of ["tt_medium", "tt_content"]) {
+      test(`"${param}" remains in TRACKING_PARAMS (documented as TikTok; only anchor found contradicts that and is uncorroborated)`, () => {
+        assert.ok(
+          trackingLc.has(param),
+          `"${param}" left TRACKING_PARAMS — it must stay global. MUGA documents it as a ` +
+            "TikTok param; the only anchor found (ClearURLs \"twitch\" provider) contradicts " +
+            "that and has no corroborating AdGuard evidence.",
+        );
+      });
+    }
+  });
+});
+
+/**
  * #1326 slices 1+2 — ved/sca_esv/gs_lcp moved from "stays global" to a real
  * path-scoped strip on google.com.
  *

@@ -46,6 +46,18 @@ const FIXTURE_DIR = join(__dirname, "affiliate-harness", "fixtures");
 
 const TRACKING_PARAM_SET = new Set(TRACKING_PARAMS);
 
+// #1228: a param upstream anchors to one host is stripped there through that
+// host's domain-rules.json stripParams, not through the global list.
+const DOMAIN_RULES = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "src", "rules", "domain-rules.json"), "utf8"),
+);
+
+function hostStripParams(url) {
+  const host = new URL(url).hostname;
+  const rule = DOMAIN_RULES.find((r) => host === r.domain || host.endsWith(`.${r.domain}`));
+  return new Set(rule?.stripParams ?? []);
+}
+
 const PREFS = Object.freeze({
   enabled: true,
   blacklist: [],
@@ -160,10 +172,13 @@ describe("affiliate-harness — G1: redirect-host pass-through (HARD)", () => {
 
 // ── G2: Tracking-noise is universally stripped at landing (HARD) ─────────────
 //
-// For every landing sample, the params marked `strip` must be in the
-// canonical TRACKING_PARAMS list — i.e., the cleaner removes them on any
-// site. This guards against accidental removal of utm_*/fbclid/gclid
-// coverage during refactors of TRACKING_PARAMS.
+// For every landing sample, the params marked `strip` must be covered either
+// by the canonical TRACKING_PARAMS list (stripped on any site) or by the
+// landing host's own domain-rules.json stripParams (#1228: host-anchored
+// params leave the global list but stay stripped where upstream anchors
+// them). This guards against accidental removal of utm_*/fbclid/gclid
+// coverage during refactors of TRACKING_PARAMS. G3 below proves the same
+// end to end through processUrl.
 
 describe("affiliate-harness — G2: tracking noise stripped at landing (HARD)", () => {
   for (const { data } of fixtures) {
@@ -171,8 +186,8 @@ describe("affiliate-harness — G2: tracking noise stripped at landing (HARD)", 
       for (const param of sample.expected.strip) {
         test(`${data.network} landing strips ${param}`, () => {
           assert.ok(
-            TRACKING_PARAM_SET.has(param),
-            `${param} must be in TRACKING_PARAMS so the cleaner strips it on ${sample.url}`,
+            TRACKING_PARAM_SET.has(param) || hostStripParams(sample.url).has(param),
+            `${param} must be in TRACKING_PARAMS or in the landing host's stripParams so the cleaner strips it on ${sample.url}`,
           );
         });
       }
