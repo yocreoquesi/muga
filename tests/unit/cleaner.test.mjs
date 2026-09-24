@@ -1675,6 +1675,86 @@ describe("redirect-network landingParams under stripAllAffiliates (#1443)", () =
 });
 
 // ---------------------------------------------------------------------------
+// Host-anchored affiliate strip facts under stripAllAffiliates (#1463 Area 4)
+// AdGuard Filter 17 anchors these AFFILIATE_PARAM_GUARD-member params to
+// specific hosts. By default they stay preserved (guard protects them from
+// any unconditional strip). Under stripAllAffiliates, and ONLY on the exact
+// host AdGuard anchors each one to, they are stripped — same posture as the
+// #1443 landingParams strip (Step 4c), one anchor tighter.
+// ---------------------------------------------------------------------------
+describe("host-anchored affiliate strip facts under stripAllAffiliates (#1463)", () => {
+
+  test("default prefs: affid is preserved on cyberlink.com (regression pin)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=abc123",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "abc123");
+  });
+
+  test("stripAllAffiliates strips affid on cyberlink.com (its exact AdGuard anchor)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("affid"));
+    assert.equal(new URL(cleanUrl).searchParams.has("affid"), false);
+  });
+
+  test("stripAllAffiliates does NOT strip affid on an unrelated host (anchor is not widened)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://unrelated-shop.example/product?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "abc123");
+  });
+
+  test("stripAllAffiliates strips a sample from several other host-anchored facts", () => {
+    const samples = [
+      ["campid", "https://www.otto.de/p/1?campid=xyz"],
+      ["aid", "https://klook.com/activity/1?aid=xyz"],
+      ["partnerid", "https://wise.com/send?partnerid=xyz"],
+      ["cj_pid", "https://www.fanatical.com/en/bundle/1?cj_pid=xyz"],
+      ["impact_click_id", "https://www.carwow.de/angebote?impact_click_id=xyz"],
+      ["tag", "https://gaming.amazon.com/loot?tag=xyz"],
+    ];
+    for (const [param, url] of samples) {
+      const { cleanUrl } = processUrl(url, { ...PREFS, stripAllAffiliates: true });
+      assert.equal(
+        new URL(cleanUrl).searchParams.has(param),
+        false,
+        `${param} must be stripped on its exact AdGuard-anchored host`,
+      );
+    }
+  });
+
+  test("whitelist entry protects a host-anchored fact's value even under stripAllAffiliates", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=creator-value",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        whitelist: ["cyberlink.com::affid::creator-value"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "creator-value",
+      "whitelisted host-anchored fact value must survive stripAllAffiliates");
+  });
+
+  test("a subdomain of the anchored host is also covered (suffix match, same convention as domain-rules.json)", () => {
+    const { cleanUrl } = processUrl(
+      "https://sub.cyberlink.com/store/buy?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("affid"), false);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // affiliate param / tracking param collision (BUG-06)
 // ---------------------------------------------------------------------------
 describe("affiliate param / tracking param collision", () => {

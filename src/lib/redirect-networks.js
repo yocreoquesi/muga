@@ -568,3 +568,76 @@ export function getLandingParamsForHost(hostname) {
   }
   return result;
 }
+
+// ── AFFILIATE_HOST_STRIP_FACTS (#1463 Area 4) ─────────────────────────────
+//
+// AdGuard Filter 17 anchors these AFFILIATE_PARAM_GUARD-member params
+// (affiliate-network click-IDs / sub-IDs / partner-IDs) to SPECIFIC hosts —
+// never globally. By default MUGA preserves them everywhere (the guard's
+// entire purpose). Under `stripAllAffiliates`, the maintainer's #1463
+// decision is to strip each fact ONLY on the exact host AdGuard anchors it
+// to — never wider. This is one anchor tighter than the existing
+// `landingParams` strip (Step 4c, #1443), which fires on every host; a name
+// already covered by `getAllLandingParams()` is deliberately excluded here
+// (adref, cjevent, clickref, raneaid, ransiteid — already stripped
+// everywhere under stripAllAffiliates, adding a host-scoped duplicate would
+// be inert).
+//
+// Fact-major shape `{ param, hosts[] }` mirrors the signed channel's own
+// scoped-facts format (`tools/rules-source/params.json`'s `scoped` field)
+// so the existing `scopedParamsForHostname()` lookup (scoped-params.js,
+// #1409) can be reused as-is — same suffix-walk semantics
+// `getDomainParamSets()` uses for `domain-rules.json`'s host-anchored
+// `stripParams`, consistent with every other host-anchor mechanism in the
+// codebase. Never fed into DNR generation (unlike domain-rules.json) and
+// never fed into `TRACKING_PARAMS` — this table is consulted ONLY by
+// `handleAffiliatePipeline`'s stripAllAffiliates branch (cleaner.js), so it
+// cannot leak into the default (off) strip path or the network layer.
+//
+// Source: live AdGuard Filter 17 measurement (2026-09-24), cross-checked
+// against domain-rules.json's `preserveParams` for conflicts (none found)
+// and against `getAllLandingParams()` for redundancy (5 excluded, see
+// above). See odd/tasks/1463-adguard-coverage.md T4 for the full record.
+export const AFFILIATE_HOST_STRIP_FACTS = deepFreeze([
+  { param: "adj_adgroup", hosts: ["adj.st", "nesine.com", "teknosa.com"] },
+  { param: "adj_adnomia_click_id", hosts: ["adj.st"] },
+  { param: "adj_deep_link", hosts: ["adj.st"] },
+  { param: "adj_deeplink", hosts: ["adj.st"] },
+  { param: "adj_event_callback_dn2j7g_5mdnim", hosts: ["adj.st"] },
+  { param: "adj_install_callback", hosts: ["adj.st"] },
+  { param: "adjust_deeplink", hosts: ["adj.st"] },
+  { param: "af_channel", hosts: ["digital.pumb.ua"] },
+  { param: "af_id", hosts: ["allabout.co.jp"] },
+  { param: "af_lnk", hosts: ["lancasterarchery.com"] },
+  { param: "af_reengagement_window", hosts: ["getir.com"] },
+  { param: "aff_c", hosts: ["get.surfshark.net", "go.getproton.me"] },
+  { param: "aff_click_id", hosts: ["perfo.salestube.pl"] },
+  { param: "aff_id", hosts: ["cyberghostvpn.com", "get.surfshark.net"] },
+  { param: "aff_model", hosts: ["iqbroker.com"] },
+  { param: "aff_sub2", hosts: ["rdrtr.com"] },
+  { param: "aff_sub3", hosts: ["rdrtr.com"] },
+  { param: "aff_sub4", hosts: ["rdrtr.com"] },
+  { param: "aff_sub5", hosts: ["rdrtr.com"] },
+  { param: "aff_track", hosts: ["fanatical.com"] },
+  { param: "aff", hosts: ["eventbrite.ca", "myfans.jp", "smbc.co.jp"] },
+  { param: "affid", hosts: ["cyberlink.com", "flipkart.com", "newegg.com", "roboform.com"] },
+  { param: "affiliate_id", hosts: ["incogni.com"] },
+  { param: "affiliate", hosts: ["bookshop.org", "dhits.docomo.ne.jp"] },
+  { param: "aid", hosts: ["adguard-dns.io", "adguard.com", "adguard.info", "assetstore.unity.com", "klook.com", "mp.weixin.qq.com", "research-panel.jp", "stacksocial.com", "teknosa.com"] },
+  { param: "awinaffid", hosts: ["awin1.com"] },
+  { param: "campid", hosts: ["otto.de", "ottoversand.at", "teknosa.com"] },
+  { param: "cj_aid", hosts: ["fanatical.com"] },
+  { param: "cj_pid", hosts: ["fanatical.com"] },
+  { param: "click_id", hosts: ["cancanlah.com"] },
+  { param: "clickid", hosts: ["allegro.pl", "aufast.co", "iqbroker.com", "klook.com", "voyeur-house.tv"] },
+  { param: "impact_ad_id", hosts: ["carwow.de"] },
+  { param: "impact_click_id", hosts: ["carwow.de"] },
+  { param: "impact_product_sku", hosts: ["carwow.de"] },
+  { param: "partnerid", hosts: ["chitai-gorod.ru", "lotto.web.de", "wise.com"] },
+  { param: "partnerizecampaignid", hosts: ["wise.com"] },
+  { param: "partner", hosts: ["m.weathercn.com", "www.alternate.de"] },
+  { param: "refcode", hosts: ["promote.betcity.ru"] },
+  { param: "sid", hosts: ["tapatalk.com", "teknosa.com"] },
+  { param: "subid", hosts: ["tagomago.pl"] },
+  { param: "tag", hosts: ["agoda.com", "gaming.amazon.com", "japan.cnet.com"] },
+]);

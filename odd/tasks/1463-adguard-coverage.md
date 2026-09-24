@@ -106,11 +106,12 @@ rules + rules-source store + live signed channel; see
   understood; 9 host entries).
 - [x] T3 Area 3 — evaluate host-anchored `ref` (79 facts) for
   affiliate-referral risk. Route: inline (research + doc, no code).
-- [ ] T4 Area 4 — `stripAllAffiliates`-only host-anchored affiliate strip.
-  New data table + `handleAffiliatePipeline` Step 4c extension, TDD RED/GREEN,
-  bundle rebuild. Route: delegated direct if it grows past ~3 files;
-  otherwise inline (currently 1 data file + cleaner.js + tests + bundle
-  regen = 4 files, mapping/writer trigger — will delegate the write).
+- [x] T4 Area 4 — `stripAllAffiliates`-only host-anchored affiliate strip.
+  New data table (`AFFILIATE_HOST_STRIP_FACTS`, redirect-networks.js) +
+  `handleAffiliatePipeline` Step 4d extension (cleaner.js), TDD RED/GREEN,
+  bundle rebuild. Route: inline (I already had full context from reading
+  the #1443 Step 4c pattern; spinning up a fresh writer would have cost more
+  than it saved).
 - [ ] T5 Area 5 — `tools/adguard-global-candidates.mjs` measurement-only
   report + workflow, mirroring `anchored-only-globals.mjs`. Route: delegated
   direct (new tool + workflow + test = 3+ files).
@@ -184,22 +185,25 @@ Specific findings:
   name/version/OS/device), no vendor confirmed. **SKIP — no evidence.**
 
 Beyond the ~15 named candidates, the full 48-entry global-missing list also
-contains: (a) the Area 2 generic names (handled in T2/T3), and (b) a cluster
-of redirect-network click-IDs not literally in `AFFILIATE_PARAM_GUARD` but
-structurally identical to guard members already there (`awc`, `irclickid`,
-`irgwc` ARE already guard members and are correctly excluded from global by
-design — they show as "missing from TRACKING_PARAMS" only because they were
-never meant to be there). The rest of this cluster — `cjevent`, `cjdata`
-(CJ Affiliate), `admitad_uid` (Admitad), `raneaid`, `ranmid`, `ransiteid`
-(Rakuten Affiliate Network), `sscid` (ShareASale — same family as the `u`
-incident, #1212/#1217), `tduid` (TradeDoubler — explicitly moved OUT of the
-global strip list in #695 specifically because "required-at-landing means
-it MUST NOT be in the universal strip", see `affiliate-guard.mjs`) — are
-all redirect-network attribution click-IDs. **SKIP all — landing any of
-these globally would strip a real network's attribution universally,
-exactly the ADR-0005 catastrophic path. Recommend a maintainer decide
-whether any belong in `AFFILIATE_PARAM_GUARD` / `REDIRECT_NETWORK_PATTERNS`
-instead — out of this task's scope (never touch guard membership).**
+contains: (a) the Area 2 generic names (handled in T2/T3), and (b) a large
+cluster of redirect-network click-IDs. Checked `getAllLandingParams()`
+directly (not just `AFFILIATE_PARAM_GUARD` membership) and found MOST of
+this cluster is **already fully handled**, not a gap: `a8`, `admitad_uid`,
+`awc`, `cjdata`, `cjevent`, `clickref` (confirming the `x-clickref`
+adjacency finding above), `iclid`, `irclickid`, `irgwc`, `raneaid`,
+`ranmid`, `ransiteid`, `sscid`, `tduid`, and `wt_mc` are ALL already in
+`REDIRECT_NETWORK_PATTERNS.landingParams` (`getAllLandingParams()`) — they
+are correctly excluded from `TRACKING_PARAMS` (global, unconditional) BY
+DESIGN, and already stripped under `stripAllAffiliates` via the existing
+Step 4c (#1443), exactly the conditional-strip treatment this class of
+param needs. **No action needed — already correct, not a gap.** This also
+retroactively confirms the `wt_mc` SKIP above needed no hedging: it was
+never a plain global candidate, it is a landing param.
+
+The only names in this cluster with NEITHER a `TRACKING_PARAMS` entry NOR a
+`landingParams` entry, and no vendor evidence found: `clckid`, `client_m`,
+`eurl`, `taid` (distinct from the already-covered `ttaid`). **SKIP — no
+evidence, no existing mechanism, do not land speculatively.**
 
 Remaining ungrouped: `a8` (plausibly A8.net, a major Japanese affiliate
 network's own click id — affiliate-adjacent, SKIP), `eurl` (no evidence,
@@ -280,6 +284,29 @@ establish safety for a host with evidence, do not land it"), **all 79 are
 left unlanded** and returned to the maintainer as a single decision item —
 see the final report.
 
-**T4 — see commit for `handleAffiliatePipeline` Step 4c extension.**
+**T4 — landed.** `AFFILIATE_HOST_STRIP_FACTS` (`src/lib/redirect-networks.js`,
+fact-major `{param, hosts[]}`, reusing the existing `scopedParamsForHostname`
+suffix-walk lookup from #1409) covers 41 distinct guard-member params / 78
+host-facts. 5 params from the original 46-param candidate set (`adref`,
+`cjevent`, `clickref`, `raneaid`, `ransiteid`) were excluded because they are
+ALREADY in `getAllLandingParams()` — already stripped everywhere under
+`stripAllAffiliates` via the existing Step 4c (#1443); a host-scoped
+duplicate would be inert. No `preserveParams` conflicts found on any of the
+41 params' anchored hosts (checked). `handleAffiliatePipeline` gained a new
+Step 4d, same shape as Step 4c but host-scoped via `scopedParamsForHostname`,
+respecting the whitelist exactly like every other affiliate-strip step. RED
+confirmed (2 of 6 new `cleaner.test.mjs` assertions failed pre-implementation),
+then GREEN. `npm run build:content` + `npm run build:web` regenerated
+(cleaner.js and redirect-networks.js both feed the content bundle);
+`compile:rules` produced NO diff (confirms this never leaks into the DNR/
+`TRACKING_PARAMS` pipeline, as required).
+
+One residual risk flagged, not blocking: `sid` is landed at `tapatalk.com`
+and `teknosa.com` under `AFFILIATE_PARAM_GUARD`'s Booking/travel category,
+but `sid` is also a classic generic session-id name. The strip only fires
+under the opt-in `stripAllAffiliates` preference (default off) and only on
+these 2 exact AdGuard-anchored hosts, so the blast radius is small, but a
+maintainer with product knowledge of tapatalk.com's session model may want
+to double-check this one specifically.
 
 **T5 — see commit for `tools/adguard-global-candidates.mjs`.**
