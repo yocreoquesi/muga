@@ -118,7 +118,7 @@ describe("#1390 — Recent activity: Clear button and clear-on-disable", () => {
     const block = optionsJs.slice(idx, idx + 700);
     const confirmAt = block.indexOf("showConfirm(");
     const clearAt = block.indexOf("chrome.storage.local.set({ attributionLedger:");
-    const renderAt = block.indexOf("renderActivityLedgerPanel(_currentLang)");
+    const renderAt = block.indexOf("renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled)");
     assert.ok(confirmAt > -1, "Clear button must confirm before wiping data");
     assert.ok(clearAt > confirmAt, "Clear button must clear attributionLedger after confirming");
     assert.ok(renderAt > clearAt, "Clear button must re-render the panel after clearing");
@@ -129,7 +129,11 @@ describe("#1390 — Recent activity: Clear button and clear-on-disable", () => {
     assert.ok(idx !== -1, "the attribution-ledger toggle handler must exist");
     const block = optionsJs.slice(idx, idx + 700);
     assert.match(block, /chrome\.storage\.local\.set\(\{\s*attributionLedger:/, "must clear the attributionLedger storage key when disabled");
-    assert.match(block, /renderActivityLedgerPanel\(_currentLang\)/, "must re-render the panel after the toggle changes");
+    // b5-3 audit fix: the handler passes its own `enabled` (the checkbox's
+    // own just-changed `checked` value) into the render call, rather than
+    // letting the render re-read chrome.storage.sync — see the toggle-race
+    // test below and the fix note on renderActivityLedgerPanel's definition.
+    assert.match(block, /renderActivityLedgerPanel\(_currentLang,\s*enabled\)/, "must re-render the panel after the toggle changes, passing the known in-memory enabled state");
   });
 
   test("renderActivityLedgerPanel shows a distinct disabled empty state, not ledger_empty, when attributionLedgerEnabled is false", () => {
@@ -150,10 +154,26 @@ describe("#1390 — Recent activity: Clear button and clear-on-disable", () => {
     );
   });
 
-  test("the init() call site is unchanged: renderActivityLedgerPanel(_currentLang) with no extra argument", () => {
-    // Regression guard: the gating must be read INSIDE the function (e.g. via
-    // getPrefs()), never by widening this call's signature.
-    assert.match(optionsJs, /await renderActivityLedgerPanel\(_currentLang\)\s*\.catch\(\s*\(err\)\s*=>\s*\{/);
+  test("b5-3 audit fix: renderActivityLedgerPanel accepts the known enabled state instead of always re-reading storage", () => {
+    // Superseded invariant: this test used to pin that init() called
+    // renderActivityLedgerPanel(_currentLang) with NO extra argument, on the
+    // theory that the enabled/disabled gating must always be read INSIDE the
+    // function via getPrefs(). That was the actual bug: the attribution-ledger
+    // toggle handler writes the pref via bindToggle()'s async setPrefs() call
+    // and re-renders in the same tick, so a getPrefs() read inside the render
+    // could resolve before that write lands and see the stale (pre-toggle)
+    // value, showing "recording is on" copy for a moment right after the user
+    // turned it off. The fix widens the signature so every call site that
+    // already knows the current value (the toggle handler has the checkbox's
+    // own `checked`; init and the Clear button have the freshly-loaded
+    // `prefs` object) passes it directly, and getPrefs() is only a fallback
+    // for a hypothetical caller with no better source.
+    assert.match(
+      optionsJs,
+      /async function\s+renderActivityLedgerPanel\s*\(\s*lang,\s*attributionLedgerEnabledOverride\s*\)/,
+      "renderActivityLedgerPanel must accept an explicit override parameter",
+    );
+    assert.match(optionsJs, /await renderActivityLedgerPanel\(_currentLang,\s*prefs\.attributionLedgerEnabled\)\s*\.catch\(\s*\(err\)\s*=>\s*\{/);
   });
 });
 

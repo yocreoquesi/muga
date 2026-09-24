@@ -535,7 +535,7 @@ async function init() {
     const enabled = document.getElementById("attribution-ledger").checked;
     prefs.attributionLedgerEnabled = enabled;
     (enabled ? Promise.resolve() : chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } }))
-      .then(() => renderActivityLedgerPanel(_currentLang))
+      .then(() => renderActivityLedgerPanel(_currentLang, enabled))
       .catch((err) => console.error("[MUGA] attribution-ledger toggle:", err));
   });
   // Aggressive privacy (referer-beacon-privacy PR 4): opt-in, off by default.
@@ -598,7 +598,7 @@ async function init() {
   // their own; this .catch() is defense in depth for anything that still
   // escapes (e.g. a throw before either try/catch, such as in
   // _applyActivityScopeView or updateActivitySectionVisibility).
-  await renderActivityLedgerPanel(_currentLang).catch((err) => {
+  await renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled).catch((err) => {
     console.error("[MUGA] renderActivityLedgerPanel failed:", err);
   });
   // #1390: explicit "Clear" button next to the Recent-activity panel, so
@@ -611,7 +611,7 @@ async function init() {
     try {
       await chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } });
       showToast(t("activity_ledger_clear_done", _currentLang));
-      await renderActivityLedgerPanel(_currentLang);
+      await renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled);
     } catch (err) { console.error("[MUGA] clear recent activity:", err); }
   });
   // Toolbar badge toggle (#910). Default ON; controls the native
@@ -1266,7 +1266,7 @@ function _buildRecentActivityRow(row, lang) {
  * exactly as it did before this move; "This session" has no recording gate
  * at all).
  */
-async function renderActivityLedgerPanel(lang) {
+async function renderActivityLedgerPanel(lang, attributionLedgerEnabledOverride) {
   const panel = document.getElementById("activity-ledger-panel");
   if (!panel) return;
 
@@ -1279,13 +1279,29 @@ async function renderActivityLedgerPanel(lang) {
 
   // #1390: whether recording is on decides which empty state "Recent
   // activity" shows below (ledger_empty vs. the distinct
-  // ledger_disabled_empty) — read once here so it's available to that
-  // branch without a second storage round trip.
+  // ledger_disabled_empty).
+  //
+  // b5-3 audit fix: the attribution-ledger toggle's own change handler
+  // (below) writes the pref via bindToggle()'s setPrefs() call AND calls
+  // this render in the same tick. That underlying sync-storage write
+  // resolves asynchronously, so a getPrefs() read here could complete
+  // BEFORE the write lands and return the stale (pre-toggle) value —
+  // rendering "recording is on" copy for a moment right after the user
+  // just turned it off.
+  // Callers that already know the current value (the toggle handler has
+  // the checkbox's own `checked` state; the Clear button and init both
+  // have the freshly-loaded `prefs` object) pass it directly so this never
+  // depends on write timing. Only a caller with no better source falls
+  // back to reading storage.
   let attributionLedgerEnabled = true;
-  try {
-    attributionLedgerEnabled = (await getPrefs()).attributionLedgerEnabled !== false;
-  } catch (err) {
-    console.error("[MUGA] renderActivityLedgerPanel prefs read:", err);
+  if (attributionLedgerEnabledOverride !== undefined) {
+    attributionLedgerEnabled = attributionLedgerEnabledOverride !== false;
+  } else {
+    try {
+      attributionLedgerEnabled = (await getPrefs()).attributionLedgerEnabled !== false;
+    } catch (err) {
+      console.error("[MUGA] renderActivityLedgerPanel prefs read:", err);
+    }
   }
   if (isStale()) return;
 

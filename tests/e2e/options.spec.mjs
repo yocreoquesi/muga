@@ -478,3 +478,37 @@ test.describe("Options — unified Activity ledger panel (#1352)", () => {
     await expect(page.locator("#activity-recent-list")).toBeEmpty();
   });
 });
+
+test.describe("Options — attribution-ledger toggle race (audit b5-3, part 1)", () => {
+  test("turning Recent activity off renders the disabled empty state immediately, without waiting for the pref write to land", async ({ optionsPage: page, context, extensionId }) => {
+    // Seed one Recent-activity entry so the panel starts with real rows —
+    // if the fix regresses, the list would still show these instead of the
+    // disabled empty state.
+    await seedStorage(context, extensionId, {
+      local: { attributionLedger: { events: [{ type: "clean", url: "https://example.com/?utm_source=x" }], capacity: 50 } },
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    await page.locator("#activity-scope-recent").check();
+    await expect(page.locator("#activity-recent-list .recent-activity-row")).toHaveCount(1);
+
+    // The bug: renderActivityLedgerPanel decided enabled/disabled by
+    // re-reading getPrefs() from chrome.storage.sync, racing the toggle's
+    // own bindToggle() write to that same storage. Delay the underlying
+    // sync write so the read-back is provably still stale at the moment
+    // the panel re-renders — the fix must use the in-memory toggle value
+    // instead of depending on the write's timing.
+    await page.evaluate(() => {
+      const real = chrome.storage.sync.set.bind(chrome.storage.sync);
+      chrome.storage.sync.set = (items, cb) => setTimeout(() => real(items, cb), 300);
+    });
+
+    await setCheckbox(page, "attribution-ledger", false);
+
+    // Assert well before the delayed write (300ms) could possibly land.
+    await expect(page.locator("#activity-recent-empty")).toBeVisible({ timeout: 150 });
+    await expect(page.locator("#activity-recent-empty")).toHaveText(/turned off/i);
+    await expect(page.locator("#activity-recent-list")).toBeEmpty();
+  });
+});

@@ -286,7 +286,7 @@ const BASELINE = {
   "sanitize-import.test.mjs": 43,
   "service-worker-autoinject-passthrough.test.mjs": 1,
   "session-storage-race-1097.test.mjs": 2,
-  "settings-activity-controls-relocation.test.mjs": 38, // new file, audit behaviour branch (#1398/#1390/#1392): options.html/options.js not importable as DOM in Node; pins the recording switches + Reset stats living inside Settings > Activity (not duplicated in Advanced) and the ledger-disable/Clear/re-render wiring, mirroring settings-activity-ledger-copy.test.mjs's pattern (#824)
+  "settings-activity-controls-relocation.test.mjs": 39, // 38 -> 39 (b5-3 audit fix #1): +1 source-grep assertion pinning that renderActivityLedgerPanel now accepts an explicit attributionLedgerEnabledOverride parameter, so the toggle-race fix (call sites pass the in-memory enabled state instead of the function re-reading storage) cannot regress silently (#824)
   "settings-activity-domain-stats.test.mjs": 21,
   "settings-activity-ledger-copy.test.mjs": 36,
   "settings-activity-ledger.test.mjs": 62,
