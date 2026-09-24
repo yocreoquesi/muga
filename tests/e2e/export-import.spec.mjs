@@ -51,7 +51,8 @@ test.describe("Export / Import", () => {
     expect(typeof data.blockPings).toBe("boolean");
     expect(typeof data.ampRedirect).toBe("boolean");
     expect(typeof data.unwrapRedirects).toBe("boolean");
-    expect(typeof data.paramBreakdown).toBe("boolean");
+    // #1355: paramBreakdown is retired, so it no longer exports.
+    expect(data.paramBreakdown).toBeUndefined();
     expect(typeof data.showReportButton).toBe("boolean");
     expect(typeof data.domainStats).toBe("boolean");
     expect(Array.isArray(data.blacklist)).toBe(true);
