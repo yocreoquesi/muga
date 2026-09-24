@@ -208,8 +208,8 @@ test("Firefox smoke: an allowlisted host is navigated to untouched", async () =>
 // uncleaned. Fixed by making Firefox NEVER install a remote-channel DNR rule:
 // reconcileRemoteDnrRule and mergeIntoCache (both in src, not this spec) now
 // short-circuit to a remove-only update on Firefox, and onBeforeNavigateStrip
-// folds the host-scoped facts into its own prefs.remoteParams via
-// withScopedRemoteParams (dnr-sync.js) so nothing is lost — the listener
+// hands the host-scoped facts to processUrl as prefs.remoteScopedFacts (#1409)
+// so nothing is lost — the listener
 // becomes Firefox's sole cleaning authority for the built-in list AND both
 // halves of the remote channel.
 test("Firefox smoke: remote rules install no DNR redirect rule; built-in and remote (global + scoped) params are all still stripped", async () => {
