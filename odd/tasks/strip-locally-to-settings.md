@@ -160,6 +160,57 @@ covering the popup's suspicious-params panel and update/run it if found
 (known flake: `tests/unit/sign-rules.test.mjs` under full-suite load, passes
 isolated).
 
+## Native review fixes (R3, 2026-09-24)
+
+Native review of slices A+B was APPROVED (acknowledged), with three
+advisories fixed here, as one commit on top of `feat/1351-b-settings-panel`:
+
+1. **R3-render-interleave** (`renderSuspiciousParamsActivity`) — the
+   function cleared the list, then awaited storage twice; two overlapping
+   calls (a toggle flip mid-render, a rapid re-render after import) could
+   interleave rows or leave the list empty under a fresher call. Fixed with
+   the same run-counter/`isStale()` pattern `initReportFlow`'s
+   `runReportUrlCheck` already uses (#1353), module-scoped since this
+   function (unlike that one) is called from several independent sites.
+   The list is now cleared+filled exactly once, after every await, only if
+   the call is still the latest one.
+2. **R3-strip-silent-noop** (`buildStripGloballyButton`) — the click
+   handler returned silently on a duplicate, an aborted write, or any
+   non-"max" error; the button was never disabled while the write was in
+   flight; and the row's `isPromoted` state came from a render-time
+   snapshot that can go stale by click time. Fixed: `btn.disabled = true`
+   before the write starts; an explicit `error === "duplicate"` branch now
+   flips to the done state (visible feedback) instead of a no-op; a new
+   `strip_globally_error` toast (all 7 locales) covers a genuine failure,
+   re-enabling the button so the user can retry; the whole handler is
+   wrapped in try/catch. `withSyncMutation` already re-reads the current
+   list right before `addUserCustomRule` decides, so the fresh-read
+   requirement was structural already — the bug was the missing feedback
+   on that fresh check's "duplicate" outcome, not a stale read.
+3. **R3-tautological-deeplink-tests** — the Report-upstream deep-link URL
+   construction (the 50-domain cap, the never-leak-hashes/timestamps
+   contract) lived inline in `buildReportUpstreamButton`, and its test
+   rebuilt the SAME logic independently rather than calling the real code.
+   Extracted into `src/lib/tracker-flag-deeplink.js`
+   (`buildTrackerFlagDeepLinkUrl`, RED-first unit test), and
+   `options-report-upstream-button.test.mjs` now only pins that
+   `buildReportUpstreamButton` calls the real helper.
+
+RED-first observed for #1 (structural run-counter/isStale assertions failed
+against the pre-fix source) and #3 (`ERR_MODULE_NOT_FOUND` before the
+module existed). #2 is a click-handler behavioural fix without a
+runnable-before-fix harness (options.js is browser-only, same constraint as
+every other options.js test in this suite); its structural tests were
+written and verified against the fixed code, then checked to genuinely
+distinguish old from new behaviour (each assertion targets a specific
+line/branch the old code lacked).
+
+Because slice C did not touch `options.js` (it only retires the popup), this
+fix commit lands on B and slice C is rebased onto the new B tip with
+conflicts limited to the shared locale files and the two Settings-side test
+files C also touches (adding back its own deferred assertions) — resolved
+by keeping both slices' additions.
+
 ## Progress
 
 - 2026-09-24: Explored issue #1351 (with comments — none), ADR-0011, the
@@ -173,3 +224,6 @@ isolated).
   current-tab gap above and stopped to ask before implementing the panel.
 - 2026-09-24: Maintainer decision received (recorded above). Proceeding with
   T3 onward.
+- 2026-09-24: Native review R3 fixes landed on `feat/1351-b-settings-panel`
+  (see "Native review fixes" above). Checks at the new B tip: `npm test`
+  8228/8228 pass + 1 skip; `lint:js`/`typecheck`/`check:i18n` clean.

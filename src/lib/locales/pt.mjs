@@ -42,6 +42,7 @@ export default Object.freeze({
   strip_locally_active_count: "{n} regras personalizadas ativas",
   strip_globally_btn: "Remover em todos os sites",
   strip_globally_btn_done: "Removido em todos os sites ✓",
+  strip_globally_error: "Não foi possível salvar. Tente novamente.",
   suspicious_params_settings_hint: "Ao remover um destes parâmetros, ele é removido em todos os sites, não apenas onde foi detectado.",
   suspicious_params_settings_empty: "Nenhum parâmetro suspeito sinalizado ainda.",
   dev_tools_disclosure: "Ferramentas para inspecionar a própria MUGA",

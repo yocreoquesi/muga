@@ -13,6 +13,7 @@ import {
   defaultHasher as frequencyHasher,
 } from "../lib/cross-site-frequency.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
+import { buildTrackerFlagDeepLinkUrl } from "../lib/tracker-flag-deeplink.js";
 import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
@@ -675,6 +676,15 @@ async function renderDomainStatsActivity(domainStatsEnabled) {
   }
 }
 
+// Overlapping renderSuspiciousParamsActivity calls (a toggle flip while a
+// previous render is still awaiting storage, a rapid re-render after
+// import) must not interleave their rows into the same list. Same
+// run-counter/isStale() pattern as initReportFlow's runReportUrlCheck
+// (#1353) — module-scoped here because, unlike that closure-local counter,
+// this function is called from several independent call sites (init, the
+// toggle listener, the import handler) rather than from one initializer.
+let _suspiciousParamsRenderRun = 0;
+
 /**
  * Renders the cross-site FREQUENCY subgroup of the popup's old
  * "Suspicious params" section, plus its two actions ("Strip everywhere",
@@ -685,6 +695,13 @@ async function renderDomainStatsActivity(domainStatsEnabled) {
  * "current page" once opened from Settings); this subgroup is storage-backed
  * and has no such dependency. Gated on crossSiteFrequencyEnabled exactly as
  * the popup gated it before.
+ *
+ * #1351 R3-render-interleave: the list is cleared and filled only ONCE,
+ * after every await has resolved AND this call is still the latest one —
+ * never at the top of the function. Clearing early (then awaiting storage)
+ * let a superseded call's rows land after a fresher call's rows, or leave
+ * the list empty while a fresher call was still in flight.
+ *
  * @param {object} prefs Merged preferences object (mutated in place after
  *   a successful "Strip everywhere" click, mirroring the popup's old
  *   in-flight-prefs pattern, so a follow-up render sees the new state).
@@ -699,7 +716,8 @@ async function renderSuspiciousParamsActivity(prefs) {
   updateActivitySectionVisibility();
   if (!enabled) return;
 
-  list.replaceChildren();
+  const run = ++_suspiciousParamsRenderRun;
+  const isStale = () => run !== _suspiciousParamsRenderRun;
 
   // Also fetch the raw tracker state once so "Report upstream" can extract
   // its privacy-bounded payload (domains, entropyAvg, value-hash count)
@@ -714,6 +732,7 @@ async function renderSuspiciousParamsActivity(prefs) {
       try { trackerState = await adapter.get(); } catch { /* best-effort */ }
     }
   } catch (err) { console.error("[MUGA] suspicious-params tracker:", err); }
+  if (isStale()) return;
 
   let submittedParams = {};
   try {
@@ -722,9 +741,14 @@ async function renderSuspiciousParamsActivity(prefs) {
     });
     submittedParams = stored.submittedParams || {};
   } catch { /* best-effort; dedup is UX, not a privacy gate */ }
+  if (isStale()) return;
 
   const userCustomRules = Array.isArray(prefs.userCustomRules) ? prefs.userCustomRules : [];
   const { empty, rows } = planSuspiciousParamsSettingsView({ frequencyFlags, userCustomRules, submittedParams });
+
+  // Every async dependency above has now resolved and this run is still
+  // current: safe to clear and (re)fill the list in one shot.
+  list.replaceChildren();
 
   if (empty) {
     const emptyEl = document.createElement("p");
@@ -789,29 +813,63 @@ function buildStripGloballyButton(paramName, isPromoted, prefs) {
   btn.textContent = t("strip_globally_btn", _currentLang);
   btn.setAttribute("aria-label", t("strip_globally_btn", _currentLang));
   btn.addEventListener("click", async () => {
-    // Shares the lock userCustomRules already serializes through
-    // (addEntry/removeEntry below), so this can never race a manual list
-    // edit or a removal on the receipt list (#928 pattern).
-    let error;
-    const next = await withSyncMutation(withListLock, "userCustomRules", [], (list) => {
-      const result = addUserCustomRule(list, paramName);
-      error = result.error;
-      return result.error ? undefined : result.list;
-    });
-
-    if (error === "max") {
-      showToast(t("list_full", _currentLang));
-      return;
-    }
-    if (next === undefined) return; // duplicate or aborted — nothing changed
-
-    prefs.userCustomRules = next;
-    btn.textContent = t("strip_globally_btn_done", _currentLang);
-    btn.classList.add("is-done");
+    // #1351 R3-strip-silent-noop: disable immediately so a double-click (or
+    // a click while a previous click on this same button is still in
+    // flight) can never fire two overlapping writes. Re-enabled on any
+    // outcome the user can retry from (cap reached, unexpected failure);
+    // left disabled on the two terminal outcomes (already promoted,
+    // successfully promoted).
     btn.disabled = true;
-    btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
-    // Keep the ungated receipt list (#user-custom-rules) in sync.
-    renderList("user-custom-rules-items", next, "userCustomRules");
+    try {
+      // Shares the lock userCustomRules already serializes through
+      // (addEntry/removeEntry below), so this can never race a manual list
+      // edit or a removal on the receipt list (#928 pattern). withSyncMutation
+      // reads the CURRENT list right before deciding — addUserCustomRule's
+      // duplicate/cap check is never against the stale render-time
+      // `isPromoted` snapshot this button was built with.
+      let error;
+      const next = await withSyncMutation(withListLock, "userCustomRules", [], (list) => {
+        const result = addUserCustomRule(list, paramName);
+        error = result.error;
+        return result.error ? undefined : result.list;
+      });
+
+      if (error === "max") {
+        showToast(t("list_full", _currentLang));
+        btn.disabled = false;
+        return;
+      }
+
+      if (error === "duplicate") {
+        // Fresh read found this already promoted — not a failure, just a
+        // stale render-time isPromoted=false. Flip to the same done state
+        // a fresh render would have shown, instead of leaving an active
+        // button with no feedback at all.
+        btn.textContent = t("strip_globally_btn_done", _currentLang);
+        btn.classList.add("is-done");
+        btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+        return;
+      }
+
+      if (next === undefined) {
+        // Read/write failure inside withSyncMutation (neither duplicate nor
+        // max) — a genuine failure, not a silent no-op.
+        showToast(t("strip_globally_error", _currentLang));
+        btn.disabled = false;
+        return;
+      }
+
+      prefs.userCustomRules = next;
+      btn.textContent = t("strip_globally_btn_done", _currentLang);
+      btn.classList.add("is-done");
+      btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+      // Keep the ungated receipt list (#user-custom-rules) in sync.
+      renderList("user-custom-rules-items", next, "userCustomRules");
+    } catch (err) {
+      console.error("[MUGA] strip-everywhere save:", err);
+      showToast(t("strip_globally_error", _currentLang));
+      btn.disabled = false;
+    }
   });
   return btn;
 }
@@ -844,29 +902,10 @@ function buildReportUpstreamButton(paramName, reportedDate, trackerState) {
   btn.setAttribute("aria-label", t("report_upstream_btn", _currentLang));
   btn.addEventListener("click", async () => {
     try {
-      let entry = null;
-      if (trackerState && typeof trackerState === "object") {
-        const entries = trackerState.params && typeof trackerState.params === "object"
-          ? trackerState.params
-          : trackerState;
-        entry = entries && entries[paramName] ? entries[paramName] : null;
-      }
-      const domains = entry && Array.isArray(entry.domains) ? entry.domains : [];
-      const distinctValues = entry && Array.isArray(entry.values) ? entry.values.length : 0;
-      const entropyAvg = entry && typeof entry.entropyAvg === "number" ? entry.entropyAvg : null;
-
-      // Cap at 50 entries to stay well under GitHub's ~8 KB URL ceiling.
-      const cappedDomains = domains.slice(0, 50);
-
-      const params = new URLSearchParams();
-      params.set("template", "tracker-flag.yml");
-      params.set("paramName", paramName);
-      if (cappedDomains.length > 0) params.set("domains", cappedDomains.join("\n"));
-      if (entropyAvg !== null) params.set("entropy_score", entropyAvg.toFixed(2));
-      if (domains.length > 0) params.set("frequency_distinct_domains", String(domains.length));
-      if (distinctValues > 0) params.set("frequency_distinct_values", String(distinctValues));
-
-      const url = `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}`;
+      // #1351 R3-tautological-deeplink-tests: URL construction (including
+      // the 50-domain cap and the never-leak-hashes/timestamps contract)
+      // lives in the pure, independently-tested buildTrackerFlagDeepLinkUrl.
+      const url = buildTrackerFlagDeepLinkUrl(paramName, trackerState);
 
       // Mark submitted BEFORE opening — see the popup's original rationale:
       // the lesser evil vs. polling the GitHub API, which would break the

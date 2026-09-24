@@ -42,6 +42,7 @@ export default Object.freeze({
   strip_locally_active_count: "{n} benutzerdefinierte Regeln aktiv",
   strip_globally_btn: "Überall entfernen",
   strip_globally_btn_done: "Überall entfernt ✓",
+  strip_globally_error: "Konnte nicht gespeichert werden. Bitte erneut versuchen.",
   suspicious_params_settings_hint: "Das Entfernen eines dieser Parameter löscht ihn auf jeder Website, nicht nur dort, wo er erkannt wurde.",
   suspicious_params_settings_empty: "Noch keine verdächtigen Parameter markiert.",
   dev_tools_disclosure: "Werkzeuge, um MUGA selbst zu inspizieren",

@@ -138,3 +138,69 @@ describe("options.js — #section-activity visibility is per-panel, not tied to 
     }
   });
 });
+
+// ── 4. No render interleave (#1351 R3-render-interleave) ───────────────────
+//
+// renderSuspiciousParamsActivity awaits storage twice before it has enough
+// data to render. Two overlapping calls (a toggle flip while a previous
+// call is still awaiting, or a rapid re-render after import) must not
+// interleave their rows: the SAME run-counter/isStale() pattern
+// initReportFlow's runReportUrlCheck already uses (#1353) applies here, and
+// the list must only be cleared+filled once every await has resolved and
+// the call is still the latest one — never at the top of the function,
+// which would let a superseded call leave the list empty (or race a
+// fresher call's rows) while it was still awaiting storage.
+
+describe("options.js — renderSuspiciousParamsActivity does not interleave overlapping renders", () => {
+  function getRenderFnBody() {
+    const start = optionsJs.indexOf("async function renderSuspiciousParamsActivity(");
+    assert.ok(start !== -1, "renderSuspiciousParamsActivity must exist");
+    // Find this function's closing brace by bracket depth, not the first
+    // "\n}" (the function body itself contains several nested blocks).
+    let depth = 0;
+    let i = optionsJs.indexOf("{", start);
+    const bodyStart = i;
+    for (; i < optionsJs.length; i++) {
+      if (optionsJs[i] === "{") depth++;
+      else if (optionsJs[i] === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    return optionsJs.slice(bodyStart, i + 1);
+  }
+
+  test("uses a module-scoped run counter with an isStale() guard", () => {
+    assert.match(optionsJs, /let\s+_suspiciousParamsRenderRun\s*=\s*0\s*;/);
+    const body = getRenderFnBody();
+    assert.match(body, /const\s+run\s*=\s*\+\+_suspiciousParamsRenderRun\s*;/);
+    assert.match(body, /const\s+isStale\s*=\s*\(\)\s*=>\s*run\s*!==\s*_suspiciousParamsRenderRun\s*;/);
+  });
+
+  test("checks isStale() after each of the two storage awaits, before touching the DOM", () => {
+    const body = getRenderFnBody();
+    const isStaleChecks = [...body.matchAll(/if\s*\(isStale\(\)\)\s*return\s*;/g)];
+    assert.ok(isStaleChecks.length >= 2, "expected at least 2 isStale() bail-outs (one per await boundary)");
+  });
+
+  test("clears and fills the list only ONCE, after every await, not at the top of the function", () => {
+    const body = getRenderFnBody();
+    const replaceIdx = body.indexOf("list.replaceChildren()");
+    assert.ok(replaceIdx !== -1, "must clear the list somewhere");
+    // Every `await` in the function must occur BEFORE the clear+fill point —
+    // i.e. the clear happens only once every async dependency has resolved.
+    const awaitIndices = [...body.matchAll(/\bawait\b/g)].map((m) => m.index);
+    assert.ok(awaitIndices.length > 0, "sanity: the function must await something");
+    for (const idx of awaitIndices) {
+      assert.ok(idx < replaceIdx, "every await must occur before list.replaceChildren()");
+    }
+    // And the LAST isStale() bail-out must occur between the last await and
+    // the clear, so a superseded run never reaches it.
+    const lastAwait = Math.max(...awaitIndices);
+    const isStaleIndices = [...body.matchAll(/if\s*\(isStale\(\)\)\s*return\s*;/g)].map((m) => m.index);
+    assert.ok(
+      isStaleIndices.some((idx) => idx > lastAwait && idx < replaceIdx),
+      "an isStale() check must sit between the last await and the list clear",
+    );
+  });
+});

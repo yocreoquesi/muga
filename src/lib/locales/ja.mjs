@@ -42,6 +42,7 @@ export default Object.freeze({
   strip_locally_active_count: "{n}個のカスタムルールが有効",
   strip_globally_btn: "すべてのサイトで削除",
   strip_globally_btn_done: "すべてのサイトで削除済み ✓",
+  strip_globally_error: "保存できませんでした。もう一度お試しください。",
   suspicious_params_settings_hint: "これらのパラメータを削除すると、検出されたサイトだけでなく、すべてのサイトで削除されます。",
   suspicious_params_settings_empty: "疑わしいパラメータはまだありません。",
   dev_tools_disclosure: "MUGA 自体を調べるためのツール",

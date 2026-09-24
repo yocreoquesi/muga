@@ -35,7 +35,15 @@
  *     UX state, not synced behaviour)
  *   - the "already-reported" label is rendered in place of the button
  *     when a paramName has been submitted previously from this install
- *   - simulated deep-link does NOT leak value-hashes or timestamps
+ *
+ * #1351 R3-tautological-deeplink-tests: the actual URL construction (the
+ * 50-domain cap, the never-leak-hashes/timestamps contract) is no longer
+ * reconstructed here — it moved into the pure, independently-tested
+ * `buildTrackerFlagDeepLinkUrl` (src/lib/tracker-flag-deeplink.js,
+ * tests/unit/tracker-flag-deeplink.test.mjs). Re-implementing that logic in
+ * this file would only prove the test agrees with itself, not that
+ * options.js's real behaviour is correct. This file now only pins that
+ * options.js actually calls the real helper.
  */
 
 import { test } from "node:test";
@@ -86,18 +94,16 @@ test("options.js declares a 'report-upstream-btn' class for the per-row button",
   assert.match(optionsSrc, /report-upstream-btn/);
 });
 
-test("options.js uses the tracker-flag.yml form template URL pattern (#521, not #537 legacy)", () => {
+test("options.js's report-upstream path documents the tracker-flag.yml template (#521, not #537 legacy)", () => {
   const optionsSrc = readFileSync(resolve(root, "src/options/options.js"), "utf8");
-  assert.match(
-    optionsSrc,
-    /github\.com\/yocreoquesi\/muga\/issues\/new/,
-    "options.js must build the canonical GitHub issue deep-link URL",
-  );
-  assert.match(
-    optionsSrc,
-    /tracker-flag\.yml/,
-    "options.js must reference the tracker-flag.yml form template (post-#521)",
-  );
+  // #1351 R3: the URL is built by buildTrackerFlagDeepLinkUrl now (asserted
+  // below and in tracker-flag-deeplink.test.mjs), not reconstructed here —
+  // this only pins that buildReportUpstreamButton's own docblock still
+  // names the template it delegates to, so the two never drift apart silently.
+  const fnDocIdx = optionsSrc.lastIndexOf("/**", optionsSrc.indexOf("function buildReportUpstreamButton("));
+  assert.ok(fnDocIdx !== -1, "buildReportUpstreamButton must have a docblock");
+  const docSlice = optionsSrc.slice(fnDocIdx, optionsSrc.indexOf("function buildReportUpstreamButton("));
+  assert.match(docSlice, /tracker-flag\.yml/, "the docblock must name the tracker-flag.yml form template (post-#521)");
   const upstreamFnIdx = optionsSrc.indexOf("function buildReportUpstreamButton");
   assert.ok(upstreamFnIdx > 0, "buildReportUpstreamButton function must exist");
   const fnSlice = optionsSrc.slice(upstreamFnIdx, upstreamFnIdx + 3000);
@@ -143,72 +149,35 @@ test("options.html exposes the 'forget reported params' button for the dedup res
   assert.match(html, /id="forget-reported-params-btn"/);
 });
 
-// ── Behaviour: simulate the deep-link construction end-to-end ────────────────
+// ── options.js actually calls the real helper (#1351 R3) ───────────────────
 //
-// Under the post-#521 contract the prefill DOES carry the first-party
-// domain list (the form template asks for it; the user reviews the form on
-// github.com before clicking Submit). What MUST NEVER appear:
-//
-//   - raw value HASHES (the tracker only stores hashes — they're not
-//     reconstructable, but they're still random bytes that have no place
-//     in a public issue)
-//   - timestamps (`firstSeen`, `lastSeen`)
-//   - the full URL the user was on
-//
-// This test simulates the URL options.js builds and asserts both the
-// positive prefill fields and the negative leak guards.
+// The deep-link URL construction itself (the 50-domain cap, the
+// never-leak-hashes/timestamps contract) is tested directly against the
+// real implementation in tests/unit/tracker-flag-deeplink.test.mjs. What
+// this file needs to pin is that options.js's click handler actually calls
+// that helper instead of reconstructing the logic inline again.
 
-test("simulated deep-link URL carries the documented prefill fields and nothing else", () => {
-  const SECRET_HASH_A = "deadbeef".repeat(8);
-  const SECRET_HASH_B = "feedface".repeat(8);
-  const SECRET_HASH_C = "0badc0de".repeat(8);
-  const FIRST_SEEN_TS = 1717181718;
-  const LAST_SEEN_TS  = 1717181819;
-
-  const trackerEntry = {
-    domains: ["news.example.com", "shop.example.org"],
-    values: [SECRET_HASH_A, SECRET_HASH_B, SECRET_HASH_C],
-    firstSeen: FIRST_SEEN_TS,
-    lastSeen: LAST_SEEN_TS,
-    count: 7,
-    entropyAvg: 4.85,
-  };
-
-  // Mirror the URL construction in buildReportUpstreamButton.
-  const params = new URLSearchParams();
-  params.set("template", "tracker-flag.yml");
-  params.set("paramName", "uid");
-  params.set("domains", trackerEntry.domains.slice(0, 50).join("\n"));
-  params.set("entropy_score", trackerEntry.entropyAvg.toFixed(2));
-  params.set("frequency_distinct_domains", String(trackerEntry.domains.length));
-  params.set("frequency_distinct_values", String(trackerEntry.values.length));
-  const url = `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}`;
-
-  // Positive: documented prefill fields present.
-  assert.match(url, /template=tracker-flag\.yml/);
-  assert.match(url, /paramName=uid/);
-  assert.ok(url.includes(encodeURIComponent("news.example.com")));
-  assert.ok(url.includes(encodeURIComponent("shop.example.org")));
-  assert.match(url, /entropy_score=4\.85/);
-  assert.match(url, /frequency_distinct_domains=2/);
-  assert.match(url, /frequency_distinct_values=3/);
-
-  // Negative: hashes and timestamps must NOT survive into the URL.
-  for (const leak of [SECRET_HASH_A, SECRET_HASH_B, SECRET_HASH_C, String(FIRST_SEEN_TS), String(LAST_SEEN_TS)]) {
-    assert.ok(!url.includes(leak),
-      `deep-link URL must not contain "${leak}"`);
-    assert.ok(!url.includes(encodeURIComponent(leak)),
-      `deep-link URL must not contain encoded form of "${leak}"`);
-  }
+test("options.js imports buildTrackerFlagDeepLinkUrl from the pure deep-link module", () => {
+  const optionsSrc = readFileSync(resolve(root, "src/options/options.js"), "utf8");
+  assert.match(
+    optionsSrc,
+    /import\s*\{\s*buildTrackerFlagDeepLinkUrl\s*\}\s*from\s*["']\.\.\/lib\/tracker-flag-deeplink\.js["']/,
+    "options.js must import buildTrackerFlagDeepLinkUrl from ../lib/tracker-flag-deeplink.js",
+  );
 });
 
-test("domains list is capped at 50 entries to stay under GitHub's URL ceiling", () => {
-  const domains = [];
-  for (let i = 0; i < 60; i++) domains.push(`d${i}.example.test`);
-
-  const capped = domains.slice(0, 50);
-  assert.equal(capped.length, 50);
-  assert.equal(capped[0], "d0.example.test");
-  assert.equal(capped[49], "d49.example.test");
-  assert.ok(!capped.includes("d50.example.test"));
+test("buildReportUpstreamButton's click handler calls the real helper, not a reimplementation", () => {
+  const optionsSrc = readFileSync(resolve(root, "src/options/options.js"), "utf8");
+  const fnStart = optionsSrc.indexOf("function buildReportUpstreamButton(");
+  assert.ok(fnStart !== -1);
+  const fnEnd = optionsSrc.indexOf("\nfunction ", fnStart + 1);
+  const body = optionsSrc.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+  assert.match(
+    body,
+    /const\s+url\s*=\s*buildTrackerFlagDeepLinkUrl\(\s*paramName\s*,\s*trackerState\s*\)\s*;/,
+    "the click handler must call buildTrackerFlagDeepLinkUrl(paramName, trackerState)",
+  );
+  // The old inline URLSearchParams construction must be gone from here —
+  // it now lives ONLY in tracker-flag-deeplink.js.
+  assert.doesNotMatch(body, /new URLSearchParams\(\)/, "URL construction must not be duplicated inline anymore");
 });

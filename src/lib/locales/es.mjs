@@ -42,6 +42,7 @@ export default Object.freeze({
   strip_locally_active_count: "{n} reglas personalizadas activas",
   strip_globally_btn: "Eliminar en todos los sitios",
   strip_globally_btn_done: "Eliminado en todos los sitios ✓",
+  strip_globally_error: "No se ha podido guardar. Inténtalo de nuevo.",
   suspicious_params_settings_hint: "Al eliminar uno de estos parámetros, se quita en todos los sitios, no solo donde se detectó.",
   suspicious_params_settings_empty: "Todavía no se ha marcado ningún parámetro sospechoso.",
   dev_tools_disclosure: "Herramientas para inspeccionar la propia MUGA",

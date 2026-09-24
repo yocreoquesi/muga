@@ -47,6 +47,7 @@ export default Object.freeze({
   // now-orphaned keys once the popup no longer needs them.
   strip_globally_btn: "Strip everywhere",
   strip_globally_btn_done: "Stripped everywhere ✓",
+  strip_globally_error: "Couldn't save that. Try again.",
   suspicious_params_settings_hint: "Removing one of these strips it on every site, not just where it was seen.",
   suspicious_params_settings_empty: "No suspicious params flagged yet.",
   dev_tools_disclosure: "Tools for inspecting MUGA itself",

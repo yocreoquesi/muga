@@ -112,6 +112,72 @@ test("options.js surfaces the cap error to the user instead of failing silently"
   );
 });
 
+// ── #1351 R3-strip-silent-noop ──────────────────────────────────────────────
+//
+// Review findings: the click-handler returned silently on duplicate/aborted/
+// non-max outcomes, never disabled the button while the write was in
+// flight, and the button's initial state came from a render-time isPromoted
+// snapshot that can be stale by click time.
+
+test("strip_globally_error: i18n key exists with en + es non-empty (visible failure feedback, #1351 R3)", () => {
+  const k = TRANSLATIONS.strip_globally_error;
+  assert.ok(k, "strip_globally_error must exist");
+  assert.ok(typeof k.en === "string" && k.en.length > 0, "en non-empty");
+  assert.ok(typeof k.es === "string" && k.es.length > 0, "es non-empty");
+});
+
+function getStripHandlerBody() {
+  const optionsSrc = readFileSync(resolve(root, "src/options/options.js"), "utf8");
+  const fnStart = optionsSrc.indexOf("function buildStripGloballyButton(");
+  assert.ok(fnStart !== -1, "buildStripGloballyButton must exist");
+  const clickStart = optionsSrc.indexOf('btn.addEventListener("click"', fnStart);
+  assert.ok(clickStart !== -1, "the button must have a click handler");
+  // Bracket-depth scan from the handler's opening brace to its matching close.
+  let depth = 0;
+  let i = optionsSrc.indexOf("{", clickStart);
+  const bodyStart = i;
+  for (; i < optionsSrc.length; i++) {
+    if (optionsSrc[i] === "{") depth++;
+    else if (optionsSrc[i] === "}") { depth--; if (depth === 0) break; }
+  }
+  return optionsSrc.slice(bodyStart, i + 1);
+}
+
+test("disables the button before attempting the write, so a double-click can't fire twice", () => {
+  const body = getStripHandlerBody();
+  const disableIdx = body.indexOf("btn.disabled = true");
+  const mutationIdx = body.indexOf("withSyncMutation(");
+  assert.ok(disableIdx !== -1, "must set btn.disabled = true somewhere");
+  assert.ok(mutationIdx !== -1, "must call withSyncMutation");
+  assert.ok(disableIdx < mutationIdx, "btn.disabled = true must happen BEFORE the write starts");
+});
+
+test("handles a 'duplicate' outcome by flipping to the done state instead of a silent no-op", () => {
+  const body = getStripHandlerBody();
+  assert.match(body, /error\s*===\s*"duplicate"/, "must explicitly branch on the 'duplicate' error");
+  const dupIdx = body.indexOf('error === "duplicate"');
+  const afterDup = body.slice(dupIdx, dupIdx + 400);
+  assert.match(afterDup, /t\("strip_globally_btn_done",\s*_currentLang\)/, "the duplicate branch must render the done-state copy, not stay silent");
+});
+
+test("re-enables the button and shows strip_globally_error on a genuine failure (neither duplicate nor max)", () => {
+  const body = getStripHandlerBody();
+  assert.match(body, /t\("strip_globally_error",\s*_currentLang\)/, "a genuine failure must surface strip_globally_error");
+  const errorIdx = body.indexOf('t("strip_globally_error"');
+  assert.ok(errorIdx !== -1);
+  const around = body.slice(Math.max(0, errorIdx - 200), errorIdx + 200);
+  assert.match(around, /btn\.disabled\s*=\s*false/, "a failure must re-enable the button so the user can retry");
+});
+
+test("wraps the write in try/catch so an unexpected throw still re-enables the button and reports failure", () => {
+  const body = getStripHandlerBody();
+  assert.match(body, /catch\s*\(err\)\s*\{/, "the click handler must catch unexpected errors");
+  const catchIdx = body.search(/catch\s*\(err\)\s*\{/);
+  const catchBody = body.slice(catchIdx, catchIdx + 300);
+  assert.match(catchBody, /strip_globally_error/);
+  assert.match(catchBody, /btn\.disabled\s*=\s*false/);
+});
+
 test("options.js keeps the ungated receipt list (#user-custom-rules-items) in sync after a successful strip", () => {
   const optionsSrc = readFileSync(resolve(root, "src/options/options.js"), "utf8");
   const start = optionsSrc.indexOf("function buildStripGloballyButton(");
