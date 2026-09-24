@@ -90,14 +90,15 @@ export async function migrateStatsToLocal() {
 }
 
 /**
- * One-time migration (ADR-0004 phase 5, #701): renames `privacyProxyEnabled` →
- * `followShortenersEnabled` in chrome.storage.sync. Safe to call on every
+ * One-time migration (ADR-0004 phase 5, #701; final keys since #1418): renames `privacyProxyEnabled` →
+ * `resolveShortenersOnClick` + `resolveShortenersOnHover` in chrome.storage.sync. Safe to call on every
  * startup. Exits immediately if the old key is absent.
  *
  * If the user had `privacyProxyEnabled = true` they were using native shortener
  * resolution (the default since phase 4 / 2.2.0-beta.1), so we preserve their
- * intent by setting `followShortenersEnabled = true`. A false value needs no
- * migration because `followShortenersEnabled` already defaults to false.
+ * intent by turning on both click and hover resolution. A false value needs no
+ * write: the new prefs' own defaults apply, which is what the old two-step
+ * chain through `followShortenersEnabled` ended in as well.
  */
 export async function migrateLegacyProxyPref() {
   try {
@@ -112,11 +113,18 @@ export async function migrateLegacyProxyPref() {
 
     const updates = {};
     if (data.privacyProxyEnabled === true) {
-      // Preserve user's intent: they had the feature enabled.
-      updates.followShortenersEnabled = true;
+      // Preserve user's intent: they had the feature enabled. Written straight
+      // to the FINAL keys (#1418), not to the intermediate
+      // followShortenersEnabled: runOneTimeMigrations runs every migration
+      // concurrently, so migrateFollowShortenersSplit read storage before this
+      // write landed and the split only happened on the next worker spawn.
+      // These are exactly the values that split produces for `true`.
+      updates.resolveShortenersOnClick = true;
+      updates.resolveShortenersOnHover = true;
     }
-    // Write followShortenersEnabled only when migrating a `true` value; a false
-    // or absent old value needs no write (the new key already defaults to false).
+    // Write only when migrating a `true` value. A false old value needs no
+    // write: the two-step chain never wrote one either (followShortenersEnabled
+    // defaulted to false and was absent), so the new prefs' own defaults apply.
     // The old key is removed unconditionally below regardless.
     if (Object.keys(updates).length > 0) {
       await new Promise((resolve, reject) =>
