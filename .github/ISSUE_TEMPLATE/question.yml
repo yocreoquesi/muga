@@ -1,0 +1,13 @@
+name: Question
+description: Ask how something works, or raise a design question about MUGA.
+labels:
+  - question
+  - needs-triage
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What would you like to know? If it is about a specific site, name the site, not a full URL with personal data in it.
+    validations:
+      required: true
