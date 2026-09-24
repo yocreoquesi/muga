@@ -87,10 +87,6 @@
       "category": "generic"
     },
     {
-      "param": "_encoding",
-      "category": "platform_noise"
-    },
-    {
       "param": "_fid",
       "category": "platform_noise"
     },
@@ -476,10 +472,6 @@
     {
       "param": "cmpid",
       "category": "generic"
-    },
-    {
-      "param": "content-id",
-      "category": "platform_noise"
     },
     {
       "param": "creativeasin",
@@ -932,10 +924,6 @@
       "category": "email"
     },
     {
-      "param": "mall_affr",
-      "category": "platform_noise"
-    },
-    {
       "param": "mc_cid",
       "category": "email"
     },
@@ -1283,10 +1271,6 @@
       "category": "email"
     },
     {
-      "param": "skiptwisterog",
-      "category": "platform_noise"
-    },
-    {
       "param": "sms_click",
       "category": "email"
     },
@@ -1299,15 +1283,7 @@
       "category": "email"
     },
     {
-      "param": "social_share",
-      "category": "platform_noise"
-    },
-    {
       "param": "source",
-      "category": "platform_noise"
-    },
-    {
-      "param": "spia",
       "category": "platform_noise"
     },
     {
@@ -1363,15 +1339,7 @@
       "category": "ads"
     },
     {
-      "param": "starsleft",
-      "category": "platform_noise"
-    },
-    {
       "param": "store_ref",
-      "category": "platform_noise"
-    },
-    {
-      "param": "sxsrf",
       "category": "platform_noise"
     },
     {
