@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
 import { TRACKING_PARAMS, REDIRECT_NETWORK_PATTERNS } from "../../src/lib/affiliates.js";
+import { HOT_PATH_REQUIRED } from "../../src/lib/hot-path-strip.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -208,16 +209,10 @@ test("irclickid, cjevent, awc are NOT in TRACKING_PARAMS — inverse attribution
 //
 // Every entry here must also be in TRACKING_PARAMS/landingParams (the #815 test
 // above already enforces that for whatever is in STRIP). This list is the
-// reverse contract: these MUST be present.
-const HOT_PATH_REQUIRED = [
-  // UTM core
-  "utm_source", "utm_medium", "utm_campaign",
-  // Highest-volume click IDs
-  "fbclid", "gclid", "msclkid", "ttclid",
-  // Shopify storefront family (search/collection context), re-added
-  // client-side via replaceState as the user browses a store.
-  "_pos", "_ss", "_psq", "_sid", "_fid",
-];
+// reverse contract: these MUST be present. Promoted (#1228 anchored-only-
+// globals) to src/lib/hot-path-strip.js as HOT_PATH_REQUIRED — imported
+// above rather than redeclared, so this test and the monthly detection
+// tool can never drift apart.
 
 test("high-volume, client-side-reinjectable params stay on the hot-path STRIP subset", () => {
   const stripKeys = new Set(extractStripKeys(extractStripTable(FILES[0])));

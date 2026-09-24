@@ -133,19 +133,58 @@ function normalizeHost(raw) {
  * regex or a host wildcard — reused here rather than re-derived, so the two
  * validators cannot silently drift apart.
  *
+ * #1228 (anchored-only-globals) addition: `bareNames` collects the subset of
+ * `params` seen on at least one line that is truly unanchored — neither a
+ * `||host^` anchor nor a `,domain=` modifier naming at least one positive
+ * host. This is the piece `params` itself cannot answer, because `params`
+ * deliberately unions bare AND host-anchored names (see above) for the
+ * importer's own new-candidate-merge purpose. A line whose only `domain=`
+ * hosts are negated (`domain=~a|~b`, "everywhere except these few sites") is
+ * broader than the exceptions it lists, so its names land in `bareNames`
+ * too, mirroring `parseAdguardRemoveparamWithDomains`'s same call in
+ * `tools/import-candidates/triage.mjs`. A `||host^ ... ,domain=...` line
+ * (the ambiguous both-anchors case, `scopeSkipped`) and a path/query anchor
+ * (`pathAnchorSkipped`) are NOT bare — both are still anchored to something,
+ * just not usefully so — so neither contributes to `bareNames`.
+ *
+ * #1228 R3 review addition: `bareRegexes` is the regex-spec counterpart to
+ * `bareNames` — every UNANCHORED `$removeparam=/.../ ` line (a regex spec
+ * with no `||host^` anchor and no `,domain=` naming a positive host) is
+ * compiled into a full-match, case-insensitive `RegExp` tested against a
+ * bare param name (same `^(?:pattern)$` convention `extractClearurlsScopeFacts`
+ * uses for ClearURLs' own globalRules fragments), so a name AdGuard strips
+ * everywhere via regex is never mistaken for anchored-only. `skipped` still
+ * counts EVERY regex/negation spec exactly as before — this is additive,
+ * same as `bareNames`/`scoped`/`pathAnchored` above. An anchored or
+ * path/query-anchored regex spec, and every `~negation` spec, is left
+ * exactly as before (no change): only an unanchored regex contributes here.
+ *
+ * Full-match is deliberately conservative, not equivalent to how AdGuard's
+ * own engine applies a removeparam regex (commonly a PREFIX test, e.g.
+ * `/^at_custom/` matching `at_custom1`, `at_custom2`, ...). Wrapping in
+ * `^(?:...)$` means this only recognizes the pattern's own exact content as
+ * global evidence, so it can under-count a real prefix-style regex — never
+ * over-count one into wrongly clearing a param that is not actually
+ * globally stripped. An under-count only costs a candidate needing human
+ * triage it did not strictly need; an over-count would hide a real
+ * anchored-only candidate.
+ *
  * @param {string} text The raw filter list contents.
- * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number, pathAnchored: Array<{param: string, host: string, pathPrefix: string}> }}
+ * @returns {{ params: Set<string>, skipped: number, exceptionsSkipped: number, scoped: Array<{param: string, scope: string}>, scopeSkipped: number, pathAnchorSkipped: number, pathAnchored: Array<{param: string, host: string, pathPrefix: string}>, bareNames: Set<string>, bareRegexes: RegExp[] }}
  *   Lowercased parameter names, skip count, count of `@@` exception lines excluded from `params`,
  *   host-anchored (param, host) facts, a count of lines skipped from the scoped path because
  *   they carried both anchor forms at once (ambiguous), a count of `||`-prefixed lines
  *   anchored to a path or query rather than a whole host (excluded from both `params` and `scoped`),
- *   and the literal (param, host, pathPrefix) subset of those lines that ADR-0010's schema can
- *   actually express.
+ *   the literal (param, host, pathPrefix) subset of those lines that ADR-0010's schema can
+ *   actually express, the names seen on at least one truly unanchored line, and the compiled
+ *   regexes from every truly unanchored regex-spec line.
  */
 export function parseRemoveparamRules(text) {
   const params = new Set();
   const scoped = [];
   const pathAnchored = [];
+  const bareNames = new Set();
+  const bareRegexes = [];
   let skipped = 0;
   let exceptionsSkipped = 0;
   let scopeSkipped = 0;
@@ -171,14 +210,13 @@ export function parseRemoveparamRules(text) {
     const spec = match[1].trim();
     if (!spec) { skipped++; continue; }
 
-    // Skip regex specs and negations: those need rule-by-rule handling.
-    // NIT: skip granularity is per-spec (one whole $removeparam= value), NOT per-piece
-    // for pipe-separated multi-regex specs — a spec like "/regex1/|/regex2/" counts as 1 skip.
-    if (spec.startsWith("/") || spec.startsWith("~")) { skipped++; continue; }
-
-    // Anchor classification, computed BEFORE the name extraction below so a
-    // path/query anchor can be excluded from the global candidate pool
-    // rather than silently falling into it (#1326).
+    // Anchor classification, computed BEFORE the regex/negation check below
+    // (#1228 R3 review) so an UNANCHORED regex spec can still be classified
+    // as global evidence even though it takes the early-continue branch
+    // below rather than reaching the name-extraction path further down. Also
+    // computed before the name extraction below so a path/query anchor can
+    // be excluded from the global candidate pool rather than silently
+    // falling into it (#1326).
     // The capture stops at `/`, `?`, `&` and `=`: none can appear in a host,
     // and upstream path anchors end in `^` too (`||ca.indeed.com/viewjob^`),
     // so `[^^]*` alone let them pass as a whole host (#1357).
@@ -188,6 +226,39 @@ export function parseRemoveparamRules(text) {
     // `domain=` modifier is anchored to a path or a query, never to a whole
     // host — see the docblock above for why that must not reach `params`.
     const isPathAnchored = line.startsWith("||") && !anchorMatch && !domainMatch;
+
+    // Skip regex specs and negations: those need rule-by-rule handling.
+    // NIT: skip granularity is per-spec (one whole $removeparam= value), NOT per-piece
+    // for pipe-separated multi-regex specs — a spec like "/regex1/|/regex2/" counts as 1 skip.
+    if (spec.startsWith("/") || spec.startsWith("~")) {
+      skipped++; // UNCHANGED: every regex/negation spec still counts here, exactly as before.
+
+      // #1228 R3 review addition (additive — `skipped` above is untouched):
+      // an UNANCHORED regex spec (no `||host^`, and no `,domain=` naming at
+      // least one positive host — the same "truly unanchored" test
+      // `bareNames` above uses) strips a matching param name on EVERY site,
+      // exactly like a bare literal name does. Not landing it as global
+      // evidence would make a param AdGuard already strips everywhere via
+      // regex look "anchored-only" to `tools/anchored-only-globals.mjs`. A
+      // negation spec (`~...`) has different semantics entirely (excludes a
+      // name from a pipe-list match) and is not a regex; left untouched. A
+      // path/query-anchored regex (`isPathAnchored`) is excluded too — it is
+      // anchored to something, just not to a whole host, same as the
+      // `bareNames` logic above; `anchorMatch`/`domainMatch` alone cannot
+      // tell that case apart from a truly unanchored line.
+      if (spec.startsWith("/") && !isPathAnchored) {
+        const hasPositiveDomain = domainMatch
+          ? domainMatch[1].split("|").some((h) => {
+              const trimmed = h.trim();
+              return trimmed.length > 0 && !trimmed.startsWith("~");
+            })
+          : false;
+        if (!anchorMatch && !hasPositiveDomain) {
+          for (const regex of extractBareRegexes(spec)) bareRegexes.push(regex);
+        }
+      }
+      continue;
+    }
 
     const names = [];
     for (const piece of spec.split("|")) {
@@ -259,16 +330,112 @@ export function parseRemoveparamRules(text) {
     }
 
     if (domainMatch) {
+      let anyPositiveHost = false;
       for (const rawHost of domainMatch[1].split("|")) {
         const trimmed = rawHost.trim();
         if (!trimmed || trimmed.startsWith("~")) continue; // negated or empty
         const host = normalizeHost(trimmed);
         if (!host) continue;
+        anyPositiveHost = true;
         for (const name of names) scoped.push({ param: name, scope: host });
       }
+      // Only negated hosts (or all failed validation): the rule is broader
+      // than the exceptions it lists, so it is effectively unanchored rather
+      // than silently uncounted by both `scoped` and `bareNames`.
+      if (!anyPositiveHost) {
+        for (const name of names) bareNames.add(name);
+      }
+      continue;
     }
+
+    // Neither a ||host^ anchor nor a ,domain= modifier: truly unanchored.
+    for (const name of names) bareNames.add(name);
   }
-  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped, pathAnchored };
+  return { params, skipped, exceptionsSkipped, scoped, scopeSkipped, pathAnchorSkipped, pathAnchored, bareNames, bareRegexes };
+}
+
+// Delimited-regex-literal shape this extractor accepts: `/pattern/flags`
+// (flags optional, lowercase only — mirrors AdGuard's own Adblock Plus
+// regex modifier syntax). The whole spec is tried as ONE literal first so a
+// pattern with its own internal alternation (e.g. `/tour|campaign/`) is not
+// mistaken for two pipe-joined regexes.
+const REGEX_LITERAL_RE = /^\/(.*)\/([a-z]*)$/;
+
+/**
+ * Compiles one `/pattern/flags`-delimited piece into a full-match,
+ * case-insensitive RegExp tested against a bare param NAME (mirrors
+ * `extractClearurlsScopeFacts`'s `^(?:pattern)$` compilation of ClearURLs'
+ * own globalRules fragments, so the two sources are judged the same way).
+ * Returns null for anything that is not a complete `/.../ ` literal, or
+ * whose inner pattern is not valid JS regex syntax (AdGuard's Adblock Plus
+ * regex dialect is not guaranteed to be a JS regex subset) — unlandable
+ * rather than guessed at, the same posture `pathAnchored` extraction uses
+ * for a non-literal path.
+ *
+ * @param {string} piece
+ * @returns {RegExp|null}
+ */
+function tryCompileRegexLiteral(piece) {
+  const trimmed = piece.trim();
+  const literalMatch = REGEX_LITERAL_RE.exec(trimmed);
+  if (!literalMatch) return null;
+  try {
+    return new RegExp(`^(?:${literalMatch[1]})$`, "i");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Splits a spec on `|` characters that sit OUTSIDE a `/.../ ` delimiter
+ * pair, leaving a `|` INSIDE one alone (e.g. the alternation inside
+ * `/tour|campaign/`). A naive `spec.split("|")` cannot tell those apart —
+ * it would also shred a single regex's own internal alternation — and a
+ * naive "try the whole spec as one literal first" falls into the opposite
+ * trap: `(.*)`'s greediness happily bridges TWO complete `/.../ ` pairs
+ * joined by a real top-level `|` (`/^foo/|/^bar/`) into one nonsense
+ * pattern. This tracks delimiter state char-by-char instead of guessing
+ * from either end.
+ *
+ * @param {string} spec
+ * @returns {string[]}
+ */
+function splitOutsideRegexDelimiters(spec) {
+  const pieces = [];
+  let current = "";
+  let insideRegex = false;
+  for (const ch of spec) {
+    if (ch === "/") insideRegex = !insideRegex;
+    if (ch === "|" && !insideRegex) {
+      pieces.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  pieces.push(current);
+  return pieces;
+}
+
+/**
+ * Extracts every regex literal an UNANCHORED `$removeparam=/.../ ` spec
+ * expresses — one piece per top-level `|` (the docblock's own
+ * "/regex1/|/regex2/ counts as 1 skip" shape), with a `|` INSIDE a single
+ * regex's own delimiters (`/tour|campaign/`) correctly left as part of
+ * that one piece rather than split. A piece that is not a complete
+ * `/.../ ` literal is silently dropped, never guessed at as a fragment of
+ * one.
+ *
+ * @param {string} spec
+ * @returns {RegExp[]}
+ */
+function extractBareRegexes(spec) {
+  const out = [];
+  for (const piece of splitOutsideRegexDelimiters(spec)) {
+    const compiled = tryCompileRegexLiteral(piece);
+    if (compiled) out.push(compiled);
+  }
+  return out;
 }
 
 /**

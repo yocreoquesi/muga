@@ -47,6 +47,7 @@
     "typecheck": "tsc -p jsconfig.json",
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
+    "anchored-only-report": "node tools/anchored-only-globals.mjs",
     "fpfn": "node tools/fpfn-harness/run.mjs"
   },
   "engines": {

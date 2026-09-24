@@ -451,3 +451,177 @@ describe("parseRemoveparamRules — path-anchored (host, pathPrefix) extraction 
     assert.deepEqual(pathAnchored, []);
   });
 });
+
+// ── #1228 (anchored-only-globals): bareNames ────────────────────────────────
+//
+// `params` unions bare AND host-anchored names by design (see the docblock),
+// so it cannot answer "is this name ever truly unanchored". `bareNames` is
+// the additive field that answers exactly that, for the removal-direction
+// measurement `tools/anchored-only-globals.mjs` needs.
+describe("parseRemoveparamRules — bareNames (#1228, additive)", () => {
+  test("an unanchored line lands its names in bareNames", () => {
+    const text = "*$removeparam=fbclid|gclid";
+    const { bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames].sort(), ["fbclid", "gclid"]);
+  });
+
+  test("a ||host^ anchored line does NOT land its name in bareNames", () => {
+    const text = "||example.com^$removeparam=utm_source";
+    const { params, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], ["utm_source"]);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a ,domain=h1|h2 anchored line does NOT land its name in bareNames", () => {
+    const text = "$removeparam=x,domain=h1.example|h2.example";
+    const { bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("an all-negated ,domain=~a|~b line IS effectively unanchored: lands in bareNames", () => {
+    const text = "$removeparam=x,domain=~h1.example|~h2.example";
+    const { scoped, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual(scoped, []);
+    assert.deepEqual([...bareNames], ["x"]);
+  });
+
+  test("a mixed positive+negated ,domain=h1|~h2 line is genuinely scoped: does NOT land in bareNames", () => {
+    const text = "$removeparam=x,domain=h1.example|~h2.example";
+    const { scoped, bareNames } = parseRemoveparamRules(text);
+    assert.deepEqual(scoped, [{ param: "x", scope: "h1.example" }]);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a path/query-anchored line does NOT land its name in bareNames", () => {
+    const text = "||example.com/search$removeparam=x";
+    const { bareNames, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("a line with BOTH ||host^ and domain= (ambiguous) does NOT land its name in bareNames", () => {
+    const text = "||example.com^$removeparam=x,domain=other.example";
+    const { scopeSkipped, bareNames } = parseRemoveparamRules(text);
+    assert.equal(scopeSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("an @@ exception line does NOT land its name in bareNames", () => {
+    const text = "@@$removeparam=tagtag_uid";
+    const { exceptionsSkipped, bareNames } = parseRemoveparamRules(text);
+    assert.equal(exceptionsSkipped, 1);
+    assert.deepEqual([...bareNames], []);
+  });
+
+  test("mixed sample: a name both bare on one line and host-anchored on another still appears in bareNames (it IS globally stripped somewhere)", () => {
+    const text = [
+      "*$removeparam=x",
+      "||example.com^$removeparam=x",
+    ].join("\n");
+    const { bareNames, scoped } = parseRemoveparamRules(text);
+    assert.deepEqual([...bareNames], ["x"]);
+    assert.deepEqual(scoped, [{ param: "x", scope: "example.com" }]);
+  });
+});
+
+// ── #1228 R3 review: bareRegexes ────────────────────────────────────────────
+//
+// An UNANCHORED regex removeparam spec strips a matching name on EVERY
+// site, exactly like a bare literal name. Without this, a param AdGuard
+// already strips everywhere via regex could be mistaken by
+// tools/anchored-only-globals.mjs for anchored-only. `skipped` must count
+// every regex/negation spec exactly as before (additive, not a replacement).
+describe("parseRemoveparamRules — bareRegexes (#1228 R3, additive)", () => {
+  test("an unanchored regex spec compiles into bareRegexes AND still counts in skipped", () => {
+    const text = "*$removeparam=/^at_custom/";
+    const { bareRegexes, skipped } = parseRemoveparamRules(text);
+    assert.equal(bareRegexes.length, 1);
+    // Full-match (mirrors extractClearurlsScopeFacts): the pattern's own
+    // content, wrapped in ^(?:...)$, so it only matches that exact string —
+    // a real longer name (e.g. AdGuard's own "at_custom1") does NOT match.
+    // Deliberately conservative: this may under-count a real AdGuard
+    // prefix-style regex as global evidence, but never over-counts one.
+    assert.ok(bareRegexes[0].test("at_custom"));
+    assert.ok(bareRegexes[0].test("AT_CUSTOM"), "case-insensitive");
+    assert.ok(!bareRegexes[0].test("at_custom1"), "full-match, not a prefix match");
+    assert.equal(skipped, 1);
+  });
+
+  test("a ||host^-anchored regex spec does NOT land in bareRegexes, skipped is unaffected", () => {
+    const text = "||example.com^$removeparam=/^at_custom/";
+    const { bareRegexes, skipped } = parseRemoveparamRules(text);
+    assert.deepEqual(bareRegexes, []);
+    assert.equal(skipped, 1);
+  });
+
+  test("a ,domain=h1|h2-anchored regex spec (positive host) does NOT land in bareRegexes", () => {
+    const text = "$removeparam=/^at_custom/,domain=h1.example|h2.example";
+    const { bareRegexes } = parseRemoveparamRules(text);
+    assert.deepEqual(bareRegexes, []);
+  });
+
+  test("an all-negated ,domain=~a|~b regex spec IS effectively unanchored: lands in bareRegexes", () => {
+    // No comma inside the regex itself (unlike a real "{6,}" quantifier):
+    // the outer `$removeparam=([^,$]+)` capture stops at the FIRST comma on
+    // the line, which must be the ,domain= separator, not one embedded in
+    // the pattern — a pre-existing constraint of the whole modifier parser,
+    // not something this test is exercising.
+    const text = "$removeparam=/^__s=[a-z0-9]+/,domain=~a.example|~b.example";
+    const { bareRegexes } = parseRemoveparamRules(text);
+    assert.equal(bareRegexes.length, 1);
+    assert.ok(bareRegexes[0].test("__s=abc123"));
+  });
+
+  test("a path/query-anchored regex spec does NOT land in bareRegexes", () => {
+    const text = "||example.com/search$removeparam=/^at_custom/";
+    const { bareRegexes, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 0, "regex specs never reach the path-anchor extractor — this is still counted as an ordinary skip");
+    assert.deepEqual(bareRegexes, []);
+  });
+
+  test("a negation spec (~) is left untouched: no bareRegexes contribution", () => {
+    const text = "*$removeparam=~tag";
+    const { bareRegexes, skipped } = parseRemoveparamRules(text);
+    assert.deepEqual(bareRegexes, []);
+    assert.equal(skipped, 1);
+  });
+
+  test("a regex with its own internal alternation is compiled as ONE regex, not split on its internal |", () => {
+    const text = "*$removeparam=/tour|campaign/";
+    const { bareRegexes } = parseRemoveparamRules(text);
+    assert.equal(bareRegexes.length, 1);
+    assert.ok(bareRegexes[0].test("tour"));
+    assert.ok(bareRegexes[0].test("campaign"));
+    assert.ok(!bareRegexes[0].test("tourx"));
+  });
+
+  test("two top-level pipe-joined regex literals each compile independently (docblock's own /regex1/|/regex2/ shape)", () => {
+    const text = "*$removeparam=/^foo/|/^bar/";
+    const { bareRegexes, skipped } = parseRemoveparamRules(text);
+    assert.equal(bareRegexes.length, 2);
+    assert.ok(bareRegexes.some((re) => re.test("foo")));
+    assert.ok(bareRegexes.some((re) => re.test("bar")));
+    assert.ok(!bareRegexes.some((re) => re.test("foobar")), "each piece is its own complete /.../ literal, not merged");
+    assert.equal(skipped, 1, "still ONE skip for the whole spec, per the existing per-spec skip granularity");
+  });
+
+  test("an invalid inner regex pattern is dropped, not thrown", () => {
+    const text = "*$removeparam=/(unterminated/";
+    const { bareRegexes } = parseRemoveparamRules(text);
+    assert.deepEqual(bareRegexes, []);
+  });
+
+  test("realistic sample: bareRegexes stays empty when parseRemoveparamRules's existing outputs are exercised (#1326 fixture, unchanged behavior)", () => {
+    const text = `[Adblock Plus 2.0]
+! Title: AdGuard URL Tracking Protection
+||example.com^$removeparam=utm_source
+*$removeparam=fbclid
+*$removeparam=/^_branch_/
+*$removeparam=~important_tag`;
+    const { params, bareRegexes } = parseRemoveparamRules(text);
+    assert.deepEqual([...params].sort(), ["fbclid", "utm_source"]);
+    assert.equal(bareRegexes.length, 1);
+    assert.ok(bareRegexes[0].test("_branch_"));
+    assert.ok(!bareRegexes[0].test("_branch_id"), "full-match, not a prefix match");
+  });
+});

@@ -14,8 +14,9 @@
  * any provider's referralMarketing is excluded from every provider's output.
  *
  * Public API (named exports only — no default):
- *   extractClearurlsLiterals(rawText) → { params: Set<string>, skipped: number, affiliateExcluded: number }
- *   clearurls                         → Adapter (id, name, license, url, parse, fetchRaw)
+ *   extractClearurlsLiterals(rawText)   → { params: Set<string>, skipped: number, affiliateExcluded: number }
+ *   extractClearurlsScopeFacts(rawText) → { globalPatterns: RegExp[], anchored: Array<{param, scope}>, skipped: number, affiliateExcluded: number }
+ *   clearurls                           → Adapter (id, name, license, url, parse, fetchRaw)
  */
 
 // Canonical raw URL for the ClearURLs rules database (data.min.json is the
@@ -132,6 +133,109 @@ export function extractClearurlsLiterals(rawText) {
   }
 
   return { params, skipped, affiliateExcluded };
+}
+
+/**
+ * Extracts ClearURLs facts split by scope, for #1228's anchored-only-globals
+ * detection (does an existing MUGA global param have ANY global upstream
+ * evidence, or only anchored evidence?). `extractClearurlsLiterals` above
+ * cannot answer that: it unconditionally unions every provider's `rules[]`,
+ * including the top-level `globalRules` (`urlPattern: ".*"`) catch-all, into
+ * one flat literal Set — a name asserted only by `globalRules` (a real
+ * `.*`-wide strip) and a name asserted only by a single host-scoped provider
+ * end up indistinguishable in that Set.
+ *
+ * `globalRules`'s own `rules[]` entries are themselves regex FRAGMENTS (e.g.
+ * `"(?:%3F)?utm(?:_[a-z_]*)?"`), not flat literal names — most fail
+ * `extractClearurlsLiterals`'s `LITERAL` check and are silently dropped
+ * there, which is exactly why a separate path is needed rather than reusing
+ * that Set. `globalPatterns` compiles each fragment as `^(?:fragment)$`,
+ * case-insensitive, so a candidate name is tested with a full-string match
+ * (mirrors the equivalent index in `tools/import-candidates/triage.mjs`,
+ * independently re-derived here rather than imported — that module is a
+ * different use case, this one stays a property of the adapter it reads).
+ *
+ * Every OTHER provider (`urlPattern` other than `.*`) is treated as
+ * host/site-scoped: its `rules[]` literal names (same `LITERAL` + trivial
+ * anchor-strip normalization as `extractClearurlsLiterals`) land in
+ * `anchored`, paired with the provider key as the scope label. Provider keys
+ * are usually recognizable site/brand names but are not always a literal
+ * registrable domain (e.g. "amazon" rather than "amazon.com") — same caveat
+ * `triage.mjs` documents for its own index.
+ *
+ * `globalRules`'s OWN `referralMarketing[]` entries never enter
+ * `globalPatterns`: those are ClearURLs' preserve list for that provider,
+ * the opposite of a strip fact, so testing a candidate against them would
+ * invert "ClearURLs preserves this" into "ClearURLs strips this globally".
+ * Host-scoped providers still have their `referralMarketing[]` names
+ * excluded from `anchored` via the same global two-pass union
+ * `extractClearurlsLiterals` uses (SAFETY-CRITICAL, see file docblock).
+ *
+ * @param {string} rawText Raw ClearURLs rules JSON string.
+ * @returns {{ globalPatterns: RegExp[], anchored: Array<{param: string, scope: string}>, skipped: number, affiliateExcluded: number }}
+ */
+export function extractClearurlsScopeFacts(rawText) {
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error("ClearURLs parse failed: invalid JSON");
+  }
+
+  const providers =
+    data?.providers && typeof data.providers === "object"
+      ? data.providers
+      : {};
+
+  const providerEntries = Object.entries(providers);
+
+  // Same two-pass global referralMarketing union as extractClearurlsLiterals,
+  // rebuilt here rather than shared: this function additionally needs to know
+  // WHICH provider is the ".*" global one, which the literals path never has
+  // to distinguish.
+  const globalReferral = new Set();
+  for (const [, provider] of providerEntries) {
+    if (!Array.isArray(provider?.referralMarketing)) continue;
+    for (const raw of provider.referralMarketing) {
+      globalReferral.add(normalizeName(raw));
+    }
+  }
+
+  const globalPatterns = [];
+  const anchored = [];
+  let skipped = 0;
+  let affiliateExcluded = 0;
+
+  for (const [providerKey, provider] of providerEntries) {
+    const isGlobalProvider = providerKey === "globalRules" || provider?.urlPattern === ".*";
+    const rules = Array.isArray(provider?.rules) ? provider.rules : [];
+
+    if (isGlobalProvider) {
+      for (const rawPattern of rules) {
+        let regex;
+        try {
+          regex = new RegExp(`^(?:${rawPattern})$`, "i");
+        } catch {
+          skipped++; // invalid regex fragment in upstream data
+          continue;
+        }
+        globalPatterns.push(regex);
+      }
+      continue;
+    }
+
+    for (const raw of rules) {
+      const name = normalizeName(raw);
+
+      if (!name) { skipped++; continue; }
+      if (!LITERAL.test(name)) { skipped++; continue; }
+      if (globalReferral.has(name)) { affiliateExcluded++; continue; }
+
+      anchored.push({ param: name, scope: providerKey });
+    }
+  }
+
+  return { globalPatterns, anchored, skipped, affiliateExcluded };
 }
 
 // ── Adapter object ────────────────────────────────────────────────────────────
