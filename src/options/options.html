@@ -100,14 +100,15 @@
     </div>
   </section>
 
-  <!-- Your locally-stripped params (#925 — userCustomRules editor).
+  <!-- Params you strip everywhere (#925 — userCustomRules editor).
        UNGATED, and that is the fix for #1271 item 4: the list is a receipt for
-       an action taken in the POPUP ("Strip locally"), so a user who took that
-       action had no way back to it without first discovering Advanced and
-       turning it on. A record of what the user did is not an advanced setting.
-       View + remove only (no add box) — entries arrive from the popup. -->
+       an action the user took, so a user who took that action had no way back
+       to it without first discovering Advanced and turning it on. A record of
+       what the user did is not an advanced setting. View + remove only (no add
+       box) — entries arrive from the "Strip everywhere" button under Activity
+       (#1351; the popup's old "Strip locally" is gone, #1389). -->
   <section id="user-custom-rules">
-    <h2 data-i18n="section_user_custom_rules">Your locally-stripped params</h2>
+    <h2 data-i18n="section_user_custom_rules">Params you strip everywhere</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="user-custom-rules-items"></div>
@@ -122,7 +123,7 @@
        report flow). ADR-0011 calls these "a record or an analysis rather
        than a glance" — Settings has the stable address and unbounded
        viewport a ledger needs, and the popup does not. TIER 1, ungated:
-       like "Your locally-stripped params" above, a record is not an
+       like "Params you strip everywhere" above, a record is not an
        advanced setting. Each panel owns its own id (domain-stats-panel
        collides with the Display card's plain domain-stats checkbox id
        otherwise) and its own hidden state; the SECTION is visible whenever
@@ -432,14 +433,14 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
-            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers in the popup. The analysis stays on your device.</small>
+            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers under Activity. The analysis stays on your device.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="cross-site-frequency" data-i18n-aria-label="aria_cross_site_frequency"><span class="slider"></span></label>
         </div>
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_attribution_ledger_label">Recent activity</strong>
-            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations so the popup can show recent activity. Stored on this device only.</small>
+            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations to show under Activity. Stored on this device only.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="attribution-ledger" data-i18n-aria-label="aria_attribution_ledger"><span class="slider"></span></label>
         </div>
@@ -465,7 +466,7 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_block_beacons_label">Block tracking beacons and pings</strong>
-            <small data-i18n="row_block_beacons_hint">Blocks the sendBeacon() and &lt;a ping&gt; network requests some sites use to log clicks and page-leave events, closing a gap the Block &lt;a ping&gt; beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags &amp; domains to keep beacons working there.</small>
+            <small data-i18n="row_block_beacons_hint">Blocks the sendBeacon() and &lt;a ping&gt; network requests some sites use to log clicks and page-leave events, closing a gap the Block click tracking beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags &amp; domains to keep beacons working there.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="block-beacons" data-i18n-aria-label="aria_block_beacons"><span class="slider"></span></label>
         </div>
@@ -483,7 +484,7 @@
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
-            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site so the popup can show where the most noise comes from. Stored on this device only.</small>
+            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site to show under Activity where the most noise comes from. Stored on this device only.</small>
           </div>
           <label class="toggle"><input type="checkbox" id="domain-stats" data-i18n-aria-label="aria_domain_stats"><span class="slider"></span></label>
         </div>
@@ -585,7 +586,7 @@
       <div class="row">
         <div class="row-label">
           <strong data-i18n="dev_tools_disclosure">Tools for inspecting MUGA itself</strong>
-          <small data-i18n="dev_tools_disclosure_hint">None of these change how URLs are cleaned. They replay onboarding, preview notifications and dump logs.</small>
+          <small data-i18n="dev_tools_disclosure_hint">Tools for testing MUGA (replay onboarding, preview notifications, export logs), plus two cleaning options still under evaluation that do change how URLs are cleaned.</small>
         </div>
         <label class="toggle"><input type="checkbox" id="dev-tools-mode" data-i18n-aria-label="aria_dev_tools_mode"><span class="slider"></span></label>
       </div>

@@ -624,9 +624,9 @@ async function init() {
   renderList("custom-params-items", prefs.customParams, "customParams");
   renderList("blacklist-items", prefs.blacklist, "blacklist");
   renderList("whitelist-items", prefs.whitelist, "whitelist");
-  // #925: view/remove editor for the popup-populated userCustomRules list.
+  // #925: view/remove editor for the userCustomRules list.
   // Reuses the generic renderList + removeEntry path (no add box — entries
-  // come from the popup's "Strip locally" button).
+  // come from the "Strip everywhere" button under Activity, #1389).
   renderList("user-custom-rules-items", prefs.userCustomRules || [], "userCustomRules");
   renderCategories(prefs.disabledCategories || []);
   initLanguageSelect();
@@ -1538,7 +1538,7 @@ function renderList(containerId, items, listKey) {
 
   // The locally-stripped list is UNGATED now (#1271 item 4), so an empty one
   // would greet every user with a section about a feature they have not used.
-  // Its own section carries it, and the popup is where entries come from.
+  // Its own section carries it; entries come from "Strip everywhere" under Activity.
   if (listKey === "userCustomRules") {
     const section = document.getElementById("user-custom-rules");
     if (section) section.hidden = items.length === 0;
