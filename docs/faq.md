@@ -134,9 +134,13 @@ outbound network requests.
 listed in `GENERIC_SHORTENERS` (`src/lib/opaque-networks.js`) so you can
 see the destination before navigating. The full host list is enumerated
 in the [privacy policy](privacy-page.html). The
-extension performs a direct `fetch(url, { redirect: "manual", credentials: "omit", cache: "no-store" })` to the shortener host and reads the
-`Location` header. No MUGA server is contacted; there is no signed
-envelope because the redirect comes straight from the shortener host.
+extension performs `fetch(url, { redirect: "follow", credentials: "omit", cache: "no-store" })`
+on the short link: the browser follows the whole redirect chain, so the
+shortener host and every hop after it, including the destination, are
+contacted directly from your browser. MUGA reads the final address from
+the response URL and discards the page body. No MUGA server is
+contacted; there is no signed envelope because the redirects come
+straight from the shortener and the sites it points to.
 Affiliate-redirect networks are NEVER followed.
 
 - Two independent switches, split by privacy cost
@@ -150,9 +154,9 @@ Affiliate-redirect networks are NEVER followed.
   is on. It re-checks that itself rather than trusting the caller.
 - MUGA's manifest already carries broad host access on both browsers, so
   no separate permission prompt stands between the toggle and the first
-  resolution. Settings also asks for the per-host permissions explicitly,
-  which keeps the list visible and revocable in your browser's extension
-  settings.
+  resolution. The per-host permissions are declared as optional so the
+  list stays visible in your browser's extension settings; revoking them
+  does not stop resolution, turning the switch off does.
 - Implementation: `src/lib/native-shortener-resolver.js`.
 
 ### Q: What are Remote Rules and how are they signed?
