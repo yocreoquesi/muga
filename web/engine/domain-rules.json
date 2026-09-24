@@ -3850,9 +3850,17 @@
       "nv_ad",
       "adid",
       "nv_chnl",
-      "nv_src"
+      "nv_src",
+      "nclid",
+      "sm",
+      "sca_esv",
+      "n_query",
+      "n_rank",
+      "n_ad",
+      "n_cid",
+      "n_match"
     ],
-    "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking."
+    "note": "Naver Shopping. Product clicks via cr3.shopping.naver.com are redirect wrappers (handled by redirect-unwrap via url= param). frm/t/h/NaPm are click attribution tracking. nclid/sm/sca_esv/n_query/n_rank/n_ad/n_cid/n_match added (2026-09-25 network-layer fix): already in the parent naver.com entry's stripParams (its own AdGuard anchor covers this subdomain — not widening), but the DNR generator's one-rule-per-host handoff excludes this host from naver.com's rule, so these must be carried directly here or they are silently never stripped at the network layer."
   },
   {
     "domain": "slickdeals.net",
@@ -5195,9 +5203,10 @@
     "domain": "www.nicovideo.jp",
     "preserveParams": [],
     "stripParams": [
-      "at"
+      "at",
+      "ref"
     ],
-    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `at` is not global (generic name, high collision risk elsewhere)."
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `at` is not global (generic name, high collision risk elsewhere). `ref` added (2026-09-25 network-layer fix): AdGuard's `||nicovideo.jp^$removeparam=ref` anchor already covers this subdomain — not widening — and the DNR generator's one-rule-per-host handoff excludes this host from the parent `nicovideo.jp` rule, so `ref` must be carried directly on this entry or it is silently never stripped at the network layer (see tests/unit/dnr-rules-sync.test.mjs's superset invariant test)."
   },
   {
     "domain": "hotosena.com",
