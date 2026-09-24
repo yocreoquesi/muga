@@ -362,6 +362,264 @@ h2 {
   white-space: nowrap;
 }
 
+/* ---------- Activity: unified ledger panel (#1352) ----------------------- */
+/* Merges the popup's former .history / .recent-activity <details> panels
+   into one always-visible list-section with a scope control. No <details>
+   chevron chrome here — Settings doesn't collapse this panel the way the
+   popup did — but the row-level classes below are ported unchanged so the
+   options.js glue that builds them stays a near-verbatim port of the old
+   popup.js functions. */
+.activity-scope-fieldset {
+  border: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.activity-scope-fieldset > .list-group-title { margin-bottom: 4px; }
+.activity-scope-fieldset > .hint { margin: 0 0 10px; }
+
+.activity-scope-control {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.activity-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.activity-scope-option:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+.activity-scope-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* input stays in the accessibility tree (native radio semantics, keyboard
+   operable) but is visually replaced by the pill styling above — same
+   "keep the real control, hide it visually" approach as .toggle input. */
+.activity-scope-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+/* ---------- Activity: "This session" rows (ported from popup.css) -------- */
+.history-entry {
+  padding: 10px 0;
+  border-top: 1px solid var(--border-1);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+.list-items .history-entry:first-child,
+#activity-session-list .history-entry:first-child { border-top: none; }
+.history-entry:hover { background: var(--surface-2); }
+
+.history-url {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.history-url.before {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: .8;
+}
+.history-url.after { color: var(--text-1); }
+
+.history-after-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+}
+.history-after-row .history-url.after { flex: 1; }
+
+.history-copy-clean-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  color: var(--text-3);
+  line-height: 1;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  opacity: .65;
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.history-copy-clean-btn:hover { opacity: 1; color: var(--accent-strong); }
+.history-entry.copied .history-copy-clean-btn { color: var(--success); opacity: 1; }
+.history-entry.copied .history-url.after { color: var(--success); }
+
+.history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.history-copy-btn {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-2);
+  background: var(--surface-1);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.history-copy-btn:hover { background: var(--surface-2); color: var(--text-1); }
+
+.history-empty {
+  font-size: 12.5px;
+  color: var(--text-3);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.history-breakdown {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.history-breakdown > summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-3);
+  list-style: disclosure-closed;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: 10px;
+  font-weight: 500;
+}
+.history-breakdown[open] > summary {
+  list-style: disclosure-open;
+  color: var(--text-2);
+}
+.activity-param-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-sm);
+}
+.breakdown-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+.breakdown-cat {
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.breakdown-cat::after { content: ":"; }
+.breakdown-params {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  word-break: break-all;
+}
+.breakdown-desc {
+  flex-basis: 100%;
+  font-size: 10px;
+  color: var(--text-3);
+  opacity: .85;
+  line-height: 1.35;
+}
+
+/* ---------- Activity: "Recent activity" rows (ported from popup.css) ----- */
+.recent-activity-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.recent-activity-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 8px;
+  align-items: start;
+  padding: 8px 0;
+  font-size: 12px;
+  border-top: 1px solid var(--border-1);
+}
+#activity-recent-list .recent-activity-row:first-child { border-top: none; }
+
+.recent-activity-url {
+  grid-column: 1;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-activity-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.recent-activity-badge {
+  background: var(--surface-2);
+  color: var(--text-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.recent-activity-creator,
+.recent-activity-network {
+  color: var(--text-3);
+}
+
+.recent-activity-copy {
+  grid-column: 2;
+  grid-row: 1;
+  background: transparent;
+  border: 1px solid var(--border-1);
+  color: var(--text-2);
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.recent-activity-copy:hover { background: var(--surface-2); }
+
+.recent-activity-empty {
+  padding: 4px 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-style: italic;
+  margin: 0;
+}
+
 /* ---------- Creator allowlist editor (#445, B13) ----------------------- */
 .creator-allowlist-section {
   border-top: 1px solid var(--border-1);

@@ -309,6 +309,8 @@ export default Object.freeze({
   section_display: "Display",
   section_user_custom_rules: "Your locally-stripped params",
   section_activity: "Activity",
+  activity_ledger_label: "Cleaned URLs",
+  activity_ledger_hint: "This session clears when you restart your browser. Recent activity is a short local record MUGA keeps on this device.",
   section_report: "Report a problem",
   user_custom_rules_hint: "Params you promoted with \"Strip locally\" in the popup. MUGA strips these on every site. Remove any you no longer want stripped.",
   row_canonical_extractor_label: "Find the real destination when a wrapper hides it",

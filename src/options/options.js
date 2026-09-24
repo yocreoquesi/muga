@@ -4,9 +4,15 @@
 
 import { applyTranslations, getStoredLang, t, SUPPORTED_LANGS, buildContextMenuHint } from "../lib/i18n.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
-import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams, getDomainStats } from "../lib/storage.js";
+import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsMode, setDevToolsMode, getRemoteParams, getDomainStats, sessionStorage } from "../lib/storage.js";
 import { planDomainStatsView } from "../lib/domain-stats-view.js";
 import { planSuspiciousParamsSettingsView } from "../lib/suspicious-params-view.js";
+import { planSessionHistoryView } from "../lib/session-history-view.js";
+import { ACTIVITY_SCOPES, DEFAULT_ACTIVITY_SCOPE, planActivityScopeView } from "../lib/activity-scope-view.js";
+import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
+import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
+import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
+import { writeToClipboard } from "../lib/clipboard.js";
 import {
   createTracker as createFrequencyTracker,
   createChromeLocalAdapter as createFrequencyAdapter,
@@ -32,6 +38,182 @@ import { scopedParamsForHost } from "../lib/remote-rules.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
 let _currentLang = "en";
+
+// ── Activity ledger clipboard helpers (#1352) ───────────────────────────────
+//
+// Ported from popup.js, which no longer needs them once both ledgers move
+// here — the popup had no other caller of copyToClipboard/copyWithFeedback/
+// getCopySafeCleanUrl. Kept as thin DOM glue, same shape as the popup's
+// former versions.
+
+/** Creates a clipboard SVG icon (12x12) via createElementNS. */
+function _createClipboardSvg() {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", "12");
+  svg.setAttribute("height", "12");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const rect = document.createElementNS(NS, "rect");
+  for (const [k, v] of Object.entries({ x: "5", y: "5", width: "9", height: "10", rx: "1.5", stroke: "currentColor", "stroke-width": "1.5", fill: "none" })) rect.setAttribute(k, v);
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", "M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-7A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H4");
+  for (const [k, v] of Object.entries({ stroke: "currentColor", "stroke-width": "1.5", fill: "none", "stroke-linecap": "round" })) path.setAttribute(k, v);
+  svg.appendChild(rect);
+  svg.appendChild(path);
+  return svg;
+}
+
+/** Replaces element content with a fresh clipboard SVG icon. */
+function _setClipboardIcon(el) {
+  el.textContent = "";
+  el.appendChild(_createClipboardSvg());
+}
+
+/**
+ * Writes `text` to the clipboard via the Clipboard API, falling back to the
+ * legacy `document.execCommand("copy")` path (#1098 — some restricted
+ * WebExtension contexts don't expose navigator.clipboard at all, or throw
+ * synchronously instead of rejecting). Same helper the popup used before
+ * this move; writeToClipboard() itself is unit-tested in
+ * tests/unit/clipboard.test.mjs.
+ *
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+function copyToClipboard(text) {
+  return writeToClipboard(navigator.clipboard, text, () => {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { /* legacy fallback unsupported in this context — treated as failure below */ }
+    el.remove();
+    if (!ok) throw new Error("clipboard fallback failed");
+  });
+}
+
+/**
+ * Writes `text` to the clipboard, then shows one-shot visual feedback that
+ * reverts after 1200ms. Same centralizing helper the popup used for its
+ * history-entry click-to-copy, copy-clean icon button, and copy-original
+ * button.
+ *
+ * @param {string}   text
+ * @param {object}   handlers
+ * @param {Function} handlers.onSuccess
+ * @param {Function} handlers.onError
+ * @param {Function} handlers.onRevert
+ */
+function copyWithFeedback(text, { onSuccess, onError, onRevert }) {
+  copyToClipboard(text).then(() => {
+    onSuccess();
+    setTimeout(onRevert, 1200);
+  }).catch(() => {
+    onError();
+    setTimeout(onRevert, 1200);
+  });
+}
+
+/**
+ * Reprocesses `originalUrl` through the copy-safe pipeline (#946) instead of
+ * copying the value stored at navigation time. Ported unchanged from
+ * popup.js (see its former doc comment for the full history): reuses the
+ * existing PROCESS_URL message with `skipNotify: true` +
+ * `skipSideEffects: true` so a copy of an already-recorded session-history
+ * entry doesn't re-count stats, duplicate history, or push another ledger
+ * event.
+ *
+ * @param {string} originalUrl
+ * @returns {Promise<string>}
+ */
+async function getCopySafeCleanUrl(originalUrl) {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "PROCESS_URL", url: originalUrl, skipNotify: true, skipSideEffects: true });
+    if (response && typeof response.cleanUrl === "string" && response.cleanUrl) {
+      return response.cleanUrl;
+    }
+  } catch {
+    // SW unreachable — degrade to the original rather than failing the copy.
+  }
+  return originalUrl;
+}
+
+// ── Activity ledger param breakdown (#1352) ─────────────────────────────────
+//
+// Ported from popup.js's _buildParamIndex/_renderParamBreakdown for the
+// session-history scope's "why was this cleaned?" breakdown. popup.js keeps
+// its OWN copy of these two functions because its per-page preview
+// breakdown (showUrlPreview) still needs them there; this is a second,
+// independent copy for the Settings surface, not a shared import, since
+// popup.js has no exports (see every other tests/unit/popup-*.test.mjs
+// comment on that constraint).
+
+let _activityParamIndex = null;
+function _buildActivityParamIndex() {
+  if (_activityParamIndex) return _activityParamIndex;
+  _activityParamIndex = new Map();
+  for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
+    for (const param of catData.params) {
+      _activityParamIndex.set(param.toLowerCase(), {
+        categoryKey: catKey,
+        label: catData.label,
+        labelEs: catData.labelEs,
+        labelPt: catData.labelPt,
+        labelDe: catData.labelDe,
+        description: catData.description,
+        descriptionEs: catData.descriptionEs,
+        descriptionPt: catData.descriptionPt,
+        descriptionDe: catData.descriptionDe,
+      });
+    }
+  }
+  return _activityParamIndex;
+}
+
+/** Renders a param breakdown section for a session-history row (#1352, mirrors popup.js's former _renderParamBreakdown). */
+function _renderActivityParamBreakdown(removedTracking, lang) {
+  const index = _buildActivityParamIndex();
+  const rows = buildParamBreakdownView(removedTracking, lang, index, t);
+
+  const container = document.createElement("div");
+  // Deliberately NOT the popup's plain class name for this container: that
+  // exact substring collides with a guard in
+  // tests/unit/options-surfaced-prefs.test.mjs pinning the RETIRED
+  // paramBreakdown pref's checkbox id (#1355/#1354) — an unrelated concept
+  // that merely shares the substring.
+  container.className = "activity-param-breakdown";
+
+  for (const row of rows) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "breakdown-row";
+
+    const catEl = document.createElement("span");
+    catEl.className = "breakdown-cat";
+    catEl.textContent = row.label;
+    rowEl.appendChild(catEl);
+
+    const paramsEl = document.createElement("span");
+    paramsEl.className = "breakdown-params";
+    paramsEl.textContent = row.params.join(", ");
+    rowEl.appendChild(paramsEl);
+
+    if (row.description) {
+      const descEl = document.createElement("span");
+      descEl.className = "breakdown-desc";
+      descEl.textContent = row.description;
+      rowEl.appendChild(descEl);
+    }
+
+    container.appendChild(rowEl);
+  }
+
+  return container;
+}
 
 /**
  * Re-renders the "Right-click -> Copy clean link" row hint, appending the
@@ -387,6 +569,17 @@ async function init() {
     renderSuspiciousParamsActivity(prefs).catch(err => console.error("[MUGA] render suspicious params:", err));
   });
   await renderSuspiciousParamsActivity(prefs);
+  // #1352: the merged Activity ledger panel. The scope radios only toggle
+  // which already-rendered sub-panel is visible — no re-fetch needed.
+  document.getElementById("activity-scope-session")?.addEventListener("change", () => {
+    _activityLedgerScope = ACTIVITY_SCOPES.SESSION;
+    _applyActivityScopeView();
+  });
+  document.getElementById("activity-scope-recent")?.addEventListener("change", () => {
+    _activityLedgerScope = ACTIVITY_SCOPES.RECENT;
+    _applyActivityScopeView();
+  });
+  await renderActivityLedgerPanel(_currentLang);
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
   bindToggle("show-badge", "showBadge", prefs);
@@ -619,7 +812,7 @@ async function initBlocklistMigrationNotice(prefs) {
 function updateActivitySectionVisibility() {
   const section = document.getElementById("section-activity");
   if (!section) return;
-  const panels = ["domain-stats-panel", "suspicious-params-panel"]
+  const panels = ["domain-stats-panel", "suspicious-params-panel", "activity-ledger-panel"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   section.hidden = !panels.some((panel) => !panel.hidden);
@@ -793,6 +986,294 @@ async function renderSuspiciousParamsActivity(prefs) {
     rowEl.appendChild(buildReportUpstreamButton(row.param, row.reportedDate, trackerState));
 
     list.appendChild(rowEl);
+  }
+}
+
+// ── Activity ledger panel (#1352) ───────────────────────────────────────────
+//
+// Merges the popup's two former ledgers ("This session" / showHistory,
+// "Recent activity" / showRecentActivity) into ONE panel with a scope
+// control (maintainer decision on the issue). Both scopes render eagerly;
+// the scope control only toggles which sub-panel is visible
+// (planActivityScopeView), so switching scope needs no re-fetch.
+
+/** Current scope selection. Not persisted across reloads — see feature doc assumptions (odd/tasks/unified-activity-ledger.md). */
+let _activityLedgerScope = DEFAULT_ACTIVITY_SCOPE;
+
+// Same run-counter/isStale() pattern as renderSuspiciousParamsActivity
+// above: two overlapping renderActivityLedgerPanel calls (unlikely today
+// since nothing re-triggers it after init, but kept for the same
+// correctness reason as every other Activity renderer) must not interleave
+// their rows.
+let _activityLedgerRenderRun = 0;
+
+/** Shows/hides the session vs recent sub-panels for the current scope. Pure DOM application of planActivityScopeView() — synchronous, no isStale() guard needed. */
+function _applyActivityScopeView() {
+  const sessionPanel = document.getElementById("activity-session-panel");
+  const recentPanel = document.getElementById("activity-recent-panel");
+  if (!sessionPanel || !recentPanel) return;
+  const { sessionPanelHidden, recentPanelHidden } = planActivityScopeView(_activityLedgerScope);
+  sessionPanel.hidden = sessionPanelHidden;
+  recentPanel.hidden = recentPanelHidden;
+}
+
+/**
+ * Builds one "This session" row. Ported from popup.js's former showHistory
+ * per-entry construction, unchanged in behaviour: click-to-copy (reprocessed
+ * copy-safe via getCopySafeCleanUrl, #946), a copy-clean icon button, a
+ * copy-with-noise button, and an optional removed-params breakdown.
+ */
+function _buildSessionHistoryRow(entry, lang) {
+  const entryDiv = document.createElement("div");
+  entryDiv.className = "history-entry";
+  entryDiv.title = t("history_copy_hint", lang);
+  entryDiv.setAttribute("role", "button");
+  entryDiv.setAttribute("tabindex", "0");
+
+  const beforeDiv = document.createElement("div");
+  beforeDiv.className = "history-url before";
+  beforeDiv.textContent = entry.original;
+
+  const afterRow = document.createElement("div");
+  afterRow.className = "history-after-row";
+
+  const afterDiv = document.createElement("div");
+  afterDiv.className = "history-url after";
+  afterDiv.textContent = entry.clean;
+
+  const copyCleanBtn = document.createElement("button");
+  copyCleanBtn.type = "button";
+  copyCleanBtn.className = "history-copy-clean-btn";
+  copyCleanBtn.setAttribute("aria-label", t("history_copy_hint", lang));
+  _setClipboardIcon(copyCleanBtn);
+
+  afterRow.appendChild(afterDiv);
+  afterRow.appendChild(copyCleanBtn);
+
+  const actionsDiv = document.createElement("div");
+  actionsDiv.className = "history-actions";
+
+  const copyOrigBtn = document.createElement("button");
+  copyOrigBtn.type = "button";
+  copyOrigBtn.className = "history-copy-btn";
+  copyOrigBtn.textContent = t("history_copy_original", lang);
+  copyOrigBtn.setAttribute("aria-label", t("history_copy_original", lang));
+
+  actionsDiv.appendChild(copyOrigBtn);
+  entryDiv.appendChild(beforeDiv);
+  entryDiv.appendChild(afterRow);
+
+  if (entry.removedTracking?.length > 0) {
+    const details = document.createElement("details");
+    details.className = "history-breakdown";
+    const summary = document.createElement("summary");
+    // Pre-built into a variable (not inline) so the aria-i18n guard
+    // (tests/unit/options-aria-i18n.test.mjs) sees a bare identifier here,
+    // not a string/template literal — the value itself is still fully
+    // resolved through t().
+    const breakdownAriaLabel = `${entry.removedTracking.length} ${t("param_breakdown_label", lang)}`;
+    summary.setAttribute("aria-label", breakdownAriaLabel);
+    summary.textContent = t("param_breakdown_label", lang);
+    details.appendChild(summary);
+    details.appendChild(_renderActivityParamBreakdown(entry.removedTracking, lang));
+    entryDiv.appendChild(details);
+  }
+
+  entryDiv.appendChild(actionsDiv);
+
+  entryDiv.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      entryDiv.click();
+    }
+  });
+
+  entryDiv.addEventListener("click", (e) => {
+    if (e.target === copyOrigBtn || copyCleanBtn.contains(e.target)) return; // handled separately
+    const orig = afterDiv.textContent;
+    getCopySafeCleanUrl(entry.original).then((safeUrl) => {
+      copyWithFeedback(safeUrl, {
+        onSuccess: () => {
+          entryDiv.classList.add("copied");
+          afterDiv.textContent = t("history_copied", lang);
+        },
+        onError: () => { afterDiv.textContent = "✗"; },
+        onRevert: () => {
+          entryDiv.classList.remove("copied");
+          afterDiv.textContent = orig;
+        },
+      });
+    });
+  });
+
+  copyCleanBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    getCopySafeCleanUrl(entry.original).then((safeUrl) => {
+      copyWithFeedback(safeUrl, {
+        onSuccess: () => {
+          copyCleanBtn.textContent = "✓";
+          copyCleanBtn.style.fontSize = "11px";
+        },
+        onError: () => {
+          copyCleanBtn.textContent = "✗";
+          copyCleanBtn.style.fontSize = "11px";
+        },
+        onRevert: () => {
+          _setClipboardIcon(copyCleanBtn);
+          copyCleanBtn.style.fontSize = "";
+        },
+      });
+    });
+  });
+
+  copyOrigBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const origText = copyOrigBtn.textContent;
+    copyWithFeedback(entry.original, {
+      onSuccess: () => { copyOrigBtn.textContent = t("history_copied", lang); },
+      onError: () => { copyOrigBtn.textContent = "✗"; },
+      onRevert: () => { copyOrigBtn.textContent = origText; },
+    });
+  });
+
+  return entryDiv;
+}
+
+/**
+ * Builds one "Recent activity" row. Ported from popup.js's former
+ * showRecentActivity per-entry construction, unchanged: truncated URL with
+ * a full-URL title, badge/creator/network meta line, and a copy button.
+ */
+function _buildRecentActivityRow(row, lang) {
+  const rowEl = document.createElement("div");
+  rowEl.className = "recent-activity-row";
+
+  const urlEl = document.createElement("div");
+  urlEl.className = "recent-activity-url";
+  urlEl.textContent = row.urlDisplay;
+  urlEl.title = row.url;
+  rowEl.appendChild(urlEl);
+
+  const metaEl = document.createElement("div");
+  metaEl.className = "recent-activity-meta";
+
+  if (row.badgeText) {
+    const badgeEl = document.createElement("span");
+    badgeEl.className = "recent-activity-badge";
+    badgeEl.textContent = row.badgeText;
+    metaEl.appendChild(badgeEl);
+  }
+  if (row.creatorCreditText) {
+    const creditEl = document.createElement("span");
+    creditEl.className = "recent-activity-creator";
+    creditEl.textContent = row.creatorCreditText;
+    metaEl.appendChild(creditEl);
+  }
+  if (row.networkText) {
+    const netEl = document.createElement("span");
+    netEl.className = "recent-activity-network";
+    netEl.textContent = row.networkText;
+    metaEl.appendChild(netEl);
+  }
+  if (metaEl.childNodes.length > 0) rowEl.appendChild(metaEl);
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "recent-activity-copy";
+  copyBtn.type = "button";
+  copyBtn.textContent = t("ledger_copy_btn_label", lang);
+  copyBtn.setAttribute("aria-label", t("ledger_copy_btn_label", lang));
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await copyToClipboard(row.url);
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = t("ledger_copy_btn_copied", lang);
+      setTimeout(() => { copyBtn.textContent = orig; }, 1200);
+    } catch {
+      // Clipboard API may be denied in some contexts — the URL stays
+      // visible for the user to copy manually.
+    }
+  });
+  rowEl.appendChild(copyBtn);
+
+  return rowEl;
+}
+
+/**
+ * Renders the merged Activity ledger panel (#1352): the "This session" list
+ * (chrome.storage.session, via planSessionHistoryView) and the "Recent
+ * activity" list (chrome.storage.local.attributionLedger, via the existing
+ * presentLedger/renderEntries pair — unchanged from the popup). Always
+ * visible: unlike domain-stats/suspicious-params, this panel has no pref
+ * that hides it entirely (attributionLedgerEnabled only gates recording,
+ * exactly as it did before this move; "This session" has no recording gate
+ * at all).
+ */
+async function renderActivityLedgerPanel(lang) {
+  const panel = document.getElementById("activity-ledger-panel");
+  if (!panel) return;
+
+  const run = ++_activityLedgerRenderRun;
+  const isStale = () => run !== _activityLedgerRenderRun;
+
+  _applyActivityScopeView();
+  panel.hidden = false;
+  updateActivitySectionVisibility();
+
+  // ── "This session" ──
+  let history = [];
+  try {
+    const data = await sessionStorage.get({ history: [] });
+    history = data.history;
+  } catch (err) {
+    console.error("[MUGA] renderActivityLedgerPanel session read:", err);
+  }
+  if (isStale()) return;
+
+  const sessionList = document.getElementById("activity-session-list");
+  const sessionEmpty = document.getElementById("activity-session-empty");
+  if (sessionList && sessionEmpty) {
+    const { empty: sessionIsEmpty, entries: sessionEntries } = planSessionHistoryView(history);
+    sessionList.replaceChildren();
+    sessionEmpty.hidden = !sessionIsEmpty;
+    if (sessionIsEmpty) {
+      sessionEmpty.textContent = t("history_empty", lang);
+    } else {
+      for (const entry of sessionEntries) sessionList.appendChild(_buildSessionHistoryRow(entry, lang));
+    }
+  }
+
+  // ── "Recent activity" ──
+  let ledger = { events: [], capacity: DEFAULT_LEDGER_CAPACITY };
+  try {
+    const data = await chrome.storage.local.get({
+      attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY },
+    });
+    if (data?.attributionLedger && Array.isArray(data.attributionLedger.events)) {
+      ledger = data.attributionLedger;
+    }
+  } catch (err) {
+    console.warn("[MUGA] renderActivityLedgerPanel ledger read failed:", err);
+  }
+  if (isStale()) return;
+
+  const recentList = document.getElementById("activity-recent-list");
+  const recentEmpty = document.getElementById("activity-recent-empty");
+  if (recentList && recentEmpty) {
+    const view = presentLedger(ledger);
+    const rows = renderLedgerEntries(view, (key, vars) => {
+      const template = t(key, lang);
+      if (!vars) return template;
+      let out = template;
+      for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
+      return out;
+    });
+    recentList.replaceChildren();
+    recentEmpty.hidden = rows.length !== 0;
+    if (rows.length === 0) {
+      recentEmpty.textContent = t("ledger_empty", lang);
+    } else {
+      for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
+    }
   }
 }
 
