@@ -134,12 +134,11 @@ function simulateDnr(rawUrl, trackingParamsJson) {
       `tie at priority ${topPriority} — Chrome's winner would be non-deterministic.`,
   );
 
-  const removeParams = new Set(
-    (winners[0] ? removeOf(winners[0]) : []).map((p) => p.toLowerCase()),
-  );
+  // #1436: exact, case-sensitive match, as Chrome's GetModifiedQuery does.
+  const removeParams = new Set(winners[0] ? removeOf(winners[0]) : []);
   const toDelete = [];
   for (const key of u.searchParams.keys()) {
-    if (removeParams.has(key.toLowerCase())) toDelete.push(key);
+    if (removeParams.has(key)) toDelete.push(key);
   }
   for (const k of toDelete) u.searchParams.delete(k);
   return u.toString();

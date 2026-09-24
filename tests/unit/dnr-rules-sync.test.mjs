@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { TRACKING_PARAMS } from "../../src/lib/affiliates.js";
+import { withCaseVariants } from "../../tools/dnr-case-variants.mjs";
 import {
   DNR_STATIC_RULE_ID,
   DNR_DOMAIN_PRESERVE_RULE_ID_BASE,
@@ -73,14 +74,17 @@ test("tracking-params.json — global rule removeParams IS the full TRACKING_PAR
   // Under the one-rule-per-request model the global rule carries ALL tracking
   // params (not a filtered subset). Domain-preserved params stay in the global
   // rule but their domains are excluded from it — see the exclusion tests below.
+  // #1436: plus the canonical mixed-case spellings, since Chrome matches
+  // removeParams case-sensitively.
+  const expected = withCaseVariants(TRACKING_PARAMS);
   assert.equal(
     globalRemove.length,
-    TRACKING_PARAMS.length,
-    `global rule has ${globalRemove.length} params; TRACKING_PARAMS has ${TRACKING_PARAMS.length} — run \`npm run build:rules\``,
+    expected.length,
+    `global rule has ${globalRemove.length} params; TRACKING_PARAMS + case variants has ${expected.length} — run \`npm run build:rules\``,
   );
   assert.deepEqual(
     [...globalRemove].sort(),
-    [...TRACKING_PARAMS].sort(),
+    [...expected].sort(),
     "global rule removeParams must equal TRACKING_PARAMS exactly — run `npm run build:rules`",
   );
 });

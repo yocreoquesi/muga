@@ -117,6 +117,18 @@ const CORPUS = [
     divergence: false,
   },
 
+  // #1436: real-world mixed-case spellings. Chrome's removeParams is
+  // case-sensitive, so the generator must emit these canonical forms next to
+  // the lowercase ones or the tracker reaches the server on the first request.
+  { url: "https://www.example.com/p?hsCtaTracking=abc&_hsenc=x&keep=1", divergence: false },
+  { url: "https://www.example.com/l?ScCid=abc123&keep=1", divergence: false },
+  { url: "https://www.example.com/o?elqTrackId=a&elqCampaignId=2&keep=1", divergence: false },
+  { url: "https://www.example.com/p?omnisendContactID=abc&keep=1", divergence: false },
+  { url: "https://www.amazon.es/s?k=teclado&__mk_es_ES=%C3%85M%C3%85Z%C3%95%C3%91", divergence: false },
+  { url: "https://www.amazon.de/s?k=tastatur&__mk_de_DE=x", divergence: false },
+  { url: "https://www.nytimes.com/2026/01/01/world/x.html?referringSource=articleShare&keep=1", divergence: false },
+  { url: "https://www.bloomberg.com/news/articles/x?leadSource=uverify&keep=1", divergence: false },
+
   // ── "DNR and runtime MUST DIVERGE" (preserveParams) ──────────────────────
   // sharepoint.com has cid in preserveParams (domain-rules.json verified).
   // cid is in TRACKING_PARAMS → emitted in a domain-conditioned rule whose
@@ -195,7 +207,7 @@ function conditionMatches(rule, url, host) {
  *     half-clean URLs on real Chrome.
  *
  * The surviving rule's removeParams are applied exactly and
- * case-insensitively, with no prefix matching.
+ * CASE-SENSITIVELY (as Chrome does, #1436), with no prefix matching.
  *
  * @param {string} rawUrl
  * @param {Array}  trackingParamsJson — parsed tracking-params.json array
@@ -225,15 +237,17 @@ function simulateDnr(rawUrl, trackingParamsJson) {
       .join(", ")}] all match. Chrome would fire only one, half-cleaning the URL.`,
   );
 
+  // #1436: Chrome's GetModifiedQuery uses std::binary_search on the raw key,
+  // an exact byte comparison with no case folding. Matching lowercased here
+  // hid every mixed-case tracker (hsCtaTracking, ScCid, __mk_es_ES) the
+  // lowercase-only rules never removed.
   const removeParams = new Set(
-    (redirectRules[0]?.action.redirect.transform.queryTransform.removeParams ?? []).map((p) =>
-      p.toLowerCase(),
-    ),
+    redirectRules[0]?.action.redirect.transform.queryTransform.removeParams ?? [],
   );
 
   const toDelete = [];
   for (const key of u.searchParams.keys()) {
-    if (removeParams.has(key.toLowerCase())) toDelete.push(key);
+    if (removeParams.has(key)) toDelete.push(key);
   }
   for (const k of toDelete) u.searchParams.delete(k);
   return u.toString();

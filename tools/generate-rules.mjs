@@ -34,6 +34,7 @@ import {
   DNR_PATH_SCOPED_PRIORITY,
 } from "../src/lib/dnr-ids.js";
 import { SIGNED_URL_REGEX_FILTER } from "../src/lib/signed-url.js";
+import { withCaseVariants } from "./dnr-case-variants.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -534,7 +535,9 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: [...TRACKING_PARAMS],
+              // #1436: Chrome matches removeParams case-sensitively, so every
+              // strip list also carries the canonical mixed-case spellings.
+              removeParams: withCaseVariants(TRACKING_PARAMS),
             },
           },
         },
@@ -562,7 +565,7 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: group.removeParams,
+              removeParams: withCaseVariants(group.removeParams),
             },
           },
         },
@@ -637,7 +640,7 @@ export function buildDnrRules() {
         redirect: {
           transform: {
             queryTransform: {
-              removeParams: spec.removeParams,
+              removeParams: withCaseVariants(spec.removeParams),
             },
           },
         },
