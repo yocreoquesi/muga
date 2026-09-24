@@ -1358,6 +1358,26 @@ describe("runRemoteRulesFetch — orchestrator (integration-ish)", () => {
     assert.strictEqual(result.remoteRulesMeta.lastError, null, "lastError should be null on success");
   });
 
+  // #1448: deps.isFirefoxMV2 flows all the way from runRemoteRulesFetch through
+  // to mergeIntoCache, so the weekly opportunistic fetch (which bypasses
+  // reconcileRemoteDnrRule entirely) never installs a remote-channel DNR rule
+  // on Firefox either — see src/background/service-worker.js's
+  // _remoteRulesDeps() for the real production wiring of this flag.
+  test("#1448: isFirefoxMV2:true → the cache still updates but no DNR rule is added", async () => {
+    const deps = makeDeps();
+    deps.isFirefoxMV2 = true;
+    await runRemoteRulesFetch(deps);
+
+    const result = await deps.storage.get({ remoteParams: [], remoteRulesMeta: {} });
+    assert.ok(
+      Array.isArray(result.remoteParams) && result.remoteParams.length > 0,
+      "the cache write is unaffected by isFirefoxMV2 — only the DNR side changes",
+    );
+    for (const call of deps.dnr._calls) {
+      assert.strictEqual(call.addRules, undefined, `expected a remove-only call on Firefox, got ${JSON.stringify(call)}`);
+    }
+  });
+
   test("invalid signature → VERIFY_FAILED, previous params untouched (SC-04)", async () => {
     const prevParams = ["utm_previous"];
     const prevMeta = { version: 1, fetchedAt: "2026-01-01T00:00:00Z", paramCount: 1, lastError: null, published: "2026-01-01T00:00:00Z" };
@@ -2192,6 +2212,68 @@ describe("#1221 slice 2 — mergeIntoCache applies the scoped rules", () => {
     assert.strictEqual(dnr._calls.length, 2);
     assert.deepStrictEqual(dnr._calls[1].removeRuleIds, [...SCOPED_RULE_ID_RANGE]);
     assert.strictEqual(dnr._calls[1].addRules, undefined);
+  });
+});
+
+// ── #1448 — Firefox never gets a remote-channel DNR redirect rule ───────────
+describe("#1448 — mergeIntoCache with isFirefoxMV2:true installs no DNR redirect rule", () => {
+  test("a non-empty payload with scoped facts still only ever removes, never adds", async () => {
+    const { mergeIntoCache, REMOTE_RULE_ID, SCOPED_RULE_ID_RANGE } =
+      await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_source"], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+      scopedFacts: [{ param: "si", hosts: ["youtube.com"] }],
+    }, { storage, dnr, isFirefoxMV2: true });
+
+    assert.strictEqual(dnr._calls.length, 2, "global and scoped stay separate calls, as on Chrome");
+    assert.deepStrictEqual(dnr._calls[0], { removeRuleIds: [REMOTE_RULE_ID] });
+    assert.deepStrictEqual(dnr._calls[1], { removeRuleIds: [...SCOPED_RULE_ID_RANGE] });
+  });
+
+  test("the cache is still written normally — only the DNR side is skipped", async () => {
+    const { mergeIntoCache } = await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_source"], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+      scopedFacts: [{ param: "si", hosts: ["youtube.com"] }],
+    }, { storage, dnr, isFirefoxMV2: true });
+
+    const saved = await storage.get({ remoteParams: [], remoteRulesMeta: null });
+    assert.deepStrictEqual(saved.remoteParams, ["utm_source"]);
+    assert.deepStrictEqual(saved.remoteRulesMeta.scopedFacts, [{ param: "si", hosts: ["youtube.com"] }]);
+  });
+
+  test("an empty accepted set behaves the same as on Chrome (remove-only either way)", async () => {
+    const { mergeIntoCache, REMOTE_RULE_ID } = await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache([], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 0,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+    }, { storage, dnr, isFirefoxMV2: true });
+
+    assert.deepStrictEqual(dnr._calls[0], { removeRuleIds: [REMOTE_RULE_ID] });
+  });
+
+  test("isFirefoxMV2 defaults to false — omitting it behaves exactly like Chrome", async () => {
+    const { mergeIntoCache, REMOTE_RULE_ID } = await import("../../src/lib/remote-rules.js");
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await mergeIntoCache(["utm_source"], {
+      version: 3, fetchedAt: "2026-01-01T00:00:00.000Z", paramCount: 1,
+      lastError: null, published: "2026-01-01T00:00:00.000Z",
+    }, { storage, dnr });
+
+    assert.strictEqual(dnr._calls[0].addRules[0].id, REMOTE_RULE_ID, "no isFirefoxMV2 passed -> global rule is still added, as before #1448");
   });
 });
 

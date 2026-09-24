@@ -199,42 +199,71 @@ test("Firefox smoke: an allowlisted host is navigated to untouched", async () =>
   });
 });
 
-// Reproducer for a defect this spec surfaced, kept as a todo so it reports
-// without blocking CI until the fix lands. The remote channel installs DNR
-// redirect rules (1001 and the scoped 3100+ range) that match EVERY
-// main_frame request, with a queryTransform. On Firefox, while one of them
-// matches, the webRequest listener's redirect is not applied, so built-in
-// params such as utm_source go out on the wire. Measured locally on Firefox
-// 156 with the live channel: every page-initiated navigation (location
-// assignment, a 302, a meta refresh) reached the server uncleaned, and all of
-// them were cleaned once the dynamic rules were removed.
-test("Firefox smoke: built-in cleaning still applies while a remote DNR redirect rule is installed", {
-  todo: "remote-channel DNR redirect rules override the Firefox webRequest strip (found by #1408)",
-}, async () => {
+// #1448 fix, formerly a todo reproducer here. The defect: the remote channel
+// installed DNR redirect rules (1001, matching EVERY main_frame request with
+// no urlFilter, and the host-scoped 3100+ range) on Firefox too. While either
+// matched, Firefox did not apply the webRequest listener's own redirect for
+// that request — measured true for both the unscoped rule and a rule scoped
+// by requestDomains — so built-in params like utm_source silently rode along
+// uncleaned. Fixed by making Firefox NEVER install a remote-channel DNR rule:
+// reconcileRemoteDnrRule and mergeIntoCache (both in src, not this spec) now
+// short-circuit to a remove-only update on Firefox, and onBeforeNavigateStrip
+// folds the host-scoped facts into its own prefs.remoteParams via
+// withScopedRemoteParams (dnr-sync.js) so nothing is lost — the listener
+// becomes Firefox's sole cleaning authority for the built-in list AND both
+// halves of the remote channel.
+test("Firefox smoke: remote rules install no DNR redirect rule; built-in and remote (global + scoped) params are all still stripped", async () => {
   await withFirefox(async ({ driver, server }) => {
-    await driver.get(`${EXTENSION_ORIGIN}/popup/popup.html`);
-    const updateErr = await driver.executeAsyncScript((cb) => {
-      chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [1001],
-        addRules: [{
-          id: 1001,
-          priority: 1,
-          action: {
-            type: "redirect",
-            redirect: { transform: { queryTransform: { removeParams: ["muga_smoke_remote_only"] } } },
-          },
-          condition: { resourceTypes: ["main_frame"] },
-        }],
-      }, () => cb(chrome.runtime.lastError ? chrome.runtime.lastError.message : null));
-    });
-    assert.equal(updateErr, null, `updateDynamicRules(1001) failed: ${updateErr}`);
-    // Read the rule back before navigating: a rejected/silently-dropped rule
-    // must never masquerade as "the built-in strip survived a remote rule",
-    // when in fact no remote rule was installed at all.
-    const idsBeforeNav = await dynamicRuleIds(driver);
-    assert.ok(idsBeforeNav.includes(1001), `rule 1001 was not installed before navigating (ids: ${JSON.stringify(idsBeforeNav)})`);
+    const host = new URL(server.origin).hostname;
 
-    const paths = await navigateFromPage(driver, server);
-    assert.deepStrictEqual(paths, [CLEAN_PATH]);
+    // Seed a cached remote-rules payload directly into local storage — this
+    // spec stays hermetic (no live fetch) — one global param and one fact
+    // scoped to this test's own host.
+    await driver.get(`${EXTENSION_ORIGIN}/popup/popup.html`);
+    await driver.executeAsyncScript((hostArg, cb) => {
+      chrome.storage.local.set({
+        remoteParams: ["muga_smoke_remote_only"],
+        remoteRulesMeta: {
+          version: 1,
+          fetchedAt: new Date().toISOString(),
+          paramCount: 1,
+          lastError: null,
+          published: new Date().toISOString(),
+          scopedFacts: [{ param: "muga_smoke_scoped_only", hosts: [hostArg] }],
+        },
+      }, () => cb());
+    }, host);
+
+    // Drive the real gate-open reconcile path (applyDnrState ->
+    // reconcileRemoteDnrRule) the same way the ENABLE_REMOTE_RULES message
+    // does, without its live fetch: flip dnrEnabled off then on — a genuine
+    // value transition, guaranteed to fire storage.onChanged — with
+    // remoteRulesEnabled set in the same pass. Firefox's background page is
+    // persistent (unlike Chrome's service worker), so there is no wake/
+    // eviction race here to retry against, unlike the Chromium scoped-DNR
+    // spec's equivalent seeding dance.
+    await setStorageSync(driver, EXTENSION_ORIGIN, { dnrEnabled: false });
+    await setStorageSync(driver, EXTENSION_ORIGIN, {
+      dnrEnabled: true, remoteRulesEnabled: true, whitelist: [], blacklist: [],
+    });
+
+    // Neither remote-channel DNR rule may exist on Firefox. Poll briefly:
+    // the reconcile above is async relative to this check.
+    const isRemoteRule = (id) => id === 1001 || (id >= 3100 && id < 5100);
+    const deadline = Date.now() + 5000;
+    let ids = await dynamicRuleIds(driver);
+    while (Date.now() < deadline && ids.some(isRemoteRule)) {
+      await sleep(200);
+      ids = await dynamicRuleIds(driver);
+    }
+    assert.ok(
+      !ids.some(isRemoteRule),
+      `no remote-channel DNR rule may be installed on Firefox (ids: ${JSON.stringify(ids)})`,
+    );
+
+    // Both halves of the remote payload, AND the built-in params, must be
+    // stripped — by the webRequest listener alone.
+    const dirtyPath = "/page?utm_source=newsletter&gclid=abc123&muga_smoke_remote_only=x&muga_smoke_scoped_only=y&keep=1";
+    await navigateUntilClean(driver, server, dirtyPath, [CLEAN_PATH]);
   });
 });

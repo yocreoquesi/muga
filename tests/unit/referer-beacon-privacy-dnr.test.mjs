@@ -520,7 +520,7 @@ describe("dnr-sync.js source guards — the four new sync fns exist and are wire
 
   test("storage.onChanged re-syncs DNR when suppressReferer or blockBeacons change", () => {
     const storageListenerStart = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
-    const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 2700);
+    const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 3000);
     assert.ok(storageListenerBlock.includes("changes.suppressReferer"));
     assert.ok(storageListenerBlock.includes("changes.blockBeacons"));
   });

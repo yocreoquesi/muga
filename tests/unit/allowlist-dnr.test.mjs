@@ -300,7 +300,7 @@ describe("service-worker.js source guard — storage.onChanged wiring", () => {
   test("storage.onChanged re-syncs DNR when whitelist or blacklist changes", () => {
     const storageListenerStart = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
     assert.ok(storageListenerStart !== -1, "storage onChanged listener must exist");
-    const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 2500);
+    const storageListenerBlock = swSource.slice(storageListenerStart, storageListenerStart + 3000);
     assert.ok(
       storageListenerBlock.includes("changes.whitelist"),
       "must re-sync DNR when the whitelist changes"

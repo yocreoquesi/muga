@@ -157,8 +157,14 @@ describe("MV parity — background message-type handlers share one source file (
     // type could become reachable on only one build.
     const listenerStart = serviceWorkerSrc.indexOf("chrome.runtime.onMessage.addListener(");
     assert.ok(listenerStart >= 0, "onMessage.addListener call not found");
-    const nextFunctionIdx = serviceWorkerSrc.indexOf("\nasync function", listenerStart);
-    assert.ok(nextFunctionIdx > listenerStart, "could not locate end of the onMessage listener body");
+    // The next top-level function declaration, async OR plain, whichever comes
+    // first — a plain helper (e.g. a deps-factory) declared right after the
+    // listener is just as much "not the listener body" as the next async one.
+    const nextAsyncFunctionIdx = serviceWorkerSrc.indexOf("\nasync function", listenerStart);
+    const nextPlainFunctionIdx = serviceWorkerSrc.indexOf("\nfunction ", listenerStart);
+    const candidates = [nextAsyncFunctionIdx, nextPlainFunctionIdx].filter((i) => i > listenerStart);
+    assert.ok(candidates.length > 0, "could not locate end of the onMessage listener body");
+    const nextFunctionIdx = Math.min(...candidates);
     const listenerBody = serviceWorkerSrc.slice(listenerStart, nextFunctionIdx);
     assert.doesNotMatch(
       listenerBody,
