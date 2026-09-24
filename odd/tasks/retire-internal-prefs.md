@@ -123,8 +123,10 @@ do not touch `showHistory`/`showRecentActivity` ledger logic.
 - [x] T8 — import/export tolerance pass: dedicated
       `tests/unit/retired-prefs-import-tolerance.test.mjs` proves getPrefs()
       against a realistic chrome.storage.sync stub never surfaces a retired
-      key and never throws, dnrEnabled's stored value is still honoured, and
-      planImport() ignores all four keys together in one legacy-shaped file.
+      key and never throws, and planImport() ignores all four keys together
+      in one legacy-shaped file. (Superseded in part by R3-001 below:
+      dnrEnabled's stored value is no longer honoured at all — the internal
+      default governs unconditionally.)
 - [x] T9 — regenerated `build:content`/`build:web` bundles (all three
       cleaner-bundle.js copies changed by 1 line each), separate commit.
 - [x] T10 — full check pass green: `npm test` (8283 pass, 1 pre-existing
@@ -215,3 +217,83 @@ do not touch `showHistory`/`showRecentActivity` ledger logic.
   `<input>`, which is always `opacity:0` by design) — fixed to
   `toBeAttached()`/`toBeChecked()` + panel `toBeVisible()`, all 21 options
   e2e tests pass, plus 3/3 export-import and 7/7 popup e2e specs.
+
+## Branch restructuring: stacked slices
+
+The single `feat/1355-retire-internal-prefs` branch above was restructured
+by the coordinator into three stacked, independently reviewable slices in
+the same worktree (identical final tree at the original tip):
+
+- `feat/1355-a` — T0-T2 + bundle regen (task doc, `hoverPreviewDelayMs`,
+  `dnrEnabled` control removal).
+- `feat/1355-b` (on `feat/1355-a`) — T3-T4 + e2e fix + bundle regen
+  (Developer-tools relocation, `paramBreakdown` retirement).
+- `feat/1355-c` (on `feat/1355-b`) — T5-T9 (`showReportButton` retirement,
+  consent-state docs, ADR-0011 update, import tolerance test, closeout,
+  bundle regen).
+
+Native review of A+B's hand-written commits (RDD) returned **approved with
+warnings to fix now**. This section records those fixes; the T0-T10
+checklist/progress above documents the original implementation and is left
+as-is except for two corrections noted inline (T8's dnrEnabled claim, above).
+
+## Native review findings and fixes (R3-001 .. R3-004)
+
+- **R3-001 (slice A, fixed)** — a user who had explicitly stored
+  `dnrEnabled: false` before its Settings control was removed stayed
+  stranded on the DNR-off path forever: the control that could flip it back
+  no longer existed, but `getPrefs()` still honoured the stale stored value.
+  Maintainer decision: the internal default governs unconditionally.
+  `getPrefs()` (`src/lib/prefs.js`) now forces `dnrEnabled` to
+  `PREF_DEFAULTS.dnrEnabled` after the storage merge, discarding whatever was
+  stored. A new one-time migration, `migrateDropDnrEnabledPref()`
+  (`src/lib/storage-migrations.js`), deletes the stale key — modelled on
+  `migrateDropCookieConsent`'s read-then-remove shape (no value to preserve,
+  so no read-modify-write step and no unsafe intermediate state), wired into
+  the single `runOneTimeMigrations()` call site (#1257) rather than a new
+  one. RED confirmed in `tests/unit/dnr-enabled-internal-default.test.mjs`
+  (9 of 11 assertions failed pre-fix) before implementing.
+  `tests/unit/retired-prefs-import-tolerance.test.mjs` (slice C) updated to
+  match — it asserted the old, now-wrong behavior.
+- **R3-002 (slice B, fixed)** — `experimentalParamClassesEnabled`'s control
+  moved to Developer tools, a surface most users never open; a user who had
+  this experimental (default-off, false-positive-prone) heuristic ON before
+  the move could be stuck with it running with no visible way back.
+  Maintainer decision: turn it OFF once on upgrade; the user can re-enable it
+  in Developer tools. `migrateExperimentalParamClassesOff()` (same file) is
+  a genuinely one-time migration (unlike R3-001's pure delete, it WRITES a
+  value the user might later change back), so it needs — and has — a
+  persistent done-marker (`chrome.storage.local["experimentalParamClassesOffMigrated"]`)
+  written only after the value flip actually succeeds, so a deliberate later
+  re-enable is never re-flipped and a crash mid-migration safely retries.
+  Wired into the same single `runOneTimeMigrations()` call site. RED
+  confirmed in `tests/unit/experimental-param-classes-migration.test.mjs`
+  (all 10 assertions failed pre-fix, `TypeError: ... is not a function`)
+  before implementing.
+- **R3-003 (slice B, fixed)** — the containment tests for the moved
+  Developer-tools controls (and the sibling `#925` Advanced-card check) only
+  compared string offsets, which proves an id appears somewhere in a stretch
+  of *text*, not that it is an actual DOM *descendant* of a container — two
+  sibling `<div>`s at the same depth would have passed identically. No
+  HTML-parser (`jsdom`/`linkedom`/`happy-dom`) is a devDependency of this
+  project (verified: none in `package.json`; `cheerio` exists only
+  transitively via `addons-linter`, undeclared, not safe to depend on), and
+  the HARD RULE against `npm install` (only `npm ci`) rules out adding one —
+  so this uses the documented fallback: a balanced `<div>`-tag walk
+  (`isNestedInsideDiv()` in `tests/unit/options-surfaced-prefs.test.mjs`),
+  with HTML comments stripped first defensively. Verified the walk actually
+  discriminates (not vacuously true) against a hand-built sibling-vs-descendant
+  case before trusting it against the real file.
+- **R3-004 (slice B, fixed)** — `tests/e2e/options.spec.mjs`'s relocation
+  test only checked the moved checkboxes' own attachment/checked state.
+  Those `<input>`s are always `opacity:0` + `width:0;height:0` by design
+  (empty bounding box), so `toBeHidden()`/`toBeVisible()` on the checkbox
+  itself is trivially true regardless of gating and proves nothing. Added
+  `expect(page.locator("#dev-tools-panel")).toBeHidden()` both before
+  turning `dev-tools-mode` on and after turning it back off — the actual
+  CSS-gated ancestor, which is the real signal.
+- Every slice's tip re-verified green after these fixes:
+  `npm test`, `npm run test:integration`, `lint:js`, `typecheck`,
+  `check:i18n`, `npm run lint` (0 errors, manifest untouched), and the full
+  `options`/`export-import`/`popup` e2e specs (31/31) on the final
+  `feat/1355-c` tip.
