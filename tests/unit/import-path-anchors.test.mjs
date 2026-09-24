@@ -325,3 +325,38 @@ describe("computeLanding — end-to-end pure core", () => {
     assert.equal(second.alreadyLanded.length, 1);
   });
 });
+
+// Native review (A+B) findings: a single-prefix candidate merging into a
+// multi-prefix group, own `pathStrips: undefined` keys, and locale-dependent
+// ordering.
+describe("review follow-ups (#1326 slice 3)", () => {
+  test("a single-prefix candidate merges into an existing MULTI-prefix group instead of crashing", () => {
+    const existing = [
+      {
+        domain: "google.com",
+        preserveParams: [],
+        pathStrips: [{ pathPrefixes: ["/search", "/webhp"], params: ["ved"] }],
+        note: "n",
+      },
+    ];
+    const { toAdd } = selectNewGroups([{ domain: "google.com", pathPrefixes: ["/search"], params: ["aqs"] }], existing);
+    const result = applyPathAnchorGroups(existing, toAdd);
+    assert.deepEqual(result[0].pathStrips, [{ pathPrefixes: ["/search", "/webhp"], params: ["aqs", "ved"] }]);
+  });
+
+  test("an untouched rule without pathStrips gets no own pathStrips key", () => {
+    const existing = [{ domain: "example.com", preserveParams: ["q"], note: "n" }];
+    const result = applyPathAnchorGroups(existing, [{ domain: "other.example", pathPrefixes: ["/x"], params: ["a"] }]);
+    assert.equal(Object.hasOwn(result[0], "pathStrips"), false);
+  });
+
+  test("ordering is ordinal (code unit), not locale-dependent", () => {
+    const groups = groupPathAnchors([
+      { param: "a", host: "a.example", pathPrefix: "/b" },
+      { param: "b", host: "a.example", pathPrefix: "/B" },
+      { param: "c", host: "a.example", pathPrefix: "/_" },
+    ]);
+    // Code-unit order: "B" (0x42) < "_" (0x5F) < "b" (0x62).
+    assert.deepEqual(groups.map((g) => g.pathPrefixes[0]), ["/B", "/_", "/b"]);
+  });
+});

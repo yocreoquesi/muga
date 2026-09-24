@@ -140,9 +140,10 @@ export function groupPathAnchors(landable) {
     params: [...g.params].sort(),
   }));
 
-  result.sort(
-    (a, b) => a.domain.localeCompare(b.domain) || a.pathPrefixes[0].localeCompare(b.pathPrefixes[0])
-  );
+  // Ordinal (code-unit) comparison, never localeCompare: order decides which
+  // groups survive the DNR cap, so it must not depend on the host's ICU locale.
+  const ordinal = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+  result.sort((a, b) => ordinal(a.domain, b.domain) || ordinal(a.pathPrefixes[0], b.pathPrefixes[0]));
   return result;
 }
 
@@ -236,10 +237,13 @@ export function selectNewGroups(candidateGroups, existingDomainRules, opts = {})
 export function applyPathAnchorGroups(existingDomainRules, toAdd, opts = {}) {
   const { note = DEFAULT_NOTE } = opts;
 
-  const result = existingDomainRules.map((rule) => ({
-    ...rule,
-    pathStrips: rule.pathStrips ? rule.pathStrips.map((g) => ({ ...g, params: [...g.params] })) : rule.pathStrips,
-  }));
+  // Copy pathStrips only where it exists, so an untouched rule never gains an
+  // own `pathStrips: undefined` key that presence checks would misread.
+  const result = existingDomainRules.map((rule) =>
+    rule.pathStrips
+      ? { ...rule, pathStrips: rule.pathStrips.map((g) => ({ ...g, params: [...g.params] })) }
+      : { ...rule }
+  );
   const byDomain = new Map(result.map((rule) => [rule.domain, rule]));
 
   for (const group of toAdd) {
@@ -251,10 +255,13 @@ export function applyPathAnchorGroups(existingDomainRules, toAdd, opts = {}) {
     }
     if (!rule.pathStrips) rule.pathStrips = [];
 
-    if (group.mergeIntoExisting) {
-      const target = rule.pathStrips.find(
-        (g) => JSON.stringify(g.pathPrefixes) === JSON.stringify(group.pathPrefixes)
-      );
+    // selectNewGroups matches per individual prefix, so the target is the
+    // group that CONTAINS the candidate's prefix, which may carry several
+    // (e.g. ["/search", "/webhp"]); whole-array equality would miss it.
+    const target = group.mergeIntoExisting
+      ? rule.pathStrips.find((g) => group.pathPrefixes.every((p) => g.pathPrefixes.includes(p)))
+      : undefined;
+    if (target) {
       target.params = [...new Set([...target.params, ...group.params])].sort();
     } else {
       rule.pathStrips.push({ pathPrefixes: group.pathPrefixes, params: group.params });
