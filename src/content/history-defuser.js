@@ -255,8 +255,24 @@
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
     if (!_storageListenerInstalled) {
       _storageListenerInstalled = true;
-      chrome.storage.onChanged.addListener((_changes, area) => {
-        if (area === "sync" || area === "local") readPrefsAndGate();
+      // #1415: every sync change can move the gate (enabled, allow/blocklists,
+      // activeDefenseEnabled, ...), but almost every LOCAL write is
+      // bookkeeping (stats, domainStats, crossSiteFreq, attributionLedger)
+      // that cannot, and each one used to make every open tab re-request
+      // prefs. Only the local keys getPrefs() actually reads are listed:
+      // the consent record (onboardingDone), the per-device overrides, and
+      // the e2e fixture keys. Keep in sync with the service worker's own
+      // storage.onChanged filter.
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (
+          area === "sync" ||
+          (area === "local" && changes && (
+            changes.mugaConsent || changes.mugaPerDevicePrefs ||
+            changes.__muga_test_mode || changes.__muga_test_fixtures
+          ))
+        ) {
+          readPrefsAndGate();
+        }
       });
     }
   }

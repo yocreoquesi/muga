@@ -578,3 +578,77 @@ describe("createTracker — concurrent observe() serialization (#732)", () => {
     assert.equal(stored.params.uid.values.length, 3, "all 3 values accumulated");
   });
 });
+
+// ── observeMany (#1419) ──────────────────────────────────────────────────────
+//
+// observe() is a read-modify-write of the WHOLE crossSiteFreq object, and the
+// cleaner used to call it once per stripped param: a 4-param campaign link
+// meant 4 full reads and 4 full writes (~1.3 MB serialized at a realistic
+// state size). observeMany batches one URL's observations into one of each.
+
+function countingAdapter() {
+  const inner = createInMemoryAdapter();
+  const counts = { get: 0, set: 0 };
+  return {
+    counts,
+    get: async () => { counts.get++; return inner.get(); },
+    set: async (s) => { counts.set++; return inner.set(s); },
+  };
+}
+
+const withoutTimes = (state) => {
+  const out = {};
+  for (const [name, e] of Object.entries(state.params)) {
+    const { firstSeen: _f, lastSeen: _l, ...rest } = e;
+    out[name] = rest;
+  }
+  return out;
+};
+
+describe("createTracker — observeMany batches one URL (#1419)", () => {
+  const OBS = [
+    { name: "utm_source", value: "news" },
+    { name: "utm_medium", value: "email" },
+    { name: "utm_campaign", value: "fall" },
+    { name: "fbclid", value: "IwAR0abc" },
+  ];
+
+  test("one read and one write for every param of a URL", async () => {
+    const adapter = countingAdapter();
+    const tracker = createTracker({ adapter, hasher: stubHasher });
+    await tracker.observeMany("shop.com", OBS);
+    assert.deepEqual(adapter.counts, { get: 1, set: 1 });
+    const stored = await adapter.get();
+    assert.deepEqual(Object.keys(stored.params).sort(), OBS.map((o) => o.name).sort());
+  });
+
+  test("ends in the same state as observing each param in turn", async () => {
+    const a = makeTracker();
+    const b = makeTracker();
+    // A repeated name inside one batch must accumulate like two observe() calls.
+    const obs = [...OBS, { name: "utm_source", value: "other" }];
+    await a.tracker.observeMany("shop.com", obs);
+    for (const o of obs) await b.tracker.observe("shop.com", o.name, o.value);
+    assert.deepEqual(withoutTimes(await a.adapter.get()), withoutTimes(await b.adapter.get()));
+  });
+
+  test("is serialized with observe(): no lost update between the two", async () => {
+    const { tracker, adapter } = makeTracker();
+    await Promise.all([
+      tracker.observeMany("a.com", OBS.slice(0, 2)),
+      tracker.observe("b.com", "gclid", "x"),
+      tracker.observeMany("c.com", OBS.slice(2)),
+    ]);
+    const stored = await adapter.get();
+    assert.equal(Object.keys(stored.params).length, 5);
+  });
+
+  test("disabled or empty batches touch nothing", async () => {
+    const adapter = countingAdapter();
+    const tracker = createTracker({ adapter, hasher: stubHasher, enabled: false });
+    await tracker.observeMany("shop.com", OBS);
+    tracker.setEnabled(true);
+    await tracker.observeMany("shop.com", []);
+    assert.deepEqual(adapter.counts, { get: 0, set: 0 });
+  });
+});

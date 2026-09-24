@@ -255,6 +255,7 @@ export async function defaultHasher(input) {
  * @param {boolean}  [options.enabled=true]
  * @returns {{
  *   observe: (domain: string, paramName: string, value: string) => Promise<void>,
+ *   observeMany: (domain: string, observations: Array<{name: string, value: string}>) => Promise<void>,
  *   getFlagged: () => Promise<Array<{ param: string, domains: number, values: number, state: string }>>,
  *   getState: (paramName: string) => Promise<"observed"|"suspicious"|"candidate">,
  *   setEnabled: (next: boolean) => void,
@@ -280,29 +281,55 @@ export function createTracker({ adapter, hasher, enabled = true }) {
    * (recordFrequency attaches its own .catch).
    */
   function observe(domain, paramName, value) {
-    const run = _chain.then(() => _doObserve(domain, paramName, value));
+    return observeMany(domain, [{ name: paramName, value }]);
+  }
+
+  /**
+   * Batched observe() for every param stripped from ONE URL (#1419). Same
+   * serialization chain, same per-observation semantics, but ONE adapter.get()
+   * and ONE adapter.set() for the whole batch. The state is the whole
+   * crossSiteFreq object (up to ~1 MB at the LRU cap), so calling observe()
+   * per param re-read and re-wrote all of it N times per navigation.
+   *
+   * @param {string} domain
+   * @param {Array<{name: string, value: string}>} observations
+   * @returns {Promise<void>}
+   */
+  function observeMany(domain, observations) {
+    const run = _chain.then(() => _doObserveMany(domain, observations));
     _chain = run.catch(() => {});
     return run;
   }
 
+  async function _doObserveMany(domain, observations) {
+    if (!_enabled) return;
+    if (!domain || !Array.isArray(observations)) return;
+    const valid = observations.filter((o) => o && o.name);
+    if (valid.length === 0) return;
+
+    // Hash first (async, independent of state), then one read-modify-write.
+    const hashed = [];
+    for (const o of valid) {
+      const rawValue = String(o.value ?? "");
+      hashed.push({ name: o.name, rawValue, hash: await hasher(rawValue) });
+    }
+    const state = await adapter.get();
+    state.params = state.params || {};
+    for (const h of hashed) _applyObservation(state, domain, h.name, h.rawValue, h.hash);
+    await adapter.set(state);
+  }
+
   /**
-   * Records that `paramName=value` was seen on `domain`. No-op when the
-   * tracker is disabled. Touches `lastSeen` on every observation so the
-   * LRU has fresh information to choose its eviction victim.
+   * Records that `paramName=value` was seen on `domain`, into `state` in
+   * place. Touches `lastSeen` on every observation so the LRU has fresh
+   * information to choose its eviction victim.
    *
    * Maintains a running-mean entropy for the param so graduation decisions
    * can be made cheaply at read time (see graduate() / getState()). Running
    * mean keeps observe() at O(1) — no per-observation array growth, no
    * recomputation over historical values.
    */
-  async function _doObserve(domain, paramName, value) {
-    if (!_enabled) return;
-    if (!domain || !paramName) return;
-
-    const rawValue = String(value ?? "");
-    const hash = await hasher(rawValue);
-    const state = await adapter.get();
-    state.params = state.params || {};
+  function _applyObservation(state, domain, paramName, rawValue, hash) {
     const now = Date.now();
     let entry = state.params[paramName];
     if (!entry) {
@@ -359,8 +386,6 @@ export function createTracker({ adapter, hasher, enabled = true }) {
       }
       if (oldestName !== null) delete state.params[oldestName];
     }
-
-    await adapter.set(state);
   }
 
   /**
@@ -439,5 +464,5 @@ export function createTracker({ adapter, hasher, enabled = true }) {
     _enabled = next !== false;
   }
 
-  return { observe, getFlagged, getState, setEnabled };
+  return { observe, observeMany, getFlagged, getState, setEnabled };
 }

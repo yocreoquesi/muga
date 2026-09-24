@@ -321,3 +321,91 @@ describe("migrateFollowShortenersSplit", () => {
     await assert.doesNotReject(() => migrateFollowShortenersSplit());
   });
 });
+
+/**
+ * migrateLegacyProxyPref (#1418)
+ *
+ * privacyProxyEnabled is two renames old. It used to be converted into
+ * followShortenersEnabled, which migrateFollowShortenersSplit then split into
+ * the resolveShortenersOn* pair. runOneTimeMigrations runs every migration
+ * concurrently, so on the first wake the split read storage before the legacy
+ * migration wrote to it, and hover resolution stayed off until the next
+ * worker spawn. The legacy migration now writes the final keys itself.
+ */
+describe("migrateLegacyProxyPref (#1418)", () => {
+  let stores;
+
+  beforeEach(() => {
+    stores = installChromeStub();
+  });
+
+  test("true becomes click AND hover resolution on, and no intermediate key is left", async () => {
+    stores.syncStore.set("privacyProxyEnabled", true);
+    const { migrateLegacyProxyPref } = await loadMigration();
+    await migrateLegacyProxyPref();
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), true);
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), true);
+    assert.equal(stores.syncStore.has("followShortenersEnabled"), false);
+    assert.equal(stores.syncStore.has("privacyProxyEnabled"), false);
+  });
+
+  test("a newer explicit choice on the final keys is never overwritten (#1418 review)", async () => {
+    // An older device can still sync privacyProxyEnabled after this device's
+    // user turned hover resolution off on the new key.
+    stores.syncStore.set("privacyProxyEnabled", true);
+    stores.syncStore.set("resolveShortenersOnHover", false);
+    const { migrateLegacyProxyPref } = await loadMigration();
+    await migrateLegacyProxyPref();
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), false, "explicit newer choice kept");
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), true, "absent final key still migrated");
+    assert.equal(stores.syncStore.has("privacyProxyEnabled"), false);
+  });
+
+  test("false writes nothing and the defaults apply, as the old two-step chain did", async () => {
+    stores.syncStore.set("privacyProxyEnabled", false);
+    const { migrateLegacyProxyPref } = await loadMigration();
+    await migrateLegacyProxyPref();
+
+    assert.equal(stores.syncStore.has("resolveShortenersOnClick"), false);
+    assert.equal(stores.syncStore.has("resolveShortenersOnHover"), false);
+    assert.equal(stores.syncStore.has("privacyProxyEnabled"), false);
+  });
+
+  test("absent is a no-op", async () => {
+    stores.syncStore.set("language", "en");
+    const { migrateLegacyProxyPref } = await loadMigration();
+    await migrateLegacyProxyPref();
+    assert.deepEqual([...stores.syncStore.keys()], ["language"]);
+  });
+
+  test("chained through runOneTimeMigrations with async storage, one run is enough", async () => {
+    // Deferred callbacks, like the real chrome.storage API: the race only
+    // exists when a get() can resolve after a concurrent set().
+    const syncStore = new Map([["privacyProxyEnabled", true]]);
+    const area = makeArea(syncStore);
+    const deferred = {};
+    for (const op of ["get", "set", "remove"]) {
+      deferred[op] = (arg, cb) => setTimeout(() => area[op](arg, cb), 0);
+    }
+    globalThis.chrome = {
+      storage: { sync: deferred, local: makeArea(new Map()) },
+      runtime: { lastError: null },
+    };
+
+    const m = await loadMigration();
+    const { runOneTimeMigrations, resetMigrationsForTest } =
+      await import("../../src/background/run-migrations.js?cb=" + Math.random());
+    resetMigrationsForTest();
+    await runOneTimeMigrations({
+      legacy: m.migrateLegacyProxyPref,
+      split: m.migrateFollowShortenersSplit,
+    });
+
+    assert.equal(syncStore.get("resolveShortenersOnClick"), true);
+    assert.equal(syncStore.get("resolveShortenersOnHover"), true);
+    assert.equal(syncStore.has("followShortenersEnabled"), false);
+    assert.equal(syncStore.has("privacyProxyEnabled"), false);
+  });
+});

@@ -37,6 +37,10 @@ const swSource = readFileSync(
 function computeSuppressRefererDecision(url, cachedPrefs) {
   if (!cachedPrefs) return "pass"; // cache-miss -> fail open
 
+  // #1422: the default configuration can never act; answered first.
+  const blacklist = cachedPrefs.blacklist;
+  if (cachedPrefs.suppressReferer !== true && !(Array.isArray(blacklist) && blacklist.length > 0)) return "pass";
+
   let host;
   try {
     host = new URL(url).hostname;
@@ -45,11 +49,9 @@ function computeSuppressRefererDecision(url, cachedPrefs) {
   }
 
   try {
-    if (isSiteFullyExempt(host, cachedPrefs)) return "pass";
-    if (cachedPrefs.suppressReferer === true || isSiteFullyBlacklisted(host, cachedPrefs)) {
-      return "remove";
-    }
-    return "pass";
+    if (cachedPrefs.suppressReferer !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return "pass";
+    if (isSiteFullyExempt(host, cachedPrefs)) return "pass"; // allowlist always wins
+    return "remove";
   } catch {
     return "pass"; // exempt-check throw -> fail open
   }
@@ -139,6 +141,25 @@ describe("computeSuppressRefererDecision — Firefox onBeforeSendHeaders predica
     );
     assert.strictEqual(decision, "pass");
   });
+
+  test("#1422: with the default settings the allowlist is never read", () => {
+    let reads = 0;
+    const prefs = {
+      suppressReferer: false,
+      blacklist: [],
+      get whitelist() { reads++; return ["a.example", "b.example", "c.example"]; },
+    };
+    assert.strictEqual(computeSuppressRefererDecision("https://plain.example/x", prefs), "pass");
+    assert.strictEqual(reads, 0);
+  });
+
+  test("#1422: an allowlisted host still wins over a blocklist entry for the same host", () => {
+    const decision = computeSuppressRefererDecision(
+      "https://both.example/x",
+      { suppressReferer: false, whitelist: ["both.example"], blacklist: ["both.example"] },
+    );
+    assert.strictEqual(decision, "pass");
+  });
 });
 
 // ── 3.2: onBeforeRequest (types:["ping"]) — beacon block decision ──────────
@@ -214,10 +235,16 @@ describe("service-worker.js source guards — the two new FF listeners exist and
     assert.ok(beaconFnStart > isFxIdx);
   });
 
-  test("onBeforeSendHeadersSuppressReferer checks isSiteFullyExempt first and uses suppressReferer / isSiteFullyBlacklisted", () => {
-    assert.ok(suppressFnBlock.includes("isSiteFullyExempt("));
-    assert.ok(suppressFnBlock.includes("cachedPrefs.suppressReferer"));
-    assert.ok(suppressFnBlock.includes("isSiteFullyBlacklisted("));
+  test("onBeforeSendHeadersSuppressReferer answers the cheap pref/blocklist check before the allowlist (#1422)", () => {
+    // Order, not just presence: the listener runs on every Firefox request,
+    // and walking the allowlist first cost a parse per entry per request
+    // for a feature that is off by default. The mirror above pins the
+    // resulting verdicts; this pins that production has the same order.
+    const cheap = suppressFnBlock.indexOf("cachedPrefs.suppressReferer !== true");
+    const blocklisted = suppressFnBlock.indexOf("isSiteFullyBlacklisted(");
+    const exempt = suppressFnBlock.indexOf("isSiteFullyExempt(");
+    assert.ok(cheap !== -1 && blocklisted !== -1 && exempt !== -1);
+    assert.ok(cheap < exempt && blocklisted < exempt, "the allowlist must be consulted last");
   });
 
   test("onBeforeSendHeadersSuppressReferer fails open on cache-miss and returns a mutated requestHeaders array", () => {

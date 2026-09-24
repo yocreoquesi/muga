@@ -19,6 +19,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { installHistoryDefuser } from "../../src/lib/history-defuser.js";
@@ -617,5 +618,70 @@ describe("content/history-defuser.js — muga:history-committed + popstate/hashc
       "popstate listener must call window.__mugaReclean");
     assert.ok(hashchangeBlock.includes("window.__mugaReclean"),
       "hashchange listener must call window.__mugaReclean");
+  });
+});
+
+// ── #1415: only storage changes that can move the gate re-read prefs ────────
+//
+// The isolated-world gate re-requested getPrefs on EVERY chrome.storage.local
+// change, in every tab, although nearly every local write is bookkeeping
+// (stats, domainStats, crossSiteFreq, attributionLedger) that cannot change
+// the gate. Runs the real content script in a vm with a stubbed chrome and
+// counts the getPrefs messages each change causes.
+
+function loadGateScript() {
+  const listeners = [];
+  const messages = [];
+  const chrome = {
+    runtime: {
+      lastError: null,
+      getManifest: () => ({ manifest_version: 3 }),
+      sendMessage: (msg, cb) => { messages.push(msg); cb && cb({ enabled: true, onboardingDone: true }); },
+    },
+    storage: { onChanged: { addListener: (fn) => listeners.push(fn) } },
+  };
+  const window = { addEventListener() {} };
+  window.self = window;
+  window.top = window;
+  const context = {
+    window,
+    chrome,
+    crypto: globalThis.crypto,
+    location: { hostname: "example.com", href: "https://example.com/" },
+    document: { dispatchEvent() {}, addEventListener() {} },
+    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
+  };
+  const code = readFileSync(join(__dirname, "../../src/content/history-defuser.js"), "utf8");
+  vm.runInNewContext(code, context);
+  assert.equal(listeners.length, 1, "the gate script registers exactly one storage listener");
+  messages.length = 0; // drop the eager initial read
+  const fire = (changes, area) => {
+    listeners[0](changes, area);
+    return messages.splice(0).filter((m) => m.type === "getPrefs").length;
+  };
+  return { fire };
+}
+
+describe("history-defuser gate — storage changes that re-read prefs (#1415)", () => {
+  const change = { newValue: 1 };
+
+  test("bookkeeping writes to local storage do not re-request prefs", () => {
+    const { fire } = loadGateScript();
+    for (const key of ["urlsCleaned", "junkRemoved", "domainStats", "crossSiteFreq", "attributionLedger", "remoteParams"]) {
+      assert.equal(fire({ [key]: change }, "local"), 0, `a local "${key}" change must not re-request prefs`);
+    }
+  });
+
+  test("every local key that feeds getPrefs does re-request them", () => {
+    const { fire } = loadGateScript();
+    for (const key of ["mugaConsent", "mugaPerDevicePrefs", "__muga_test_mode", "__muga_test_fixtures"]) {
+      assert.equal(fire({ [key]: change }, "local"), 1, `a local "${key}" change must re-request prefs`);
+    }
+  });
+
+  test("any sync change still re-requests prefs", () => {
+    const { fire } = loadGateScript();
+    assert.equal(fire({ whitelist: change }, "sync"), 1);
+    assert.equal(fire({ someFutureSyncedPref: change }, "sync"), 1);
   });
 });
