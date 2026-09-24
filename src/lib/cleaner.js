@@ -998,7 +998,8 @@ export function computeNavigationStrip(rawUrl, prefs, domainRules = [], pathStri
 
 /**
  * Fire-and-forget bridge from the cleaner to the cross-site-frequency
- * tracker (#446 / #495). One observe() call per stripped tracking param,
+ * tracker (#446 / #495). One observeMany() batch per URL (#1419), or one
+ * observe() call per stripped tracking param for a tracker without it,
  * with the URL's hostname as the first-party domain and the param's
  * ORIGINAL value (captured before deletion) as the value.
  *
@@ -1013,7 +1014,7 @@ export function computeNavigationStrip(rawUrl, prefs, domainRules = [], pathStri
  * MUST NOT break the cleaner pipeline. The cleaner's job is to clean URLs;
  * frequency tracking is an opportunistic side-channel.
  *
- * @param {{ observe: Function } | null | undefined} tracker
+ * @param {{ observe: Function, observeMany?: Function } | null | undefined} tracker
  * @param {object} prefs
  * @param {string} firstPartyDomain
  * @param {string[]} names
@@ -1024,6 +1025,21 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
   if (prefs?.crossSiteFrequencyEnabled === false) return;
   if (!firstPartyDomain) return;
   if (!names || names.length === 0) return;
+  // One batch per URL when the tracker supports it (#1419): observe() is a
+  // read-modify-write of the tracker's WHOLE stored state, so a per-param
+  // loop re-read and re-wrote all of it once per stripped param.
+  if (typeof tracker.observeMany === "function") {
+    try {
+      const ret = tracker.observeMany(
+        firstPartyDomain,
+        names.map((name, i) => ({ name, value: values[i] ?? "" })),
+      );
+      if (ret && typeof ret.catch === "function") ret.catch(() => {});
+    } catch {
+      // Synchronous throw — swallow. Cleaner must not break.
+    }
+    return;
+  }
   for (let i = 0; i < names.length; i++) {
     try {
       const ret = tracker.observe(firstPartyDomain, names[i], values[i] ?? "");

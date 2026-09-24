@@ -123,3 +123,26 @@ describe("TS-11 — recordFrequency fires after Bookshop injection (Site B order
     assert.notEqual(result.action, "injected", "injection must not fire on creator referral paths");
   });
 });
+
+describe("#1419 — one URL is recorded as ONE batch when the tracker supports it", () => {
+  test("processUrl calls observeMany once with every stripped param, and never observe", () => {
+    const calls = { many: [], single: 0 };
+    const tracker = {
+      observe() { calls.single++; return Promise.resolve(); },
+      observeMany(domain, observations) { calls.many.push({ domain, observations }); return Promise.resolve(); },
+    };
+    processUrl(
+      "https://example.com/page?utm_source=news&utm_medium=email&keep=1",
+      { ...PREFS_INJECT, injectOwnAffiliate: false },
+      [], undefined, tracker, undefined,
+    );
+    assert.equal(calls.single, 0);
+    assert.equal(calls.many.length, 1);
+    assert.equal(calls.many[0].domain, "example.com");
+    assert.deepEqual(
+      calls.many[0].observations.map((o) => o.name).sort(),
+      ["utm_medium", "utm_source"],
+    );
+    assert.equal(calls.many[0].observations.find((o) => o.name === "utm_source").value, "news");
+  });
+});
