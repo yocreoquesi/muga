@@ -302,7 +302,10 @@ describe("(F) docs no longer claim only the shortener is contacted", () => {
   });
 });
 
-describe("(F) en.mjs no longer claims only the shortener is contacted", () => {
+describe("(F) locale copy no longer claims only the shortener is contacted", () => {
+  // English-only stale phrases (the literal wording that shipped before
+  // #1385). Only en.mjs can ever contain these exact strings, but the check
+  // is harmless to run against every locale file too.
   const STALE_LOCALE_PHRASES = [
     "goes straight to the shortener",
     "sends the link to the shortener before you click",
@@ -318,17 +321,62 @@ describe("(F) en.mjs no longer claims only the shortener is contacted", () => {
     );
   });
 
-  test("src/lib/locales/en.mjs discloses the chain reaches the destination", () => {
-    const content = read("src/lib/locales/en.mjs");
-    assert.match(
-      content,
-      /redirect chain is followed all the way to the destination/i,
-      "follow_shorteners_disclosure must say the chain is followed to the destination, not just the shortener."
-    );
-    assert.match(
-      content,
-      /contacts the shortener and the destination site before you click/i,
-      "resolve_on_hover_label must say hovering also contacts the destination site, not just the shortener."
-    );
-  });
+  // b5-3 audit fix #2: the (F) guard only ever checked en.mjs. The #1385 fix
+  // translated the corrected disclosure into all 7 locales, so a future
+  // regression (or a stale copy-paste of the old English wording) in any of
+  // the other 6 would go uncaught. One expected pattern per locale per key,
+  // in the language's own wording, keeps every locale honestly tied to the
+  // same disclosure en.mjs already pins.
+  const DESTINATION_DISCLOSURE_BY_LOCALE = {
+    en: {
+      disclosure: /redirect chain is followed all the way to the destination/i,
+      hover: /contacts the shortener and the destination site before you click/i,
+    },
+    es: {
+      disclosure: /cadena de redirecciones se sigue hasta el destino/i,
+      hover: /contacta con el acortador y con el sitio de destino antes de que hagas clic/i,
+    },
+    pt: {
+      disclosure: /cadeia de redirecionamentos é seguida até o destino/i,
+      hover: /contacta o encurtador e o site de destino antes do clique/i,
+    },
+    de: {
+      disclosure: /Weiterleitungskette wird bis zum Ziel verfolgt/i,
+      hover: /kontaktiert den Kurzlink-Dienst und die Zielseite, bevor du klickst/i,
+    },
+    fr: {
+      disclosure: /chaîne de redirections est suivie jusqu'à la destination/i,
+      hover: /contacte le raccourcisseur et le site de destination avant votre clic/i,
+    },
+    it: {
+      disclosure: /catena di reindirizzamenti viene seguita fino alla destinazione/i,
+      hover: /contatta l'abbreviatore e il sito di destinazione prima del clic/i,
+    },
+    ja: {
+      disclosure: /リダイレクトチェーンは最終的な宛先までたどられ/,
+      hover: /クリック前に短縮URLサービスと遷移先の両方にアクセスします/,
+    },
+  };
+
+  for (const [locale, { disclosure, hover }] of Object.entries(DESTINATION_DISCLOSURE_BY_LOCALE)) {
+    const localePath = `src/lib/locales/${locale}.mjs`;
+
+    test(`${localePath}: follow_shorteners_disclosure discloses the chain reaches the destination`, () => {
+      const content = read(localePath);
+      assert.match(
+        content,
+        disclosure,
+        `${localePath}'s follow_shorteners_disclosure must say the chain is followed to the destination, not just the shortener.`
+      );
+    });
+
+    test(`${localePath}: resolve_on_hover_label discloses the destination site is also contacted`, () => {
+      const content = read(localePath);
+      assert.match(
+        content,
+        hover,
+        `${localePath}'s resolve_on_hover_label must say hovering also contacts the destination site, not just the shortener.`
+      );
+    });
+  }
 });

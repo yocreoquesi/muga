@@ -1559,6 +1559,34 @@ describe("redirect-network landingParams under stripAllAffiliates (#1443)", () =
     assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false);
   });
 
+  // b5-3 audit fix #2: when a landing param (Step 4c) is the ONLY thing
+  // removed from the URL — no Step 5 tracking params, no Step 4b direct
+  // affiliate pattern — processUrl must still report action "cleaned" and
+  // list the param in removedTracking, exactly as any other stripped param
+  // would be. Before this fix, Step 4c mutated the URL and flipped `action`
+  // but never fed the stripped name into removedTracking, so a landing-only
+  // strip was invisible to anything downstream that reads removedTracking
+  // (badge counts, the report flow, stats).
+  test("stripAllAffiliates: a landing param stripped alone is reported as action=cleaned and appears in removedTracking (sscid)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("sscid"), `removedTracking must include "sscid", got: ${JSON.stringify(removedTracking)}`);
+    assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false);
+  });
+
+  test("stripAllAffiliates: a landing param stripped alone is reported as action=cleaned and appears in removedTracking (awc)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_abc",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("awc"), `removedTracking must include "awc", got: ${JSON.stringify(removedTracking)}`);
+    assert.equal(new URL(cleanUrl).searchParams.has("awc"), false);
+  });
+
   test("stripAllAffiliates strips sscid even WITH the matching ShareASale referrer", () => {
     const { cleanUrl } = processUrl(
       "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",

@@ -913,8 +913,18 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     classifyAndStripTracking(url, prefs, domainRules, landingPolicy);
 
   // Step 6 — Affiliate pipeline (Scenario C detection + blacklist-value strip)
-  const { action: pipeAction, detectedAffiliate, blacklistStripped } =
+  const { action: pipeAction, detectedAffiliate, blacklistStripped, landingParamsRemoved, landingParamsRemovedValues } =
     handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
+  // b5-3 audit fix #2: Step 4c's landing-param strips (stripAllAffiliates)
+  // used to be invisible outside the URL mutation itself — merged into the
+  // SAME arrays Step 5 populates so a landing-only strip (a) counts toward
+  // junkRemoved below exactly like any other removed param, and (b) is
+  // visible to recordFrequency and the returned payload's removedTracking,
+  // instead of only ever changing `action`.
+  if (landingParamsRemoved.length > 0) {
+    removedTracking.push(...landingParamsRemoved);
+    removedTrackingValues.push(...landingParamsRemovedValues);
+  }
 
   // Step 7 — Action resolution + recordFrequency + final payload.
   // drop-affiliate-injection (PR 1a): the former "6b" Bookshop path-based
@@ -1240,6 +1250,13 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   let detectedAffiliate = null;
   /** @type {"untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = "untouched";
+  // b5-3 audit fix #2: Step 4c's strips changed `action` but never surfaced
+  // WHICH params it removed, so a landing-only strip (no Step 5 tracking
+  // param, no Step 4b direct-injection match) was invisible to anything
+  // downstream that reads removedTracking (badge counts, report flow,
+  // stats). Collected here and merged into processUrl's removedTracking.
+  const landingParamsRemoved = [];
+  const landingParamsRemovedValues = [];
 
   // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
   // #523 phase 3: detection no longer gates on ourTag.
@@ -1322,6 +1339,11 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
         }
       }
       if (strippedAny) {
+        // Capture BEFORE delete, same convention as classifyAndStripTracking's
+        // stripTrackingParams: one recorded value per removed param name (the
+        // first occurrence), not one per repeated key.
+        landingParamsRemoved.push(actualKey);
+        landingParamsRemovedValues.push(url.searchParams.get(actualKey) ?? "");
         url.searchParams.delete(actualKey);
         for (const val of kept) url.searchParams.append(actualKey, val);
         if (action === "untouched") action = "cleaned";
@@ -1375,7 +1397,7 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     }
   }
 
-  return { action, detectedAffiliate, blacklistStripped };
+  return { action, detectedAffiliate, blacklistStripped, landingParamsRemoved, landingParamsRemovedValues };
 }
 
 // ── handleWhitelistedDomain ───────────────────────────────────────────────────

@@ -146,7 +146,7 @@
   },
   {
     "url": "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1&utm_source=shareasale",
-    "note": "#1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.landingParams — preserved unconditionally like awc/irclickid/cjevent, utm_source still stripped",
+    "note": "#1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.landingParams — preserved by default, stripped under stripAllAffiliates, like awc/irclickid/cjevent; utm_source still stripped",
     "expected": { "preserve": ["sscid"], "strip": ["utm_source"] }
   }
 ]

@@ -512,8 +512,9 @@ export const TRACKING_PARAMS = [
   "srclt",                        // vendor unverified (#1338)
   // sscid removed (maintainer decision 2026-09-24, #1443): ShareASale click ID,
   // now declared in REDIRECT_NETWORK_PATTERNS.shareasale.landingParams like
-  // awc/irclickid/cjevent — preserved unconditionally, universal-strip would
-  // kill creator attribution.
+  // awc/irclickid/cjevent — preserved by default, stripped under
+  // stripAllAffiliates; universal-strip would kill creator attribution for
+  // every user regardless of that choice.
   "tcsack",                       // vendor unverified (#1338)
   "user_email_address",           // vendor unverified (#1338)
   "uzcid",                        // vendor unverified (#1338)
