@@ -817,7 +817,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // Step 1 — Unwrap + Honor + Canonical (steps 0a, 0, 0b)
   const unwrapStep = unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules);
   if (unwrapStep.kind === "done") return unwrapStep.payload;
-  const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped } = unwrapStep;
+  const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped, wrapperUnwrapped } = unwrapStep;
   rawUrl = unwrappedRawUrl;
 
   // #1095: strip a single trailing dot before this hostname feeds ANY
@@ -895,7 +895,7 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // 2. Whitelist domain-only check: if the domain itself is whitelisted, skip all affiliate processing
   if (parsedWhitelist.some(e => !e.param && domainMatches(hostname, e.domain))) {
     const { payload, removed, removedValues } = handleWhitelistedDomain(
-      url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy,
+      url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy, wrapperUnwrapped,
     );
     recordFrequency(frequencyTracker, prefs, hostname, removed, removedValues);
     return payload;
@@ -920,7 +920,10 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   // stays false even though the URL changed. Surface it as "cleaned" so the
   // service worker counts it in urlsCleaned + history — parity with how the
   // query strip-all path reports a stripped foreign affiliate (no junkRemoved bump).
-  if (action === "untouched" && (pathCleaned || removedTracking.length > 0 || pathAffiliateUnwrapped))
+  // wrapperUnwrapped (#1439): same rule as the #1096 exempt-destination branch
+  // above. An unwrap-only result changed the URL, so it must be "cleaned" or the
+  // Firefox navigation stripper and the SW stats/Activity gate drop it.
+  if (action === "untouched" && (pathCleaned || removedTracking.length > 0 || pathAffiliateUnwrapped || wrapperUnwrapped))
     action = "cleaned";
 
   recordFrequency(frequencyTracker, prefs, hostname, removedTracking, removedTrackingValues);
@@ -1071,7 +1074,9 @@ function recordFrequency(tracker, prefs, firstPartyDomain, names, values) {
  *   Affiliate-injection rules from `src/lib/path-rules.js`. Used for
  *   Bookshop.org creator-referral detection (step 6). Defaults to `[]`
  *   (no-op) for call sites that do not exercise path-affiliate behavior.
- * @returns {{ kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean, pathAffiliateUnwrapped: boolean } | { kind: "done", payload: object }}
+ * @returns {{ kind: "continue", rawUrl: string, url: URL, creatorReferralPreserved: boolean, pathAffiliateUnwrapped: boolean, wrapperUnwrapped: boolean } | { kind: "done", payload: object }}
+ *   `wrapperUnwrapped` is true when a redirect wrapper (or its canonical
+ *   fallback) replaced the URL (#1439).
  */
 function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliateRules = []) {
   // Step 1: parse initial URL
@@ -1100,7 +1105,17 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
   }
 
   // Step 4: unwrap recognized redirect wrappers (Awin etc.)
-  const unwrapResult = unwrap(rawUrl);
+  // #1437: gated on the "Unwrap redirect wrappers" toggle, so turning it off
+  // governs every processUrl path (link click, copy-clean, context menu, the
+  // Firefox navigation stripper), not only the DNR ruleset. Default ON: only an
+  // explicit `false` disables. With the toggle off, the wrapper URL itself is
+  // still cleaned like any other URL. The canonical tier below depends on
+  // wrapper detection, so it is gated by the same toggle.
+  // NOTE: prefs.unwrapRedirects is now the FIRST prefs access here, keeping
+  // the malformed-input crash boundary for 1-arg callers (FR-7).
+  const unwrapEnabled = prefs.unwrapRedirects !== false;
+  const unwrapResult = unwrapEnabled ? unwrap(rawUrl) : null;
+  let wrapperUnwrapped = false;
   if (unwrapResult) {
     rawUrl = unwrapResult.unwrapped;
     try {
@@ -1108,10 +1123,10 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
     } catch {
       return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
     }
+    wrapperUnwrapped = true;
   } else if (
-    // Step 5: Canonical Extractor tier (#442, B7) — gated on prefs access.
-    // NOTE: prefs.canonicalExtractorEnabled is the FIRST prefs access here,
-    // matching the malformed-input crash boundary for 1-arg callers (FR-7).
+    // Step 5: Canonical Extractor tier (#442, B7).
+    unwrapEnabled &&
     prefs.canonicalExtractorEnabled !== false &&
     canonicalBundle &&
     detectWrapper(rawUrl)
@@ -1124,6 +1139,7 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
       } catch {
         return { kind: "done", payload: buildReturnPayload("untouched", rawUrl, [], null, {}) };
       }
+      wrapperUnwrapped = true;
     }
   }
 
@@ -1161,7 +1177,7 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
     }
   }
 
-  return { kind: "continue", rawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped };
+  return { kind: "continue", rawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped, wrapperUnwrapped };
 }
 
 // ── handleAffiliatePipeline ───────────────────────────────────────────────────
@@ -1328,9 +1344,11 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
  * @param {string} hostname
  * @param {boolean} pathCleaned  Whether Amazon path cleaning fired
  * @param {boolean} creatorReferralPreserved
+ * @param {object} [landingPolicy]
+ * @param {boolean} [wrapperUnwrapped=false] a redirect wrapper was unwrapped (#1439)
  * @returns {{ payload: object, removed: string[], removedValues: string[] }}
  */
-function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy = EMPTY_LANDING_POLICY) {
+function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pathCleaned, creatorReferralPreserved, landingPolicy = EMPTY_LANDING_POLICY, wrapperUnwrapped = false) {
   const disabledCategoriesForSkip = new Set(prefs.disabledCategories || []);
   // Bounded-scope classifier (#530): even on whitelisted domains, ambiguous
   // params co-occurring with anchor trackers should be stripped. Affiliate
@@ -1345,7 +1363,7 @@ function handleWhitelistedDomain(url, prefs, domainRules, patterns, hostname, pa
     removed,
     removedValues,
   } = stripTrackingParams(url, prefs, domainRules, disabledCategoriesForSkip, new Set(wlClassification.stripParams), landingPolicy);
-  const actionForSkip = (removed.length > 0 || pathCleaned) ? "cleaned" : "untouched";
+  const actionForSkip = (removed.length > 0 || pathCleaned || wrapperUnwrapped) ? "cleaned" : "untouched";
   const payload = buildReturnPayload(actionForSkip, url, removed, null, {
     junkRemoved: removed.length + (pathCleaned ? 1 : 0),
     // #1157: see the matching comment in processUrl - stripAllAffiliates ON
