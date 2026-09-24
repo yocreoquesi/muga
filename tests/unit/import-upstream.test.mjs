@@ -356,3 +356,98 @@ describe("parseRemoveparamRules — path/query anchor classification (#1326)", (
     assert.equal(pathAnchorSkipped, 1);
   });
 });
+
+// ── Slice 3 (#1326): landable (host, pathPrefix, param) facts ─────────────
+//
+// `pathAnchored` is a STRICT SUBSET of what `pathAnchorSkipped` counts:
+// every case above still increments `pathAnchorSkipped` exactly as before
+// (asserted again here so a future edit cannot quietly divert the counter),
+// and only a line naming a real literal host AND a real literal path prefix
+// additionally lands in `pathAnchored`.
+describe("parseRemoveparamRules — path-anchored (host, pathPrefix) extraction (#1326 slice 3, additive)", () => {
+  test("||host/path$removeparam=x lands the (param, host, pathPrefix) fact, pathAnchorSkipped unaffected", () => {
+    const text = "||example.com/search$removeparam=x";
+    const { params, scoped, pathAnchorSkipped, pathAnchored } = parseRemoveparamRules(text);
+    assert.deepEqual([...params], []);
+    assert.deepEqual(scoped, []);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, [{ param: "x", host: "example.com", pathPrefix: "/search" }]);
+  });
+
+  test("pipe-separated names on a path-anchored line each land with the same host/pathPrefix", () => {
+    const text = "||example.com/itm$removeparam=a|b";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, [
+      { param: "a", host: "example.com", pathPrefix: "/itm" },
+      { param: "b", host: "example.com", pathPrefix: "/itm" },
+    ]);
+  });
+
+  test("a caret-terminated path (#1357 shape) lands with the caret stripped from the prefix", () => {
+    const text = "||ca.indeed.com/viewjob^$removeparam=cmp";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, [{ param: "cmp", host: "ca.indeed.com", pathPrefix: "/viewjob" }]);
+  });
+
+  test("a query-anchored line (||host&query=v) yields no pathAnchored fact — no literal path exists to land", () => {
+    const text = "||example.com&query=v$removeparam=x";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, []);
+  });
+
+  test("a wildcarded/TLD-family host (||google.*/search) yields no pathAnchored fact (ADR-0010: no TLD-family concept)", () => {
+    const text = "||google.*/search$removeparam=ved";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, []);
+  });
+
+  test("a path containing a wildcard (||host/*?t=) yields no pathAnchored fact — not a literal prefix", () => {
+    const text = "||clubi.cc/*?t=$removeparam=t";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, []);
+  });
+
+  test("a path followed by a query string is truncated to its literal prefix before the '?'", () => {
+    const text = "||akakce.com/r/?c=$removeparam=u";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, [{ param: "u", host: "akakce.com", pathPrefix: "/r/" }]);
+  });
+
+  test("mixed-case param and host normalize identically to the global/scoped paths", () => {
+    const text = "||Example.COM/Search$removeparam=NaPm";
+    const { pathAnchored } = parseRemoveparamRules(text);
+    assert.deepEqual(pathAnchored, [{ param: "napm", host: "example.com", pathPrefix: "/Search" }]);
+  });
+
+  test("a host anchor (||host^) is unaffected: yields no pathAnchored fact", () => {
+    const text = "||example.com^$removeparam=x";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual(pathAnchored, []);
+    assert.equal(pathAnchorSkipped, 0);
+  });
+
+  test("an unanchored line is unaffected: yields no pathAnchored fact", () => {
+    const text = "*$removeparam=x";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.deepEqual(pathAnchored, []);
+    assert.equal(pathAnchorSkipped, 0);
+  });
+
+  test("a bare root path (||host/?query=v, empty path token) yields no pathAnchored fact — matches every path, not a narrower one", () => {
+    // Real upstream shape: ||game-i.daa.jp/?cmd=ad_mode$removeparam=cmd. The
+    // path token between the host's "/" and the "?" is empty, so the only
+    // real predicate upstream expresses is on the QUERY key, which this
+    // mechanism cannot carry. Landing "/" as a prefix would match every path
+    // on the host — the exact host-wide over-claim ADR-0010 exists to avoid.
+    const text = "||game-i.daa.jp/?cmd=ad_mode$removeparam=cmd";
+    const { pathAnchored, pathAnchorSkipped } = parseRemoveparamRules(text);
+    assert.equal(pathAnchorSkipped, 1);
+    assert.deepEqual(pathAnchored, []);
+  });
+});
