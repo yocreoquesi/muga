@@ -180,6 +180,14 @@ const EXEMPT = new Set([
   // This file itself — the heuristic regex and its inline examples contain
   // the patterns we are searching for, causing false self-detection.
   "source-grep-ratchet.test.mjs",
+
+  // [hidden]/display CSS guard (2026-09-24 audit): the subject under test IS
+  // the committed HTML+CSS source — it statically finds every element that
+  // carries a `hidden` attribute and every CSS rule that would override the
+  // UA `[hidden]` rule with a non-none `display`, for popup/options/onboarding.
+  // No jsdom/browser is available in this suite, so there is no behavioral
+  // proxy: computed style requires actually rendering the page.
+  "hidden-display-guard.test.mjs",
 ]);
 
 // ── Baseline ─────────────────────────────────────────────────────────────────
@@ -275,8 +283,8 @@ const BASELINE = {
   "popup-count-celebration.test.mjs": 15,
   "popup-honored-creator-badge.test.mjs": 7,
   "popup-length-bar-guard.test.mjs": 7,
-  "popup-preserved-creator.test.mjs": 9,
   "popup-rerender-leaks.test.mjs": 2,
+  "popup-section-order.test.mjs": 6, // audit 2026-09-24 reorder: DOM order (indexOf) is the subject under test itself — no jsdom in this suite, so there is no behavioral proxy for "renders before" other than reading the static HTML order.
   "popup-suspicious-section.test.mjs": 21,
   "prev-version-persistence-1100.test.mjs": 5,
   "redirect-unwrap.test.mjs": 26,

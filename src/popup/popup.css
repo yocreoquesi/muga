@@ -90,6 +90,19 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Root-cause guard (audit 2026-09-24): several elements below set their own
+   `display` (flex/block/...) on the same selector that also carries the
+   `hidden` attribute in popup.html. That class-level `display` beats the UA
+   `[hidden] { display: none }` rule at equal specificity whenever it appears
+   later in the cascade, so `el.hidden = true` from JS silently stops hiding
+   the element (this shipped for #preview-preserved, #growth-bar and
+   #migration-banner-counter). `!important` here always wins over any
+   non-important `display` declaration regardless of selector order, and it
+   only applies while the `hidden` attribute is present — once JS clears
+   `hidden`, this rule stops matching and the element's own `display` value
+   takes over normally. Covered by tests/unit/hidden-display-guard.test.mjs. */
+[hidden] { display: none !important; }
+
 body {
   font-family: var(--font-sans);
   background: var(--surface-1);
@@ -365,44 +378,8 @@ header {
   text-overflow: ellipsis;
 }
 
-.preview-preserved {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  background: var(--success-soft);
-  border-left: 2px solid var(--success);
-  font-size: 11px;
-  line-height: 1.35;
-}
-.preview-preserved-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-.preview-preserved-label { color: var(--success); font-weight: 600; }
-.preview-preserved-tag {
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.preview-preserved-hint {
-  color: var(--text-2);
-  font-size: 10.5px;
-  line-height: 1.45;
-}
-
-/* #932: honored-creator badge (B14). Mirrors .preview-preserved's shape —
-   same padding/border-left/font-size — with the info accent instead of
-   success, since "honored" (wrapper passed through untouched) is a distinct
-   outcome from "preserved" (an affiliate tag was kept on a cleaned URL). */
+/* #932: honored-creator badge (B14). Same padding/border-left/font-size
+   shape as other preview badges, with the info accent instead of success. */
 .preview-honored {
   margin-top: 8px;
   padding: 6px 8px;

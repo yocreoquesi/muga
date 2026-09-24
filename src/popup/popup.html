@@ -28,7 +28,10 @@
 
   <main>
   <!-- Migration prompt (#369). Hidden by default; revealed when
-       MigrationEvaluator returns pending migrations on popup open. -->
+       MigrationEvaluator returns pending migrations on popup open. Kept
+       right after the header: it is a transient one-time notice, not
+       recurring content, so it does not compete with "This page" below for
+       top billing (audit 2026-09-24 reorder). -->
   <section class="migration-banner" id="migration-banner" hidden role="region" aria-live="polite">
     <div class="migration-banner-header">
       <strong id="migration-banner-title"></strong>
@@ -40,6 +43,44 @@
       <button type="button" id="migration-banner-accept" class="primary" data-i18n="migration_accept">Enable</button>
     </div>
     <small id="migration-banner-counter" class="migration-banner-counter" hidden></small>
+  </section>
+
+  <!-- "This page" comes first (audit 2026-09-24 reorder): what MUGA is doing
+       right now, on the tab the user actually opened the popup from, is the
+       single most important thing this popup can show — ahead of the
+       lifetime stats and the suspicious-params list below, which are both
+       about other page loads. -->
+  <section class="preview" id="preview" hidden>
+    <div class="preview-header">
+      <div class="preview-label" data-i18n="preview_label">This page</div>
+      <div class="tab-badge" id="tab-badge" hidden aria-live="polite"></div>
+    </div>
+    <!-- Per-site pause control (#980). Hidden until popup.js confirms a real
+         http(s) page with MUGA globally enabled; label + aria-pressed set at
+         runtime. Toggles a domain-only allowlist entry (#1053). -->
+    <div class="preview-site-control" id="preview-site-control" hidden>
+      <button type="button" id="pause-site-btn" class="pause-site-btn"></button>
+    </div>
+    <div class="preview-url before" id="preview-before"></div>
+    <div class="preview-url after" id="preview-after"></div>
+    <div class="preview-count" id="preview-count" hidden aria-live="polite"></div>
+    <p class="preview-shorter" id="preview-shorter" hidden></p>
+    <div class="preview-length-bar" id="preview-length-bar" hidden>
+      <div class="preview-length-track" role="img" aria-hidden="true">
+        <div class="preview-length-kept" id="preview-length-kept"></div>
+        <div class="preview-length-removed" id="preview-length-removed"></div>
+      </div>
+    </div>
+    <p class="preview-unwrap" id="preview-unwrap" hidden aria-live="polite"></p>
+    <div class="preview-removed" id="preview-removed" hidden aria-live="polite"></div>
+    <div class="preview-honored" id="preview-honored" hidden aria-live="polite"></div>
+    <div class="preview-autoinject" id="preview-autoinject" hidden aria-live="polite"></div>
+    <div class="preview-url clean" id="preview-clean" hidden></div>
+    <!-- #1355/#1354 (ADR-0011 internal-with-a-default): showReportButton and
+         its popup report flow are retired. Reporting a problem now lives in
+         Settings (#1353, section-report), which every user can reach —
+         unlike this popup flow, which required devToolsMode to see its
+         Settings counterpart at all. -->
   </section>
 
   <section class="stats">
@@ -89,49 +130,11 @@
        ledger panel (#1352, maintainer decision), alongside "Recent
        activity" below. See src/options/options.html #activity-ledger-panel. -->
 
-  <section class="preview" id="preview" hidden>
-    <div class="preview-header">
-      <div class="preview-label" data-i18n="preview_label">This page</div>
-      <div class="tab-badge" id="tab-badge" hidden aria-live="polite"></div>
-    </div>
-    <!-- Per-site pause control (#980). Hidden until popup.js confirms a real
-         http(s) page with MUGA globally enabled; label + aria-pressed set at
-         runtime. Toggles a domain-only allowlist entry (#1053). -->
-    <div class="preview-site-control" id="preview-site-control" hidden>
-      <button type="button" id="pause-site-btn" class="pause-site-btn"></button>
-    </div>
-    <div class="preview-url before" id="preview-before"></div>
-    <div class="preview-url after" id="preview-after"></div>
-    <div class="preview-count" id="preview-count" hidden aria-live="polite"></div>
-    <p class="preview-shorter" id="preview-shorter" hidden></p>
-    <div class="preview-length-bar" id="preview-length-bar" hidden>
-      <div class="preview-length-track" role="img" aria-hidden="true">
-        <div class="preview-length-kept" id="preview-length-kept"></div>
-        <div class="preview-length-removed" id="preview-length-removed"></div>
-      </div>
-    </div>
-    <p class="preview-unwrap" id="preview-unwrap" hidden aria-live="polite"></p>
-    <div class="preview-removed" id="preview-removed" hidden aria-live="polite"></div>
-    <div class="preview-preserved" id="preview-preserved" hidden aria-live="polite">
-      <div class="preview-preserved-row">
-        <span class="preview-preserved-label" data-i18n="preview_preserved_creator">Looks like a creator referral. Kept.</span>
-        <span class="preview-preserved-tag" id="preview-preserved-tag"></span>
-      </div>
-      <small class="preview-preserved-hint" data-i18n="preview_preserved_creator_hint">If you think we got this one wrong, you can report it from Settings.</small>
-    </div>
-    <div class="preview-honored" id="preview-honored" hidden aria-live="polite"></div>
-    <div class="preview-autoinject" id="preview-autoinject" hidden aria-live="polite"></div>
-    <div class="preview-url clean" id="preview-clean" hidden></div>
-    <!-- #1355/#1354 (ADR-0011 internal-with-a-default): showReportButton and
-         its popup report flow are retired. Reporting a problem now lives in
-         Settings (#1353, section-report), which every user can reach —
-         unlike this popup flow, which required devToolsMode to see its
-         Settings counterpart at all. -->
-  </section>
-
   <!-- "Recent activity" (#460, A2) moved to Settings' unified Activity
        ledger panel too (#1352) — see the comment above #preview. -->
 
+  <!-- Rate/report/support block: least important content, stays last
+       (audit 2026-09-24 reorder). -->
   <div class="growth-bar" id="growth-bar" hidden>
     <button class="growth-btn" id="rate-btn" hidden><span aria-hidden="true">⭐ </span><span data-i18n="rate_muga_short">Rate MUGA</span></button>
   </div>

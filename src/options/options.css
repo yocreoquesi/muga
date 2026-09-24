@@ -84,6 +84,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Root-cause guard (audit 2026-09-24): a class/id selector that also sets its
+   own `display` on an element carrying the `hidden` attribute can beat the UA
+   `[hidden] { display: none }` rule, silently breaking `el.hidden = true/false`
+   toggles from JS (shipped for #report-url-include-url-row,
+   #url-report-include-url-row, #remote-rules-changelog-added-more and
+   #remote-rules-changelog-removed-more). `!important` always wins over a
+   non-important `display` regardless of selector order, and only applies
+   while `hidden` is present, so a shown element's own `display` still applies
+   normally once JS clears `hidden`. Covered by
+   tests/unit/hidden-display-guard.test.mjs. */
+[hidden] { display: none !important; }
+
 body {
   font-family: var(--font-sans);
   background: var(--surface-0);

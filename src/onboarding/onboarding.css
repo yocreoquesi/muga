@@ -23,6 +23,12 @@
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Preventive guard (audit 2026-09-24, see popup.css/options.css for the
+       real-world breakage this pattern caused elsewhere): keeps any future
+       `hidden` element from being shown by a same-selector `display`
+       override. onboarding.html has no `hidden` elements today; this is a
+       cheap no-op safeguard. Covered by tests/unit/hidden-display-guard.test.mjs. */
+    [hidden] { display: none !important; }
     body {
       font-family: var(--font-sans);
       background: var(--surface-0); color: var(--text-1);

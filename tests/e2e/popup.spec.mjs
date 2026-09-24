@@ -92,6 +92,41 @@ test.describe("Popup", () => {
   test("preview section is hidden on blank popup", async ({ popupPage: page }) => {
     await expect(page.locator("#preview")).toBeHidden();
   });
+
+  // Audit 2026-09-24 reorder: "This page" (#preview) leads the popup body,
+  // ahead of the lifetime stats and the suspicious-params list — both are
+  // about other page loads, not the one the user actually opened the popup
+  // from. The migration banner stays right after the header since it is a
+  // transient one-time notice, not recurring content. The rate/report/
+  // support block stays last.
+  test("#preview precedes the stats section in the DOM", async ({ popupPage: page }) => {
+    const position = await page.evaluate(() => {
+      const preview = document.getElementById("preview");
+      const stats = document.querySelector(".stats");
+      return preview.compareDocumentPosition(stats) & Node.DOCUMENT_POSITION_FOLLOWING ? "preview-first" : "stats-first";
+    });
+    expect(position).toBe("preview-first");
+  });
+
+  test("popup section order: migration-banner -> preview -> stats -> suspicious-params -> growth-bar", async ({ popupPage: page }) => {
+    const inOrder = await page.evaluate(() => {
+      const nodes = [
+        document.getElementById("migration-banner"),
+        document.getElementById("preview"),
+        document.querySelector(".stats"),
+        document.getElementById("suspicious-params"),
+        document.getElementById("growth-bar"),
+      ];
+      for (let i = 1; i < nodes.length; i++) {
+        const prev = nodes[i - 1];
+        const cur = nodes[i];
+        const precedes = Boolean(prev.compareDocumentPosition(cur) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (!precedes) return false;
+      }
+      return true;
+    });
+    expect(inOrder).toBe(true);
+  });
 });
 
 test.describe("Popup — browsewrap Phase 1: never blocked by a consent gate", () => {
