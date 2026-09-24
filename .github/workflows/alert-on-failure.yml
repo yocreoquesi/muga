@@ -16,7 +16,7 @@ on:
   workflow_run:
     workflows:
       - "Auto-ingest rule parameters"
-      - "Moat expansion — weekly affiliate-param discovery"
+      - "Moat expansion — monthly affiliate-param discovery"
       - "Import upstream tracking params"
       - "Anchored-only globals — monthly report"
     types: [completed]

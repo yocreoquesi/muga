@@ -27,7 +27,7 @@
 
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
@@ -482,5 +482,45 @@ describe("G8 — import-upstream.yml keeps the global landing path closed", () =
       /filters\.adtidy\.org\/extension\/safari\//,
       "the safari platform path 404s — use the chromium one, like the importer does",
     );
+  });
+});
+
+// ── G9 — alert-on-failure watches workflows by their REAL names (#1401) ──────
+//
+// `workflow_run.workflows` matches by exact workflow `name:`. Renaming the moat
+// job from "weekly" to "monthly" (#1197) left the listener subscribed to a
+// name nothing carries, so moat failures raised no alert: the exact silent
+// failure the listener was created to stop. Parsed with line regexes, not a
+// YAML dependency; the shapes read here are simple and stable.
+
+describe("G9 — alert-on-failure.yml watches real workflow names (#1401)", () => {
+  const unquote = (s) => s.trim().replace(/^["']|["']$/g, "");
+  const nameOf = (text) => {
+    const m = text.match(/^name:\s*(.+?)\s*$/m);
+    return m ? unquote(m[1]) : null;
+  };
+  const files = readdirSync(workflowsDir).filter((f) => /\.ya?ml$/.test(f));
+  const texts = Object.fromEntries(files.map((f) => [f, readFileSync(join(workflowsDir, f), "utf8")]));
+  const realNames = new Set(Object.values(texts).map(nameOf));
+
+  const block = texts["alert-on-failure.yml"].match(/^\s*workflows:\s*\r?\n((?:[ \t]*-[ \t]*.+\r?\n)+)/m);
+  const watched = block
+    ? block[1].split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => unquote(l.replace(/^-\s*/, "")))
+    : [];
+
+  test("the watched list could be read", () => {
+    assert.ok(watched.length > 0, "could not read workflow_run.workflows from alert-on-failure.yml");
+  });
+
+  test("every watched name is the name: of a workflow in .github/workflows", () => {
+    const missing = watched.filter((n) => !realNames.has(n));
+    assert.deepEqual(missing, [], `alert-on-failure.yml watches names no workflow carries: ${JSON.stringify(missing)}`);
+  });
+
+  test("every scheduled workflow is watched", () => {
+    const scheduled = files.filter((f) => /^[ \t]+schedule:[ \t]*\r?$/m.test(texts[f])).map((f) => nameOf(texts[f]));
+    assert.ok(scheduled.length > 0, "found no scheduled workflows; the parser is broken");
+    const unwatched = scheduled.filter((n) => !watched.includes(n));
+    assert.deepEqual(unwatched, [], `scheduled workflows with no failure alert: ${JSON.stringify(unwatched)}`);
   });
 });
