@@ -173,8 +173,9 @@ export const TRACKING_PARAMS = [
   "pi_campaign_id", // Pardot campaign
   "sfdcimpactsrc",  // Salesforce Impact Source
 
-  // Drip
-  "dm_i",       // Drip campaign identifier — #1338: unverified, needs a real sample
+  // Dotdigital
+  "dm_i",       // Dotdigital link/open tracking (maintainer decision 2026-09-24, #1338)
+                // https://support.dotdigital.com/hc/en-gb/articles/360006551019-Understanding-open-tracking-and-link-tracking
 
   // Omnisend
   "omnisendcontactid", // Omnisend contact
@@ -201,8 +202,12 @@ export const TRACKING_PARAMS = [
   "gad_source", // Google Ads source
 
   // Facebook / Meta (additional)
-  "fbc",        // Facebook Click (cookie param form) — #1338: unverified, needs a real sample
-  "fbp",        // Facebook Pixel — #1338: unverified, needs a real sample
+  // fbc/fbp: Meta Pixel / Conversions API values (`fb.1.` prefix) copied into
+  // bare URL keys by widely used cross-domain GTM recipes; indirect evidence,
+  // medium confidence (maintainer decision 2026-09-24, #1338).
+  // https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/fbp-and-fbc
+  "fbc",        // Facebook Click (cookie param form)
+  "fbp",        // Facebook Pixel
 
   // Snapchat (additional)
   "sccid",      // Snapchat Click ID
@@ -251,14 +256,15 @@ export const TRACKING_PARAMS = [
   // Salesforce Marketing Cloud
   "sfmc_id",         // SFMC contact ID
 
-  // Shopify. #1338's decision named _pos/_fid for removal ("no vendor
-  // evidence"), but strip-table-parity.test.mjs pins both as the exact
-  // Shopify storefront family re-injected client-side via history.replaceState
-  // — the guard added after a real Shopify field report. Left global pending
-  // a maintainer decision on this conflict.
+  // Shopify. #1338's decision named _pos/_fid, and the 2026-09-24 follow-up
+  // named _psq, for removal ("no vendor evidence"), but strip-table-parity.
+  // test.mjs's HOT_PATH_REQUIRED pins all three as part of the exact Shopify
+  // storefront family re-injected client-side via history.replaceState — the
+  // guard added after a real Shopify field report. Left global: the pin
+  // wins over the "no vendor evidence" call.
   "_pos",   // Product position in collection
   "_ss",    // Shopify search session
-  "_psq",   // Shopify predictive search query — #1338: unverified, needs a real sample
+  "_psq",   // Shopify predictive search query
   "_sid",   // Shopify session ID
   "_fid",   // Shopify filter ID
 
@@ -315,7 +321,9 @@ export const TRACKING_PARAMS = [
 
   // Drip / Klaviyo / ExactTarget / Brevo extended (Firefox + Brave + Registry)
   "__s",         // Drip email tracking
-  "_ke",         // Klaviyo email — #1338: unverified, needs a real sample
+  "_ke",         // Klaviyo legacy email-to-site tracking (carries a base64 email;
+                 // superseded by `_kx`); maintainer decision 2026-09-24, #1338.
+                 // https://community.klaviyo.com/developer-group-64/understanding-the-ke-parameter-and-server-side-events-using-the-track-api-1546
   "et_rid",      // ExactTarget recipient ID
   "ss_email_id", // SendinBlue/Brevo email ID
   "vero_id",     // Vero email tracking
@@ -420,9 +428,8 @@ export const TRACKING_PARAMS = [
   // Matomo / mt_ tracking
   "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
   "mt_link_id", "mt_medium", "mt_network",
-  // mnv_sid #1338: unverified, needs a real sample (bundled with the mt_
-  // group above but its own vendor is not corroborated)
-  "mnv_sid",
+  // mnv_sid removed (maintainer decision 2026-09-24, #1338): no vendor
+  // evidence after a real search.
   "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
 
   // Mindbox
@@ -463,15 +470,15 @@ export const TRACKING_PARAMS = [
   "_zucks_suid",                 // Zucks (Japanese mobile ad network)
   "analytics_context",           // vendor unverified (#1338)
   "analytics_trace_id",          // vendor unverified (#1338)
-  // axr_tref #1338: unverified, needs a real sample
-  "axr_tref",
+  // axr_tref removed (maintainer decision 2026-09-24, #1338): no vendor
+  // evidence after a real search.
   "asgtbndr",                    // vendor unverified (#1338)
   "bance_xuid",                  // vendor unverified (#1338)
   "bemobdata",                   // BeMob (ad-tracking/redirect platform)
   "beyond_uzcvid",                // vendor unverified (#1338)
   "beyond_uzmcvid",               // vendor unverified (#1338)
-  // ucx_ref #1338: unverified, needs a real sample
-  "ucx_ref",
+  // ucx_ref removed (maintainer decision 2026-09-24, #1338): no vendor
+  // evidence after a real search.
   "btag",                         // vendor unverified (#1338)
   "cm_cr",                        // vendor unverified (#1338)
   "cm_me",                        // vendor unverified (#1338)
@@ -500,8 +507,8 @@ export const TRACKING_PARAMS = [
   "recommended_code",             // vendor unverified (#1338)
   "rtkcid",                       // vendor unverified (#1338)
   "spot_im_redirect_source",      // Spot.IM (commenting/engagement widget)
-  // sprtype #1338: unverified, needs a real sample
-  "sprtype",
+  // sprtype removed (maintainer decision 2026-09-24, #1338): no vendor
+  // evidence after a real search.
   "srclt",                        // vendor unverified (#1338)
   "sscid",                        // ShareASale (Safari/ITP click-id fallback cookie param)
   "tcsack",                       // vendor unverified (#1338)
@@ -854,19 +861,20 @@ export const TRACKING_PARAM_CATEGORIES = {
       "_ly_c", "_ly_r", "_ope",
       "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
       "_zucks_suid",
-      "analytics_context", "analytics_trace_id", "axr_tref", "asgtbndr",
-      "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid", "ucx_ref",
+      "analytics_context", "analytics_trace_id", "asgtbndr",
+      "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid",
       "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
       "ebisadid", "ebisother1", "ebisother2", "ebisother3", "ebisother4", "ebisother5",
       "famad_xuid", "gfr_xid", "guccounter", "guce_referrer", "guce_referrer_sig",
       "janet", "line_uid", "loclid",
       "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
-      "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
+      "mt_link_id", "mt_medium", "mt_network",
       "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
       "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
       // sb_referer_host removed (#1338): generic name, no vendor evidence,
-      // collision-prone.
-      "pk_vid", "spot_im_redirect_source", "sprtype", "tcsack",
+      // collision-prone. axr_tref / ucx_ref / sprtype removed (maintainer
+      // decision 2026-09-24, #1338): no vendor evidence after a real search.
+      "pk_vid", "spot_im_redirect_source", "tcsack",
       "uzcid", "vc_lpp", "vero_conv",
       "vsm_cid", "vsm_pid", "vsm_type",
       "winflncrtag", "yj_r", "ymid",

@@ -171,3 +171,66 @@ Amazon fixtures"): one `PRESERVE_CANARIES` entry
 `domain-rules.test.mjs` tests assumed `psc`/`e_t`/`ab_channel` were still
 global without `domainRules`; updated to match the new anchored/removed
 reality.
+
+---
+
+## Round 2 (2026-09-24) — resolve the 9 UNSURE params
+
+### Objective
+
+Implement the maintainer's follow-up 2026-09-24 decision on the 9 params the
+first batch left marked `#1338: unverified, needs a real sample`
+(`dm_i`, `_ke`, `fbc`, `fbp`, `_psq`, `mnv_sid`, `axr_tref`, `ucx_ref`,
+`sprtype`): KEEP 4 global with a named vendor source, REMOVE 5 for no vendor
+evidence after a real search.
+
+### Scope
+
+- `src/lib/affiliates-data.js` — reword the KEEP 4 with a vendor comment +
+  source URL; drop the REMOVE 5 (`TRACKING_PARAMS` and
+  `TRACKING_PARAM_CATEGORIES`).
+- `tests/unit/removed-global-params-network-coverage.test.mjs` — extend with
+  a new `#1338 — 4 params removed entirely, round 2` block (RED confirmed
+  before the removal, GREEN after).
+- Count claims: README, CONTEXT.md, docs/index.html, docs/transparency.html,
+  onboarding, landing "N more" line, all 7 locales.
+
+### Tasks
+
+- [x] R1 Check `strip-table-parity.test.mjs`'s `HOT_PATH_REQUIRED` and the
+  `#815` STRIP-parity assertion for a pin on any of the 5 REMOVE-named
+  params before touching them.
+- [x] R2 KEEP: reword `dm_i`, `_ke`, `fbc`, `fbp` with the maintainer-supplied
+  vendor comment + source URL (Dotdigital, Klaviyo, Meta Pixel/CAPI).
+- [x] R3 REMOVE: drop `mnv_sid`, `axr_tref`, `ucx_ref`, `sprtype` from
+  `TRACKING_PARAMS` and the `generic` category's `params` array.
+- [x] R4 Extend the guard test (RED first, confirmed by temporarily
+  reintroducing `mnv_sid` and observing the new assertion fail, then
+  restoring).
+- [x] R5 Update count claims (366 → 362) across README/CONTEXT/docs/
+  onboarding/locales/landing.
+- [x] R6 Run full checks: `npm test`, `test:integration`, `playwright test`,
+  `lint`, `lint:js`, manifest diff, `fpfn`.
+
+### Progress
+
+**`_psq` is a STOP, not a REMOVE** — the maintainer named it for removal
+("no vendor evidence after a real search"), but it is one of the exact five
+Shopify storefront params (`_pos`, `_ss`, `_psq`, `_sid`, `_fid`) that
+`strip-table-parity.test.mjs`'s `HOT_PATH_REQUIRED` pins as re-injected
+client-side via `history.replaceState` (the same field-report family that
+already forced `_pos`/`_fid` to stay global in the first #1338 batch, above).
+Removing `_psq` from `TRACKING_PARAMS` would fail that test's own "every
+STRIP param is in TRACKING_PARAMS ... (#815)" assertion. Per this task's
+explicit instruction, this was reported rather than silently forced through
+by editing the pin: `_psq` stays global, its stale `#1338: unverified`
+comment was reworded to a plain description (matching `_pos`/`_fid`'s
+style), and a new "deliberately kept global" sub-block was added to the
+round-2 guard test documenting the deviation the same way the first batch
+documented `_pos`/`_fid`. **Net: only 4 of the 5 named REMOVE params were
+actually removed.** `TRACKING_PARAMS`: 366 → 362 (not 361).
+
+**KEEP 4 sources**: Dotdigital (`dm_i`, link/open tracking), Klaviyo legacy
+`_ke` (superseded by `_kx`), and Meta Pixel/Conversions API `fbc`/`fbp`
+(`fb.1.` prefix copied into bare URL keys by cross-domain GTM recipes —
+indirect evidence, medium confidence, per the maintainer's own caveat).

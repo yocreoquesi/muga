@@ -895,3 +895,52 @@ describe("#1338 — 11 params removed entirely (no vendor evidence or a known co
     }
   });
 });
+
+/**
+ * #1338 — maintainer follow-up decision (2026-09-24) on the 9 params left
+ * "UNSURE" ("#1338: unverified, needs a real sample") by the first #1338
+ * batch. The maintainer named 5 for outright removal (no vendor evidence
+ * after a real search): `_psq`, `mnv_sid`, `axr_tref`, `ucx_ref`, `sprtype`.
+ * The other 4 (`dm_i`, `_ke`, `fbc`, `fbp`) were named KEEP with a vendor
+ * source and are covered by tracking-count-claims.test.mjs / docs-claims.test.mjs
+ * (the count claims) rather than here, since they never leave TRACKING_PARAMS.
+ *
+ * `_psq` is the deviation, same shape as `_pos`/`_fid` above: it is one of
+ * the exact five Shopify storefront params (`_pos`, `_ss`, `_psq`, `_sid`,
+ * `_fid`) strip-table-parity.test.mjs's HOT_PATH_REQUIRED pins as re-injected
+ * client-side via history.replaceState. Removing it from TRACKING_PARAMS
+ * would fail that test's "every STRIP param is in TRACKING_PARAMS ... (#815)"
+ * assertion, so it stays global — the pin wins over "no vendor evidence
+ * after a real search", exactly as it did for `_pos`/`_fid`.
+ */
+describe("#1338 — 4 params removed entirely, round 2 (no vendor evidence after a real search)", () => {
+  const REMOVED_1338_ROUND2 = ["mnv_sid", "axr_tref", "ucx_ref", "sprtype"];
+
+  test("4 params are covered (sanity on the fixture itself)", () => {
+    assert.equal(REMOVED_1338_ROUND2.length, 4);
+  });
+
+  for (const param of REMOVED_1338_ROUND2) {
+    test(`"${param}" is absent from TRACKING_PARAMS`, () => {
+      assert.ok(
+        !trackingLc.has(param.toLowerCase()),
+        `"${param}" is back in TRACKING_PARAMS — the 2026-09-24 #1338 follow-up removed it ` +
+          "(no vendor evidence after a real search) and it is not anchored anywhere, so it " +
+          "must stay out entirely.",
+      );
+    });
+  }
+
+  describe("deliberately kept global — deviation from the #1338 decision text", () => {
+    test('"_psq" remains in TRACKING_PARAMS (pinned by strip-table-parity.test.mjs as the Shopify field-report family)', () => {
+      assert.ok(
+        trackingLc.has("_psq"),
+        '"_psq" left TRACKING_PARAMS — it must stay global. strip-table-parity.test.mjs\'s ' +
+          "HOT_PATH_REQUIRED already documents it as part of the Shopify storefront family " +
+          "re-injected client-side via history.replaceState (a real past field report), " +
+          'contradicting the 2026-09-24 #1338 follow-up\'s REMOVE rationale of "no vendor ' +
+          'evidence after a real search".',
+      );
+    });
+  });
+});
