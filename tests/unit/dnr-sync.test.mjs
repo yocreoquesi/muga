@@ -300,3 +300,42 @@ describe("#1448 — reconcileRemoteDnrRule on Firefox: remove-only, never adds",
     await assert.doesNotReject(dnrSync.reconcileRemoteDnrRule({ remoteRulesEnabled: true }));
   });
 });
+
+// ── #1461 — syncCustomParamsDNR never installs rule 1000 on Firefox either ──
+
+describe("#1461 — syncCustomParamsDNR on Firefox: remove-only, never adds", () => {
+  function installFirefoxChromeStub() {
+    installChromeStub();
+    globalThis.chrome.runtime.getManifest = () => (
+      { manifest_version: 2, declarative_net_request: { rule_resources: [] } }
+    );
+    globalThis.chrome.webRequest = { onBeforeRequest: { addListener: () => {} } };
+  }
+
+  test("a non-empty customParams list still only ever removes, never adds", async () => {
+    installFirefoxChromeStub();
+    await dnrSync.syncCustomParamsDNR(["my_custom_param"]);
+
+    assert.strictEqual(fakeDnr.calls.length, 1, "must be exactly one remove-only call");
+    assert.strictEqual(fakeDnr.calls[0].addRules, undefined, "never adds a rule on Firefox");
+    assert.deepStrictEqual(fakeDnr.calls[0].removeRuleIds, [DNR_IDS.DNR_CUSTOM_PARAMS_RULE_ID]);
+  });
+
+  test("an empty/absent customParams list behaves identically (remove-only either way)", async () => {
+    installFirefoxChromeStub();
+    await dnrSync.syncCustomParamsDNR([]);
+    assert.strictEqual(fakeDnr.calls[0].addRules, undefined);
+    assert.deepStrictEqual(fakeDnr.calls[0].removeRuleIds, [DNR_IDS.DNR_CUSTOM_PARAMS_RULE_ID]);
+  });
+
+  test("on Chrome (default stub), a non-empty list still adds the rule as before #1461", async () => {
+    // installChromeStub() (beforeEach) already leaves manifest_version:3 with
+    // no chrome.webRequest — the pre-existing non-Firefox path.
+    await dnrSync.syncCustomParamsDNR(["my_custom_param"]);
+    assert.strictEqual(fakeDnr.calls[0].addRules[0].id, DNR_IDS.DNR_CUSTOM_PARAMS_RULE_ID);
+    assert.deepStrictEqual(
+      fakeDnr.calls[0].addRules[0].action.redirect.transform.queryTransform.removeParams,
+      ["my_custom_param"],
+    );
+  });
+});

@@ -267,3 +267,35 @@ test("Firefox smoke: remote rules install no DNR redirect rule; built-in and rem
     await navigateUntilClean(driver, server, dirtyPath, [CLEAN_PATH]);
   });
 });
+
+// #1461: same defect class as #1448, for rule 1000 (syncCustomParamsDNR)
+// instead of the remote channel. Rule 1000 is a DNR redirect with
+// urlFilter: "*", matching every main_frame request, and had no Firefox
+// gate either — so a user with a single custom param lost built-in
+// network-layer cleaning the same way. Fixed by never installing rule 1000
+// on Firefox at all: the webRequest stripper already applies customParams
+// (and userCustomRules) via processUrl, so nothing is lost.
+test("Firefox smoke: a custom param installs no DNR redirect rule (rule 1000); built-in params are still stripped", async () => {
+  await withFirefox(async ({ driver, server }) => {
+    // customParams is already in the storage listener's applyDnrState
+    // trigger list (unlike remoteRulesEnabled above), so one write is enough.
+    await setStorageSync(driver, EXTENSION_ORIGIN, {
+      whitelist: [], blacklist: [], customParams: ["muga_smoke_custom_only"],
+    });
+
+    // Rule 1000 must never exist on Firefox. Poll briefly: the sync above is
+    // async relative to this check.
+    const deadline = Date.now() + 5000;
+    let ids = await dynamicRuleIds(driver);
+    while (Date.now() < deadline && ids.includes(1000)) {
+      await sleep(200);
+      ids = await dynamicRuleIds(driver);
+    }
+    assert.ok(!ids.includes(1000), `rule 1000 must never be installed on Firefox (ids: ${JSON.stringify(ids)})`);
+
+    // The custom param AND the built-in params must all be stripped — by the
+    // webRequest listener alone.
+    const dirtyPath = "/page?utm_source=newsletter&gclid=abc123&muga_smoke_custom_only=x&keep=1";
+    await navigateUntilClean(driver, server, dirtyPath, [CLEAN_PATH]);
+  });
+});

@@ -89,6 +89,22 @@ export function hasDNR() {
 export async function syncCustomParamsDNR(customParams) {
   if (!hasDNR()) return;
   try {
+    // #1461: same defect class #1448 fixed for the remote channel. Rule 1000
+    // is a DNR redirect with urlFilter: "*", matching every main_frame
+    // request. On Firefox, ANY matching DNR redirect rule suppresses the
+    // blocking webRequest stripper's own redirect for that request — so a
+    // user with a single custom param would silently lose built-in
+    // (utm_source, gclid, ...) network-layer cleaning on every navigation.
+    // The webRequest stripper already applies customParams (and
+    // userCustomRules) via processUrl/classifyAndStripTracking, so Firefox
+    // never needs rule 1000 at all. Remove-only, mirroring
+    // reconcileRemoteDnrRule's Firefox branch below.
+    if (isFirefoxMV2()) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
+      });
+      return;
+    }
     if (!customParams || customParams.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
