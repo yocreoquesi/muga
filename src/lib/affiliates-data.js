@@ -907,3 +907,51 @@ export const PATH_ANCHORED_STAY_GLOBAL = [
   "linkcode", "creativeasin", "lp_asin", "store_ref", "sprefix",
   "mkevt", "mkcid", "mkrid", "toolid", "customid", "ingress",
 ];
+
+/**
+ * TRACKING_PARAMS entries with anchored-only upstream evidence that a human
+ * already triaged and decided to KEEP global, for a reason `#1228`'s
+ * mechanical detection cannot express on its own (self-hosted/SaaS-platform
+ * risk, or an anchor that contradicts MUGA's own attribution model).
+ *
+ * `tools/anchored-only-globals.mjs`'s monthly report excludes every key
+ * here from its candidate list — without this, the SAME already-rejected
+ * names would reappear in the report every month. Each value is the
+ * human-readable reason, citing the triage that decided it, so the
+ * exclusion itself is auditable rather than a bare name list.
+ *
+ * Every key here MUST also be in TRACKING_PARAMS — pinned by
+ * tests/unit/adjudicated-keep-global.test.mjs so a stale entry (the param
+ * later removed from TRACKING_PARAMS by an unrelated change) fails loudly
+ * instead of silently becoming a no-op exclusion forever.
+ *
+ * Adding a new entry: after triaging a candidate from the monthly report
+ * and deciding it must stay global, add `param: "reason (#issue/PR)"` here.
+ * Do NOT add an entry just to silence the report without triage — the
+ * report is the point.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const ADJUDICATED_KEEP_GLOBAL = Object.freeze({
+  // Piwik/Matomo is self-hosted analytics software running on thousands of
+  // independent sites under this same param family; MUGA's own
+  // pk_campaign/pk_source/pk_medium/pk_cid siblings stay global for the same
+  // reason. ClearURLs' only anchor for pk_kwd is one example deployment
+  // (vivaldi.com) — one sample host does not establish host-exclusivity for
+  // a self-hosted platform's own param name (#1228 step 4 / #1374).
+  pk_kwd: "Piwik/Matomo self-hosted analytics family — ClearURLs anchors it to one example deployment (vivaldi.com), which does not establish host-exclusivity for a self-hosted platform (#1228 step 4 / #1374)",
+  // IBM Acoustic / Silverpop is a SaaS ESP many independent brands embed
+  // under their own domains. ClearURLs anchors this whole family to one
+  // example brand (moosejaw.com) alone (#1228 step 4 / #1374).
+  spjobid: "IBM Acoustic / Silverpop ESP family — ClearURLs anchors it to one example brand (moosejaw.com), which does not establish host-exclusivity for a SaaS platform (#1228 step 4 / #1374)",
+  spmailingid: "IBM Acoustic / Silverpop ESP family — same reasoning as spjobid (#1228 step 4 / #1374)",
+  spreportid: "IBM Acoustic / Silverpop ESP family — same reasoning as spjobid (#1228 step 4 / #1374)",
+  spuserid: "IBM Acoustic / Silverpop ESP family — same reasoning as spjobid (#1228 step 4 / #1374)",
+  // tt_content/tt_medium are MUGA's own TikTok campaign-content/medium
+  // attribution params (see the "tt_" family comment above). ClearURLs'
+  // ONLY anchor for either name is twitch.com — that anchor contradicts
+  // MUGA's own attribution rather than confirming a narrower host scope, so
+  // host-scoping to twitch.com would be wrong, not merely unproven.
+  tt_content: "MUGA's own TikTok campaign-content attribution param; ClearURLs' only anchor for this name (twitch.com) contradicts that attribution rather than confirming a narrower host scope (#1228 triage, 2026-09-24)",
+  tt_medium: "MUGA's own TikTok campaign-medium attribution param; ClearURLs' only anchor for this name (twitch.com) contradicts that attribution rather than confirming a narrower host scope (#1228 triage, 2026-09-24)",
+});

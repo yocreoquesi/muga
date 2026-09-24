@@ -18,7 +18,13 @@ import { findAnchoredOnlyGlobals, renderIssueBody } from "../../tools/anchored-o
 
 const emptyAdguard = () => ({ bareNames: new Set(), scoped: [], pathAnchored: [] });
 const emptyClearurls = () => ({ globalPatterns: [], anchored: [] });
-const emptyExclusions = () => ({ guard: new Set(), denylist: new Set(), pathAnchoredStayGlobal: new Set() });
+const emptyExclusions = () => ({
+  guard: new Set(),
+  denylist: new Set(),
+  pathAnchoredStayGlobal: new Set(),
+  hotPathRequired: new Set(),
+  adjudicatedKeepGlobal: new Set(),
+});
 
 describe("findAnchoredOnlyGlobals (#1228)", () => {
   test("a param with an AdGuard host anchor and no global evidence anywhere is a candidate", () => {
@@ -110,6 +116,36 @@ describe("findAnchoredOnlyGlobals (#1228)", () => {
     };
     const exclusions = { guard: new Set(), denylist: new Set(), pathAnchoredStayGlobal: new Set(["sprefix"]) };
     const result = findAnchoredOnlyGlobals(["sprefix"], adguard, emptyClearurls(), exclusions);
+    assert.deepEqual(result, []);
+  });
+
+  // ── follow-up fix: the first live run surfaced 9 already-adjudicated
+  // names (_sid, _ss, pk_kwd, spjobid/spmailingid/spreportid/spuserid,
+  // tt_content, tt_medium) — noise the report must never repeat.
+  test("HOT_PATH_REQUIRED members are excluded even with anchored-only evidence (Shopify _sid/_ss false positive)", () => {
+    const adguard = { bareNames: new Set(), scoped: [], pathAnchored: [] };
+    const clearurls = { globalPatterns: [], anchored: [{ param: "_sid", scope: "nordwolle.com" }] };
+    const exclusions = {
+      guard: new Set(),
+      denylist: new Set(),
+      pathAnchoredStayGlobal: new Set(),
+      hotPathRequired: new Set(["_sid"]),
+      adjudicatedKeepGlobal: new Set(),
+    };
+    const result = findAnchoredOnlyGlobals(["_sid"], adguard, clearurls, exclusions);
+    assert.deepEqual(result, []);
+  });
+
+  test("ADJUDICATED_KEEP_GLOBAL members are excluded even with anchored-only evidence (pk_kwd / Silverpop / tt_* false positives)", () => {
+    const clearurls = { globalPatterns: [], anchored: [{ param: "pk_kwd", scope: "vivaldi" }] };
+    const exclusions = {
+      guard: new Set(),
+      denylist: new Set(),
+      pathAnchoredStayGlobal: new Set(),
+      hotPathRequired: new Set(),
+      adjudicatedKeepGlobal: new Set(["pk_kwd"]),
+    };
+    const result = findAnchoredOnlyGlobals(["pk_kwd"], emptyAdguard(), clearurls, exclusions);
     assert.deepEqual(result, []);
   });
 

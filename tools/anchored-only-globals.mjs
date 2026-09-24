@@ -18,7 +18,15 @@
  * that has at least one anchored mention (AdGuard host/path anchor, or a
  * ClearURLs host-scoped provider) and ZERO global mentions (AdGuard
  * `bareNames`, or a ClearURLs `globalPatterns` full match) across BOTH
- * sources, and is not a member of any exclusion set.
+ * sources, and is not a member of any exclusion set: `AFFILIATE_PARAM_GUARD`,
+ * `REMOTE_PARAM_DENYLIST` (src/lib/remote-rules.js), `PATH_ANCHORED_STAY_GLOBAL`,
+ * or `HOT_PATH_REQUIRED` (src/lib/hot-path-strip.js) — structural reasons a
+ * name must stay global regardless of anchor evidence — plus
+ * `ADJUDICATED_KEEP_GLOBAL` (src/lib/affiliates-data.js), the record of
+ * names a human already triaged out of a prior report run (self-hosted/
+ * SaaS-platform risk, or an anchor that contradicts MUGA's own attribution
+ * model). Without that last exclusion, the exact same already-rejected
+ * names reappear every month — the failure mode the first live run hit.
  *
  * CLI entry point (run with `node tools/anchored-only-globals.mjs` or
  * `npm run anchored-only-report`): fetches both sources live, prints the
@@ -37,8 +45,9 @@ import { writeFileSync } from "node:fs";
 import { fetchAdGuardFilter17, parseRemoveparamRules } from "./import-upstream.mjs";
 import { clearurls, extractClearurlsScopeFacts } from "./rule-ingestion/adapters/clearurls.mjs";
 import { TRACKING_PARAMS } from "../src/lib/affiliates.js";
-import { PATH_ANCHORED_STAY_GLOBAL } from "../src/lib/affiliates-data.js";
+import { PATH_ANCHORED_STAY_GLOBAL, ADJUDICATED_KEEP_GLOBAL } from "../src/lib/affiliates-data.js";
 import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-rules.js";
+import { HOT_PATH_REQUIRED } from "../src/lib/hot-path-strip.js";
 
 // ── Pure decision core ───────────────────────────────────────────────────────
 
@@ -50,8 +59,12 @@ import { AFFILIATE_PARAM_GUARD, REMOTE_PARAM_DENYLIST } from "../src/lib/remote-
  *   Subset of `parseRemoveparamRules`'s return shape.
  * @param {{ globalPatterns?: RegExp[], anchored?: Array<{param: string, scope: string}> }} clearurls
  *   Subset of `extractClearurlsScopeFacts`'s return shape.
- * @param {{ guard?: Iterable<string>, denylist?: Iterable<string>, pathAnchoredStayGlobal?: Iterable<string> }} [exclusions]
- *   Names that must never be reported regardless of evidence.
+ * @param {{ guard?: Iterable<string>, denylist?: Iterable<string>, pathAnchoredStayGlobal?: Iterable<string>, hotPathRequired?: Iterable<string>, adjudicatedKeepGlobal?: Iterable<string> }} [exclusions]
+ *   Names that must never be reported regardless of evidence: AFFILIATE_PARAM_GUARD,
+ *   REMOTE_PARAM_DENYLIST, PATH_ANCHORED_STAY_GLOBAL, HOT_PATH_REQUIRED (a
+ *   client-side-reinjectable name needs the synchronous hot-path strip on every
+ *   site, so host-scoping it is not a safe substitute), and ADJUDICATED_KEEP_GLOBAL
+ *   (names a human already triaged out of a prior report run).
  * @returns {Array<{ param: string, evidence: Array<{source: "adguard"|"clearurls", host?: string, path?: string}> }>}
  *   Sorted by param name.
  */
@@ -61,6 +74,8 @@ export function findAnchoredOnlyGlobals(trackingParams, adguard, clearurls, excl
       ...(exclusions.guard ?? []),
       ...(exclusions.denylist ?? []),
       ...(exclusions.pathAnchoredStayGlobal ?? []),
+      ...(exclusions.hotPathRequired ?? []),
+      ...(exclusions.adjudicatedKeepGlobal ?? []),
     ].map((p) => String(p).toLowerCase()),
   );
 
@@ -152,6 +167,7 @@ export function renderIssueBody(report) {
     "3. Verify the GENERATED `src/rules/tracking-params.json` DNR profile rule for that host lists the param in `removeParams` and does not exclude the host via `excludedRequestDomains` — run `npm run compile:rules` first if needed.",
     "4. Watch for a self-hosted/SaaS-platform family (one example site does not establish host-exclusivity for something like Piwik/Matomo or an ESP) and for a wildcard/TLD-family anchor that an enumerated `domain-rules.json` list does not fully cover.",
     "5. Add a pinning test to `tests/unit/removed-global-params-network-coverage.test.mjs` (mirror the existing per-param/per-host blocks) before removing the entry from `TRACKING_PARAMS` (and any `TRACKING_PARAM_CATEGORIES` duplicate).",
+    "6. If triage instead concludes a candidate must STAY global (self-hosted/SaaS-platform risk, an anchor that contradicts MUGA's own attribution, etc.), add it to `ADJUDICATED_KEEP_GLOBAL` in `src/lib/affiliates-data.js` with a reason citing this triage — otherwise the exact same name reappears in next month's report.",
     "",
     "**DO NOT auto-remove.** This report only surfaces candidates; removal always requires human triage per host.",
   );
@@ -165,13 +181,15 @@ export function renderIssueBody(report) {
  * Builds the exclusions object from MUGA's live source-of-truth constants.
  * Exported so the CLI and tests can share the exact same construction.
  *
- * @returns {{ guard: Set<string>, denylist: Set<string>, pathAnchoredStayGlobal: Set<string> }}
+ * @returns {{ guard: Set<string>, denylist: Set<string>, pathAnchoredStayGlobal: Set<string>, hotPathRequired: Set<string>, adjudicatedKeepGlobal: Set<string> }}
  */
 export function buildExclusions() {
   return {
     guard: AFFILIATE_PARAM_GUARD,
     denylist: REMOTE_PARAM_DENYLIST,
     pathAnchoredStayGlobal: new Set(PATH_ANCHORED_STAY_GLOBAL.map((p) => p.toLowerCase())),
+    hotPathRequired: new Set(HOT_PATH_REQUIRED.map((p) => p.toLowerCase())),
+    adjudicatedKeepGlobal: new Set(Object.keys(ADJUDICATED_KEEP_GLOBAL).map((p) => p.toLowerCase())),
   };
 }
 

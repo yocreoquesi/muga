@@ -97,6 +97,37 @@ export const HOT_PATH_STRIP = Object.freeze(
 );
 
 /**
+ * The highest-volume, client-side-reinjectable families that must never
+ * quietly drop off the sync hot path — the only race-free strip before a
+ * page script reads `window.location.search`. Promoted (#1228
+ * anchored-only-globals) from a test-local array in
+ * strip-table-parity.test.mjs to this single exported source of truth: the
+ * test imports it for its own reverse-contract check, and
+ * `tools/anchored-only-globals.mjs`'s monthly detection excludes every
+ * member here regardless of upstream anchor evidence — a name a page can
+ * re-inject client-side on ANY site needs the synchronous strip everywhere,
+ * so a host-scoped `domain-rules.json` entry (which this hot-path table has
+ * no way to express either) would not be a safe substitute.
+ *
+ * This is the reverse contract to HOT_PATH_STRIP above: these MUST be
+ * present in the generated table, not merely allowed to be. See that
+ * guard's own test for the field report (`_pos`/`_ss`/`_sid` were in
+ * TRACKING_PARAMS but missing from the sync subset, so a client-side
+ * re-add via `history.replaceState` survived until the async reclean fired).
+ *
+ * @type {ReadonlyArray<string>}
+ */
+export const HOT_PATH_REQUIRED = Object.freeze([
+  // UTM core
+  "utm_source", "utm_medium", "utm_campaign",
+  // Highest-volume click IDs
+  "fbclid", "gclid", "msclkid", "ttclid",
+  // Shopify storefront family (search/collection context), re-added
+  // client-side via replaceState as the user browses a store.
+  "_pos", "_ss", "_psq", "_sid", "_fid",
+]);
+
+/**
  * Surgically removes the hot-path tracking params from a URL's query string
  * WITHOUT re-serializing the surviving params.
  *

@@ -98,4 +98,43 @@ mechanical and testable; only the removal decision needs a human.
 
 ## Progress
 
-In progress — see final report for outcomes and live CLI output.
+Done. `parseRemoveparamRules` gained `bareNames` (RED-then-GREEN, 8 new
+tests); `clearurls.mjs` gained `extractClearurlsScopeFacts` (RED-then-GREEN,
+10 new tests); `PATH_ANCHORED_STAY_GLOBAL` promoted to `affiliates-data.js`
+and imported by the network-coverage test (556 tests still green); new pure
+module `tools/anchored-only-globals.mjs` (`findAnchoredOnlyGlobals` +
+`renderIssueBody`, RED-then-GREEN, 16 new tests) plus its CLI entry and
+`npm run anchored-only-report` script; new monthly workflow
+`.github/workflows/anchored-only-globals.yml` (issues:write + contents:read
+only, dedupe-by-title open/update/close, mirrors alert-on-failure.yml);
+registered in `alert-on-failure.yml`'s watched list; CONTEXT.md documents
+the schedule next to `auto-ingest-rules.yml`'s.
+
+Checks: `npm test` 8479/8479, `npm run test:integration` 233/233,
+`npm run lint:js` clean, `npm run typecheck` clean.
+
+Live CLI run against real upstream (2026-09-24, first pass): 366
+`TRACKING_PARAMS`, 9 candidates — `_sid`/`_ss` (ClearURLs: nordwolle.com),
+`pk_kwd` (ClearURLs: vivaldi), `spjobid`/`spmailingid`/`spreportid`/
+`spuserid` (ClearURLs: moosejaw.com), `tt_content`/`tt_medium` (ClearURLs:
+twitch). All 9 were already-adjudicated names from #1228/#1374's own
+history, not new signal — a noise bug in the first pass, fixed below.
+
+**Follow-up fix (coordinator review):** promoted `HOT_PATH_REQUIRED` from
+a test-local array in `strip-table-parity.test.mjs` to
+`src/lib/hot-path-strip.js` (mirrors `PATH_ANCHORED_STAY_GLOBAL`'s
+promotion) and added it as an exclusion — covers the Shopify `_sid`/`_ss`
+false positive (a client-side-reinjectable name needs the synchronous
+hot-path strip on every site, not a host-scoped substitute). Added a new
+exported `ADJUDICATED_KEEP_GLOBAL` map in `affiliates-data.js` (7 entries:
+`pk_kwd`, the `sp*` Silverpop family, `tt_content`, `tt_medium`), each with
+a reason citing #1228 step 4 / #1374 or today's triage, pinned by a new
+`tests/unit/adjudicated-keep-global.test.mjs` (non-empty reason + still in
+TRACKING_PARAMS, so a stale entry fails loudly). `renderIssueBody`'s triage
+steps now say how to add a new adjudicated entry. RED confirmed for both
+new exclusion-wiring tests before implementing, then GREEN.
+
+Re-run live CLI after the fix (2026-09-24): 366 `TRACKING_PARAMS`,
+**0 candidates**. Checks: `npm test` 8497/8497, `npm run test:integration`
+233/233, `npm run lint:js` clean, `npm run typecheck` clean (after fixing a
+stale `buildExclusions()` JSDoc `@returns` the new fields tripped).
