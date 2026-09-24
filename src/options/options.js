@@ -711,13 +711,16 @@ async function renderSuspiciousParamsActivity(prefs) {
   const list = document.getElementById("suspicious-params-settings-list");
   if (!panel || !list) return;
 
+  // Bump before the disabled gate: a call that turns the panel off must also
+  // mark any render still awaiting storage as stale, or that render would
+  // refill the list after the feature was disabled.
+  const run = ++_suspiciousParamsRenderRun;
+  const isStale = () => run !== _suspiciousParamsRenderRun;
+
   const enabled = prefs.crossSiteFrequencyEnabled !== false;
   panel.hidden = !enabled;
   updateActivitySectionVisibility();
   if (!enabled) return;
-
-  const run = ++_suspiciousParamsRenderRun;
-  const isStale = () => run !== _suspiciousParamsRenderRun;
 
   // Also fetch the raw tracker state once so "Report upstream" can extract
   // its privacy-bounded payload (domains, entropyAvg, value-hash count)
@@ -848,6 +851,10 @@ function buildStripGloballyButton(paramName, isPromoted, prefs) {
         btn.textContent = t("strip_globally_btn_done", _currentLang);
         btn.classList.add("is-done");
         btn.setAttribute("aria-label", t("strip_globally_btn_done", _currentLang));
+        // Refresh the snapshot too, so the next render does not offer the
+        // button again from the same stale prefs.
+        const fresh = await chrome.storage.sync.get({ userCustomRules: [] });
+        prefs.userCustomRules = fresh.userCustomRules;
         return;
       }
 

@@ -177,6 +177,13 @@ describe("options.js — renderSuspiciousParamsActivity does not interleave over
     assert.match(body, /const\s+isStale\s*=\s*\(\)\s*=>\s*run\s*!==\s*_suspiciousParamsRenderRun\s*;/);
   });
 
+  test("bumps the run counter BEFORE the disabled gate, so turning the panel off invalidates an in-flight render", () => {
+    const body = getRenderFnBody();
+    const bump = body.indexOf("++_suspiciousParamsRenderRun");
+    const gate = body.indexOf("if (!enabled) return;");
+    assert.ok(bump !== -1 && gate !== -1 && bump < gate);
+  });
+
   test("checks isStale() after each of the two storage awaits, before touching the DOM", () => {
     const body = getRenderFnBody();
     const isStaleChecks = [...body.matchAll(/if\s*\(isStale\(\)\)\s*return\s*;/g)];
