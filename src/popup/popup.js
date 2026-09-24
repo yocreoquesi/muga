@@ -12,11 +12,6 @@ import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
 import { findSuspiciousParams } from "../lib/entropy-heuristic.js";
-import {
-  createTracker as createFrequencyTracker,
-  createChromeLocalAdapter as createFrequencyAdapter,
-  defaultHasher as frequencyHasher,
-} from "../lib/cross-site-frequency.js";
 import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
@@ -24,7 +19,6 @@ import { computeLengthReduction, computeLengthBar } from "../lib/length-reductio
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
-import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildBrokenSiteReportFields } from "../lib/broken-site-report.js";
 import { scopedParamsForHost } from "../lib/remote-rules.js";
 
@@ -372,7 +366,7 @@ async function init() {
   await showUrlPreview(prefs, lang);
   await showHistory(prefs, lang);
   // Domain-stats panel moved to Settings' Activity section (#1350).
-  await showSuspiciousParams(prefs, lang);
+  await showSuspiciousParams(lang);
   await showRecentActivity(lang);
 
   // Reactivity: re-render the preview when the user flips relevant settings —
@@ -390,11 +384,6 @@ async function init() {
         enabledToggle.checked = fresh.enabled;
       }
       await showUrlPreview(fresh, lang);
-      // #536: re-render the Suspicious-params section too so the per-row
-      // button reflects the new userCustomRules state without a popup reopen.
-      if (changes.userCustomRules) {
-        await showSuspiciousParams(fresh, lang);
-      }
     } catch (err) {
       console.error("[MUGA] reactive re-render:", err);
     }
@@ -917,21 +906,23 @@ function formatStat(n) {
 }
 
 /**
- * Renders the "Suspicious params" section combining:
- *   1. Entropy heuristic flags (B15, #436) — params on the CURRENT URL
- *      whose values look like opaque tracking IDs by shape alone.
- *   2. Cross-site frequency flags (B16, #446) — params seen on 3+
- *      first-party domains AND with 3+ distinct values, drawn from the
- *      local frequency tracker store.
+ * Renders the "Suspicious params" section — ENTROPY heuristic flags only
+ * (B15, #436): params on the CURRENT page's URL whose values look like
+ * opaque tracking IDs by shape alone.
  *
- * Both are INFORMATIONAL. Auto-stripping unknown params is exactly what
- * breaks creator referrals (#160), so this section just surfaces the
- * signal — it does NOT modify any URLs on its own.
+ * READ-ONLY (2026-09-24 maintainer decision on #1351): no action here
+ * promotes a param to a permanent strip rule. That action, together with
+ * the cross-site frequency subgroup this section used to sit next to,
+ * moved to Settings' Activity section (ADR-0011 Decision 3) — writing
+ * `prefs.userCustomRules` is the single most consequential action MUGA
+ * offers, and does not belong on a two-second surface. This subgroup stays
+ * in the popup specifically because it is tied to THIS page's URL, a fact
+ * Settings — opened in its own tab, with no notion of "the current page" —
+ * has no way to reproduce.
  *
- * The frequency subgroup is gated on prefs.crossSiteFrequencyEnabled so
- * a privacy-conscious user can hide it without uninstalling the feature.
+ * INFORMATIONAL, as before: this does NOT modify any URLs on its own.
  */
-async function showSuspiciousParams(prefs, lang) {
+async function showSuspiciousParams(lang) {
   const section = document.getElementById("suspicious-params");
   const list = document.getElementById("suspicious-params-list");
   if (!section || !list) return;
@@ -939,13 +930,6 @@ async function showSuspiciousParams(prefs, lang) {
   // Reset so repeated calls (storage.onChanged) stay idempotent.
   list.replaceChildren();
 
-  // #536: snapshot of current user-promoted rules. The lower-cased view
-  // backs idempotency for the per-row button — we never add a duplicate
-  // and we hide the button when the param is already promoted.
-  const userCustomRules = Array.isArray(prefs.userCustomRules) ? prefs.userCustomRules : [];
-  const userCustomRulesLower = new Set(userCustomRules.map(p => p.toLowerCase()));
-
-  // ── Entropy subgroup: synchronous, scans current tab URL only ──
   let entropyFlags = [];
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -961,370 +945,37 @@ async function showSuspiciousParams(prefs, lang) {
     }
   } catch { /* tab query may fail in tests; entropy stays empty */ }
 
-  // ── Frequency subgroup: gated on the dedicated pref toggle ──
-  // We also fetch the raw tracker state once so the per-row "Report
-  // upstream" button (#537/#521) can extract its privacy-bounded payload
-  // — without re-reading storage per click.
-  let frequencyFlags = [];
-  let trackerState = null;
-  if (prefs.crossSiteFrequencyEnabled !== false) {
-    try {
-      const adapter = createFrequencyAdapter();
-      if (adapter) {
-        const tracker = createFrequencyTracker({
-          adapter,
-          hasher: frequencyHasher,
-          enabled: true,
-        });
-        frequencyFlags = await tracker.getFlagged();
-        // Pull the raw {params: {...}} shape so the report-upstream button
-        // can read per-param entry data (domains, entropyAvg, value-hash
-        // count) for the form prefill.
-        try { trackerState = await adapter.get(); } catch { /* best-effort */ }
-      }
-    } catch { /* best-effort; freq subgroup just stays empty */ }
-  }
-
-  // #521: read submittedParams once for the section render. Each per-row
-  // button reads from this snapshot to decide whether to render the
-  // button or the "Reported on YYYY-MM-DD" label. Storage write happens
-  // on click; re-render after that swap is inline (no full re-render).
-  let submittedParams = {};
-  try {
-    const stored = await new Promise((resolve) => {
-      chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
-    });
-    submittedParams = stored.submittedParams || {};
-  } catch { /* best-effort; dedup is UX, not a privacy gate */ }
-
-  // Hide the whole section when both subgroups are empty. Fresh installs
-  // and clean pages should not get a noise-y empty header.
-  if (entropyFlags.length === 0 && frequencyFlags.length === 0) {
+  // Hide the section when there's nothing to show. Fresh installs and
+  // clean pages should not get a noise-y empty header.
+  if (entropyFlags.length === 0) {
     section.hidden = true;
     return;
   }
   section.hidden = false;
 
-  if (entropyFlags.length > 0) {
-    const groupLabel = document.createElement("div");
-    groupLabel.className = "suspicious-group-label";
-    groupLabel.textContent = t("suspicious_params_entropy_group", lang);
-    list.appendChild(groupLabel);
+  const groupLabel = document.createElement("div");
+  groupLabel.className = "suspicious-group-label";
+  groupLabel.textContent = t("suspicious_params_entropy_group", lang);
+  list.appendChild(groupLabel);
 
-    for (const flag of entropyFlags) {
-      const row = document.createElement("div");
-      row.className = "suspicious-row";
+  for (const flag of entropyFlags) {
+    const row = document.createElement("div");
+    row.className = "suspicious-row";
 
-      const nameEl = document.createElement("span");
-      nameEl.className = "suspicious-name";
-      nameEl.textContent = flag.param;
-      row.appendChild(nameEl);
+    const nameEl = document.createElement("span");
+    nameEl.className = "suspicious-name";
+    nameEl.textContent = flag.param;
+    row.appendChild(nameEl);
 
-      const detailEl = document.createElement("span");
-      detailEl.className = "suspicious-detail";
-      // Score gives the user a defensible "why this looks fishy" without
-      // forcing them to read the heuristic's reason codes.
-      detailEl.textContent = t("entropy_score_label", lang).replace("{score}", String(flag.score));
-      row.appendChild(detailEl);
+    const detailEl = document.createElement("span");
+    detailEl.className = "suspicious-detail";
+    // Score gives the user a defensible "why this looks fishy" without
+    // forcing them to read the heuristic's reason codes.
+    detailEl.textContent = t("entropy_score_label", lang).replace("{score}", String(flag.score));
+    row.appendChild(detailEl);
 
-      // #536: per-row Strip locally button. Promotes the flagged param
-      // into prefs.userCustomRules so future navigations strip it. Row
-      // stays visible after promotion (collapses button into a "done"
-      // disabled state) so the user keeps the visual receipt.
-      _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
-      // #537: per-row Report upstream button. Opens a deep-linked GitHub
-      // issue pre-filled with ONLY the param name + first-party-domain
-      // count via the csft-upstream privacy module. Entropy-flagged params
-      // typically aren't in the tracker store yet → count resolves to 0,
-      // which is the correct, privacy-preserving default.
-      _appendReportUpstreamButton(row, flag.param, trackerState, lang, submittedParams);
-
-      list.appendChild(row);
-    }
+    list.appendChild(row);
   }
-
-  if (frequencyFlags.length > 0) {
-    const groupLabel = document.createElement("div");
-    groupLabel.className = "suspicious-group-label";
-    groupLabel.textContent = t("suspicious_params_frequency_group", lang);
-    list.appendChild(groupLabel);
-
-    const detailTemplate = t("suspicious_params_freq_detail", lang);
-    for (const flag of frequencyFlags) {
-      const row = document.createElement("div");
-      row.className = "suspicious-row";
-
-      const nameEl = document.createElement("span");
-      nameEl.className = "suspicious-name";
-      nameEl.textContent = flag.param;
-      row.appendChild(nameEl);
-
-      const detailEl = document.createElement("span");
-      detailEl.className = "suspicious-detail";
-      // Avoid innerHTML — replace placeholders manually so the i18n
-      // template can never become an injection vector.
-      detailEl.textContent = detailTemplate
-        .replace("{domains}", String(flag.domains))
-        .replace("{values}", String(flag.values));
-      row.appendChild(detailEl);
-
-      _appendStripLocallyButton(row, flag.param, userCustomRulesLower, prefs, lang);
-      // #537: per-row Report upstream button (see entropy block above).
-      _appendReportUpstreamButton(row, flag.param, trackerState, lang, submittedParams);
-
-      list.appendChild(row);
-    }
-  }
-
-  // #536: counter widget — surfaces the total number of user-promoted
-  // strip rules so the user has a reference for what they own. Hidden
-  // when zero so a fresh install never sees a 0-count widget.
-  _renderStripLocallyCount(userCustomRules.length, lang);
-}
-
-/**
- * Appends the per-row "Strip locally" button to a Suspicious-params row.
- * If the param is already in userCustomRulesLower, renders a disabled
- * "Stripped locally ✓" pill instead — the row stays visible so the user
- * keeps the visual receipt of what they promoted (design choice for #536:
- * keep-row-with-done-state, NOT remove-row, so re-promoting after a
- * popup close stays one click away).
- *
- * @param {HTMLElement} row              The .suspicious-row element being built.
- * @param {string}      paramName        Original-case param name (preserved).
- * @param {Set<string>} alreadyPromoted  Lowercased snapshot of current rules.
- * @param {object}      prefs            Reactive prefs object (mutated locally on click).
- * @param {string}      lang             Active UI language code.
- */
-function _appendStripLocallyButton(row, paramName, alreadyPromoted, prefs, lang) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "strip-locally-btn";
-  btn.dataset.param = paramName;
-
-  const isPromoted = alreadyPromoted.has(paramName.toLowerCase());
-  if (isPromoted) {
-    btn.textContent = t("strip_locally_btn_done", lang);
-    btn.classList.add("is-done");
-    btn.disabled = true;
-    btn.setAttribute("aria-label", t("strip_locally_btn_done", lang));
-  } else {
-    btn.textContent = t("strip_locally_btn", lang);
-    btn.setAttribute("aria-label", t("strip_locally_btn", lang));
-    btn.addEventListener("click", async () => {
-      // Read-modify-write against chrome.storage.sync. We re-read inside
-      // the handler so concurrent popup actions (or another device's
-      // sync) don't blow away each other's rules.
-      try {
-        const current = await new Promise((resolve, reject) => {
-          chrome.storage.sync.get({ userCustomRules: [] }, (r) => {
-            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-            else resolve(r);
-          });
-        });
-        const currentList = Array.isArray(current.userCustomRules) ? current.userCustomRules : [];
-        // #1099: enforce the same 200-entry cap + dedupe every other
-        // userCustomRules write path already applies (options.js's manual
-        // Add button, the settings-import path) instead of pushing
-        // unbounded — an uncapped list can exceed chrome.storage.sync's
-        // ~8 KB per-item quota and fail to persist silently.
-        const { list, error } = addUserCustomRule(currentList, paramName);
-        if (error === "max") {
-          _flashStripLocallyMessage(t("list_full", lang), currentList.length, lang);
-          return;
-        }
-        if (error !== "duplicate") {
-          await new Promise((resolve, reject) => {
-            chrome.storage.sync.set({ userCustomRules: list }, () => {
-              if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-              else resolve();
-            });
-          });
-        }
-        // Mutate the in-flight prefs object so a follow-up re-render
-        // (from the storage.onChanged listener or otherwise) sees the
-        // new state without an extra round-trip.
-        prefs.userCustomRules = list;
-        // Optimistic re-render: collapse the button to the "done" state
-        // and refresh the counter inline so the user gets immediate
-        // feedback even before chrome.storage.onChanged fires.
-        btn.textContent = t("strip_locally_btn_done", lang);
-        btn.classList.add("is-done");
-        btn.disabled = true;
-        btn.setAttribute("aria-label", t("strip_locally_btn_done", lang));
-        _renderStripLocallyCount(list.length, lang);
-      } catch (err) {
-        console.error("[MUGA] strip-locally save:", err);
-      }
-    });
-  }
-  row.appendChild(btn);
-}
-
-/**
- * Appends the per-row "Report upstream" button to a Suspicious-params row
- * (#521 evolution of #537). Clicking opens a deep-linked GitHub issue
- * using the structured `tracker-flag.yml` form template with prefilled
- * fields sourced from the local cross-site-frequency tracker.
- *
- * Privacy contract: the deep-link only carries fields the user is about
- * to review and submit themselves on github.com. Nothing is sent
- * automatically. The fields prefilled are:
- *   - paramName (the flagged param)
- *   - domains   (first-party hosts where the param was seen)
- *   - entropy_score, frequency_distinct_domains, frequency_distinct_values
- * Raw values, raw URLs, value hashes, and timestamps are NEVER passed.
- *
- * Local dedup (#521): once submitted, the button is replaced with a
- * "Reported on YYYY-MM-DD" label so the same param doesn't get reported
- * twice from the same install. The user can clear the dedup list from
- * the options page ("Forget reported params"). The dedup state lives in
- * `chrome.storage.local.submittedParams` as `{ [paramName]: "YYYY-MM-DD" }`.
- *
- * @param {HTMLElement} row              The .suspicious-row being built.
- * @param {string}      paramName        Original-case param name.
- * @param {object|null} trackerState     Raw cross-site-frequency state
- *                                       ({params:{...}}) or null when the
- *                                       frequency tracker is disabled or
- *                                       the param was entropy-only-flagged.
- * @param {string}      lang             Active UI language code.
- * @param {object}      submittedParams  { [name]: "YYYY-MM-DD" } map read
- *                                       once at section-render time.
- */
-function _appendReportUpstreamButton(row, paramName, trackerState, lang, submittedParams) {
-  // Already-reported short-circuit: render a small label, no button.
-  const submittedDate = submittedParams && submittedParams[paramName];
-  if (submittedDate) {
-    const label = document.createElement("span");
-    label.className = "report-upstream-already-reported";
-    label.textContent = t("report_upstream_already_reported", lang).replace("{date}", submittedDate);
-    label.setAttribute("title", label.textContent);
-    row.appendChild(label);
-    return;
-  }
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "report-upstream-btn";
-  btn.dataset.param = paramName;
-  btn.textContent = t("report_upstream_btn", lang);
-  btn.setAttribute("aria-label", t("report_upstream_btn", lang));
-  btn.addEventListener("click", async () => {
-    try {
-      // Resolve the tracker entry. Both raw and wrapped shapes are accepted
-      // (mirrors buildUpstreamPayload's defensive normalisation).
-      let entry = null;
-      if (trackerState && typeof trackerState === "object") {
-        const entries = trackerState.params && typeof trackerState.params === "object"
-          ? trackerState.params
-          : trackerState;
-        entry = entries && entries[paramName] ? entries[paramName] : null;
-      }
-      const domains = entry && Array.isArray(entry.domains) ? entry.domains : [];
-      const distinctValues = entry && Array.isArray(entry.values) ? entry.values.length : 0;
-      const entropyAvg = entry && typeof entry.entropyAvg === "number" ? entry.entropyAvg : null;
-
-      // Cap the domains list at 50 entries to stay well under GitHub's
-      // ~8 KB URL ceiling. The form's textarea accepts free input, so the
-      // user can add more before submitting if their list is longer.
-      const cappedDomains = domains.slice(0, 50);
-
-      const params = new URLSearchParams();
-      params.set("template", "tracker-flag.yml");
-      params.set("paramName", paramName);
-      if (cappedDomains.length > 0) params.set("domains", cappedDomains.join("\n"));
-      if (entropyAvg !== null) params.set("entropy_score", entropyAvg.toFixed(2));
-      if (domains.length > 0) params.set("frequency_distinct_domains", String(domains.length));
-      if (distinctValues > 0) params.set("frequency_distinct_values", String(distinctValues));
-
-      const url = `https://github.com/yocreoquesi/muga/issues/new?${params.toString()}`;
-
-      // Mark submitted BEFORE opening — if the user closes the tab without
-      // hitting Submit on GitHub, MUGA still treats it as "reported" until
-      // they clear the list from settings. That's the lesser evil vs.
-      // tracking issue state via the GitHub API (would require polling and
-      // breaks the zero-telemetry promise).
-      const today = new Date().toISOString().slice(0, 10);
-      try {
-        const stored = await new Promise((resolve) => {
-          chrome.storage.local.get({ submittedParams: {} }, (r) => resolve(r));
-        });
-        const updated = { ...(stored.submittedParams || {}), [paramName]: today };
-        await new Promise((resolve) => {
-          chrome.storage.local.set({ submittedParams: updated }, resolve);
-        });
-      } catch (storageErr) {
-        // Non-fatal: dedup is a UX nicety, not a privacy gate. Open the URL
-        // anyway so the user's intent isn't lost to a storage hiccup.
-        console.warn("[MUGA] report-upstream dedup save:", storageErr);
-      }
-
-      // Replace the button with the "already reported" label inline so
-      // the user sees immediate feedback without a popup re-render.
-      const label = document.createElement("span");
-      label.className = "report-upstream-already-reported";
-      label.textContent = t("report_upstream_already_reported", lang).replace("{date}", today);
-      btn.replaceWith(label);
-
-      // _blank + noopener + noreferrer per the project security rule —
-      // GitHub never sees document.referrer and the new tab can't touch
-      // window.opener.
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      console.error("[MUGA] report-upstream open:", err);
-    }
-  });
-  row.appendChild(btn);
-}
-
-/** Renders the active-rules counter inside the suspicious-params section. */
-function _renderStripLocallyCount(count, lang) {
-  const el = document.getElementById("strip-locally-count");
-  if (!el) return;
-  if (count <= 0) {
-    el.hidden = true;
-    el.textContent = "";
-    return;
-  }
-  // textContent + manual {n} replace — never innerHTML.
-  el.replaceChildren();
-  el.appendChild(
-    document.createTextNode(t("strip_locally_active_count", lang).replace("{n}", String(count)) + " "),
-  );
-
-  // A way back to the list this counter counts (#1271 item 4). The button that
-  // fills it lives here in the popup; the list itself lives in Settings, and
-  // until now the only path to it was knowing it was there. Deep-linked with a
-  // hash rather than openOptionsPage(), which cannot carry one.
-  const link = document.createElement("a");
-  link.href = chrome.runtime.getURL("options/options.html#user-custom-rules");
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.className = "strip-locally-manage";
-  link.textContent = t("strip_locally_manage", lang);
-  el.appendChild(link);
-
-  el.hidden = false;
-}
-
-/**
- * Temporarily shows an error message in the strip-locally-count aria-live
- * region (#1099), then restores the normal count display after 3000ms.
- * Used when the "Strip locally" cap (IMPORT_LIST_CAPS.customParams, 200
- * entries) is reached, so the failure is surfaced to the user instead of
- * failing silently — previously there was no cap at all, and therefore no
- * error path either.
- *
- * @param {string} message  Translated message to show (e.g. t("list_full", lang)).
- * @param {number} count    The unchanged current list length, to restore after the flash.
- * @param {string} lang     Active UI language code.
- */
-function _flashStripLocallyMessage(message, count, lang) {
-  const el = document.getElementById("strip-locally-count");
-  if (!el) return;
-  el.textContent = message;
-  el.hidden = false;
-  setTimeout(() => _renderStripLocallyCount(count, lang), 3000);
 }
 
 /**

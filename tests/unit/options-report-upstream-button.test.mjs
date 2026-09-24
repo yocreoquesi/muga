@@ -18,13 +18,7 @@
  *          anyway, so report-upstream's natural home is with the frequency
  *          rows that moved.
  *
- * Sliced delivery note (#1351 stacked-PR re-slice): this is slice B — the
- * Settings-side action lands here, wired against the frequency panel this
- * slice also adds. The popup's OWN report-upstream button is still present
- * at this point (slice C retires it); the "popup no longer duplicates this"
- * guard is added there, once it is actually true.
- *
- * Structural tests pin the post-#1351 Settings-side contract:
+ * Structural tests pin the post-#1351 contract:
  *   - i18n keys exist (en + es non-empty)
  *   - options.js declares the button class so future refactors keep it
  *     discoverable
@@ -35,6 +29,7 @@
  *     UX state, not synced behaviour)
  *   - the "already-reported" label is rendered in place of the button
  *     when a paramName has been submitted previously from this install
+ *   - the popup no longer declares any of this (moved, not duplicated)
  *
  * #1351 R3-tautological-deeplink-tests: the actual URL construction (the
  * 50-domain cap, the never-leak-hashes/timestamps contract) is no longer
@@ -147,6 +142,14 @@ test("options.html exposes the suspicious-params Activity panel host (regression
 test("options.html exposes the 'forget reported params' button for the dedup reset", () => {
   const html = readFileSync(resolve(root, "src/options/options.html"), "utf8");
   assert.match(html, /id="forget-reported-params-btn"/);
+});
+
+// ── Popup no longer duplicates this (#1351) ─────────────────────────────────
+
+test("popup.js no longer declares a report-upstream button builder", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  assert.doesNotMatch(popupSrc, /_appendReportUpstreamButton/);
+  assert.doesNotMatch(popupSrc, /report-upstream-btn/);
 });
 
 // ── options.js actually calls the real helper (#1351 R3) ───────────────────

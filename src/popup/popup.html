@@ -67,16 +67,16 @@
        ADR-0011 Decision 3): a ranked table over time is a record, not a
        two-second glance. See src/options/options.html #section-activity. -->
 
-  <!-- Suspicious params section (#446, B16). Surfaces both the entropy
-       heuristic flags (B15, this page) AND the cross-site frequency
-       flags (across visited sites). Hidden until at least one subgroup
-       has content so a fresh install never sees a chrome-less header. -->
+  <!-- Suspicious params section (#446, B16). Entropy heuristic flags ONLY
+       (B15, this page) — READ-ONLY, no strip/report action here (#1351,
+       2026-09-24 maintainer decision: the frequency subgroup and every
+       action that writes a global rule moved to Settings' Activity
+       section, see src/options/options.html #suspicious-params-panel).
+       Hidden until there's content so a fresh install never sees a
+       chrome-less header. -->
   <details class="suspicious-params" id="suspicious-params" hidden>
     <summary data-i18n="suspicious_params_label">Suspicious params</summary>
     <div id="suspicious-params-list"></div>
-    <!-- #536: counter rendered when prefs.userCustomRules.length > 0.
-         Hidden on a fresh install so a chrome-less header never appears. -->
-    <div id="strip-locally-count" class="strip-locally-count" hidden aria-live="polite"></div>
   </details>
 
   <details class="history" id="history" hidden>

@@ -816,59 +816,13 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 
 .suspicious-row {
   display: grid;
-  /* #536 + #537: name | detail | strip-locally button | report-upstream button */
-  grid-template-columns: 1fr auto auto auto;
+  /* #1351: read-only entropy row — name | score. The strip/report actions
+     (and their button columns) moved to Settings' Activity section. */
+  grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
   padding: 4px 14px;
   font-size: 11px;
-}
-
-/* #536: per-row "Strip locally" button. Keeps the row visible after
- * promotion (collapses into a disabled "done" pill) so the user sees
- * the receipt of what they have promoted. */
-.strip-locally-btn {
-  background: transparent;
-  border: 1px solid var(--border-1, #ccc);
-  color: var(--text-1, inherit);
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.strip-locally-btn:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-.strip-locally-btn.is-done,
-.strip-locally-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-  border-color: transparent;
-}
-
-/* #537: per-row "Report upstream" button. Same pill aesthetic as the
- * Strip locally button so they read as a paired action set within the
- * Suspicious params row. */
-.report-upstream-btn {
-  background: transparent;
-  border: 1px solid var(--border-1, #ccc);
-  color: var(--text-1, inherit);
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.report-upstream-btn:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-
-.strip-locally-count {
-  font-size: 10px;
-  color: var(--text-3);
-  padding: 6px 14px 4px;
-  font-style: italic;
 }
 
 .suspicious-name {
@@ -976,12 +930,6 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   cursor: pointer;
 }
 .recent-activity-copy:hover { background: var(--surface-2); }
-
-.strip-locally-manage {
-  color: var(--text-link);
-  text-decoration: none;
-}
-.strip-locally-manage:hover { text-decoration: underline; }
 
 .stats-empty {
   padding: 8px 14px 10px;
