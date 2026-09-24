@@ -105,7 +105,13 @@ rules + rules-source store + live signed channel; see
   `preserveParams`. Route: inline (single mechanical data file, already
   understood; 9 host entries).
 - [x] T3 Area 3 — evaluate host-anchored `ref` (79 facts) for
-  affiliate-referral risk. Route: inline (research + doc, no code).
+  affiliate-referral risk; initially returned unlanded to maintainer.
+  **2026-09-25: maintainer decided to land all 79 at AdGuard's exact
+  anchors** (trust AdGuard; revisit on user reports). Landed with 0
+  exclusions after checking every named exclusion category; discovered and
+  documented a stale #160 comment along the way (PcComponentes/MediaMarkt
+  ES/DE already strip `ref` deliberately, unrelated to this branch — not
+  the exclusion case the comment implied). Route: inline.
 - [x] T4 Area 4 — `stripAllAffiliates`-only host-anchored affiliate strip.
   New data table (`AFFILIATE_HOST_STRIP_FACTS`, redirect-networks.js) +
   `handleAffiliatePipeline` Step 4d extension (cleaner.js), TDD RED/GREEN,
@@ -288,25 +294,109 @@ regenerated `tracking-params.json`/`rules-manifest.json`/web+landing engine
 mirrors. `domain-rules.json` entry count unchanged (297 — `onelink.me` was
 an existing entry, not a new one, so no count-claim update needed).
 
-**T3 — `ref` (79 facts): none landed. Returned to maintainer.**
+**T3 — `ref` (79 facts): maintainer decision 2026-09-25 — LAND, trust
+AdGuard's exact per-host anchor. "If users report breakage we revisit."**
 
-`ref` is a confirmed, documented creator-affiliate tag on at least two real
-hosts already in MUGA's own codebase (PcComponentes, MediaMarkt ES/DE — see
-`affiliates-data.js` line ~38, issue #160: "`ref` removed: it's the
-affiliate param for PcComponentes and MediaMarkt ES/DE in
-AFFILIATE_PATTERNS"). This is not a hypothetical collision class — it is a
-precedent for the exact failure mode. None of the 79 AdGuard-anchored hosts
-have an explicit `preserveParams`/`ref` conflict (checked), but the 79-host
-list includes several consumer subscription/security products with
-plausible "refer a friend" programs (`protonvpn.com`, `account.proton.me`,
-`startmail.com`, `olybet.lv`, `sportbank.ua`, `coincards.com`,
-`resourify.com`) where `ref` could equally be a referral-program identifier,
-not pure ad tracking. Vetting each of the 79 hosts' actual referral/
-affiliate program individually is out of reach for this task (no per-host
-vendor evidence available). Per the issue's own instruction ("If you cannot
-establish safety for a host with evidence, do not land it"), **all 79 are
-left unlanded** and returned to the maintainer as a single decision item —
-see the final report.
+Originally returned to the maintainer unlanded (see prior revision of this
+section) because `ref` is a confirmed creator-affiliate tag on at least one
+real host (the historical #160 comment named PcComponentes/MediaMarkt
+ES/DE) and the 79-host list includes several consumer subscription/security
+products with plausible "refer a friend" programs. The maintainer reviewed
+this and decided to land all 79 at their exact AdGuard anchors, with hard
+limits (below), on the basis that AdGuard's own curation is trustworthy at
+the anchor level and the blast radius of a wrong strip is recoverable
+(noisier URL, not lost revenue) — see the asymmetric-risk principle in
+CONTEXT.md §4.
+
+**Landed: 79/79 hosts**, all at AdGuard's EXACT anchor string (verified
+against a fresh re-fetch of the live AdGuard Filter 17 list, 2026-09-25 —
+still 79, same set as the 2026-09-24 measurement):
+- 77 new `domain-rules.json` entries (brand-new host, `stripParams: ["ref"]`).
+- 2 appended to an EXISTING exact-match entry (`asahi.com` — already had
+  `stripParams: ["cid"]`; `nikkei.com` — already had `stripParams: ["n_cid"]`).
+  Both are exact matches (the entry's `domain` string equals AdGuard's
+  anchor string), so appending does not widen anything — same rule that
+  caught the `onelink.me`/`pid` mistake: never append to a PARENT domain
+  whose suffix match is broader than the anchor.
+- **Anchor-widening check (per host):** none of the 79 anchors needed the
+  "parent domain already exists" handling from the `onelink.me` correction
+  — every anchor either had no existing entry (new entry created) or an
+  EXACT existing entry (appended). No host was skipped for this reason.
+
+**Excluded: 0 hosts.** Checked every exclusion category the maintainer
+named, against the full 79-host list:
+- `preserveParams` conflict (host itself or any ancestor domain): **0**
+  found (scripted check against domain-rules.json's suffix chain for all
+  79 hosts).
+- Known creator-affiliate `ref` in MUGA's own data
+  (`affiliates-data.js` / `REDIRECT_NETWORK_PATTERNS` / `AFFILIATE_PATTERNS`):
+  the only two live sources of a `ref`-carrying host are (a) `vercel.com`
+  (`AFFILIATE_PATTERNS`, "Vercel Referrals" direct-injection program,
+  `src/rules/manifest.data.js`) and (b) `REDIRECT_NETWORK_PATTERNS`'
+  Partnerize entry (`adref`/`clickref`/`pubref` — none is literally `ref`).
+  **Neither `vercel.com` nor any Partnerize `redirectHosts` entry is in the
+  79-host list** — 0 exclusions needed.
+- `REMOTE_PARAM_DENYLIST`: `ref` itself is not a member (checked); no
+  interaction.
+
+**Correction to the original #160 citation — PcComponentes / MediaMarkt
+ES/DE are NOT an exclusion case, and are NOT in the 79-host list at all.**
+Investigating the maintainer's named exclusion (these two brands) surfaced
+that the #160 comment in `affiliates-data.js` is **stale**. Live-tested
+`processUrl()` with `domainRules` loaded (the real production shape —
+`src/content/cleaner.js`'s `cleanWithContext` always passes
+`_domainRulesCache`):
+- `pccomponentes.com`, `mediamarkt.de`, `mediamarkt.es` **already strip
+  `ref`** via their OWN pre-existing `domain-rules.json` `stripParams`
+  entries (unrelated to this branch — present before #1463 started).
+- This is not a latent bug: `tests/unit/config-integrity.test.mjs`'s
+  `allowedOverrides` table explicitly documents and tests it —
+  `"ref": [..., "pccomponentes.com", "mediamarkt.es", "mediamarkt.de", ...]`
+  with the comment "intentionally stripped on incompatible stores
+  (redirect-based affiliate policy)". A later, more specific decision
+  (Awin-redirect classification, see the `pccomponentes.com` entry's own
+  note: "Affiliate params (Awin redirect model) actively stripped.")
+  superseded the #160 comment's direct-injection framing. `AFFILIATE_PATTERNS`
+  (`manifest.data.js`) does NOT list PcComponentes or MediaMarkt at all —
+  only `vercel.com` uses `ref` as a live, enforced direct-injection tag.
+- **Not changed** as part of this task (out of the 79-host scope, and
+  already deliberately tested) — flagged here for the maintainer's
+  awareness since the #160 comment (still present in `affiliates-data.js`)
+  is misleading against current behavior.
+
+**Weekly ingest / reconcile path — checked, does not fight these facts.**
+The automated weekly pipeline (`auto-ingest-rules.yml` → `orchestrate.mjs`)
+DOES reject every `ref`-named candidate at Gate 1 (`affiliate-guard.mjs`):
+`buildPreserveIndex` derives a NAME-level (not host-level) preserve set from
+`AFFILIATE_PATTERNS`, and `vercel.com`'s `ref` entry puts the bare name
+`ref` in that set — so Gate 1 refuses to auto-promote ANY `ref` candidate
+to the signed remote channel, for any host, global or scoped. This is the
+mechanism issue #1463 T3's own text meant by "the ingest filters `ref` out
+as functional." Verified this cannot undo or fight the hand-written facts
+landed here:
+1. The weekly pipeline's target is `tools/rules-source/params.json` (the
+   SIGNED remote channel), populated via `scopedFacts`/`promote-rules.mjs`.
+   `domain-rules.json` is imported into `rules.json`'s `entries` field via
+   the SEPARATE, manually-triggered `build-rules-store.mjs --import` — a
+   different field, never touched by the weekly automated path.
+2. `promote-rules.mjs` reads `domain-rules.json` only as a PRESERVE
+   backstop (rejects a signed payload that would strip something
+   `domain-rules.json` marks `preserveParams`) — read-only, never removes
+   or rewrites `domain-rules.json` content.
+3. `build-rules-store.mjs --prefer-anchors` (run by the weekly workflow)
+   only relocates a param that is CURRENTLY GLOBAL in the signed channel
+   AND host-anchored in `domain-rules.json`. `ref` is not in
+   `tools/rules-source/params.json`'s global `params` array (checked) —
+   the predicate never fires for it, so this mechanism is a no-op here too.
+
+No conflict found; nothing about the ingest pipeline needed to change.
+
+Regression test added (`tests/unit/cleaner.test.mjs`, "affiliate param /
+tracking param collision" describe block): asserts `ref` is stripped on
+`goodreads.com` (a landed T3 host) and preserved on `vercel.com` (the one
+live host where `ref` is a genuine, currently-enforced creator-affiliate
+tag), both called through `processUrl(url, PREFS, domainRules)` — the real
+production call shape, not the canary harness's domainRules-free shape.
 
 **T4 — landed.** `AFFILIATE_HOST_STRIP_FACTS` (`src/lib/redirect-networks.js`,
 fact-major `{param, hosts[]}`, reusing the existing `scopedParamsForHostname`

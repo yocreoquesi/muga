@@ -1789,6 +1789,52 @@ describe("affiliate param / tracking param collision", () => {
       "whitelisted ref= must be preserved on pccomponentes");
   });
 
+  // #1463 T3 (maintainer decision 2026-09-25): `ref` lands as a default
+  // host-scoped strip at AdGuard's exact per-host anchor on 79 hosts
+  // (domain-rules.json), while staying preserved wherever it is a genuine
+  // creator-affiliate tag. Regression pin, WITH domainRules passed (the
+  // real production shape — src/content/cleaner.js's cleanWithContext
+  // always passes _domainRulesCache, unlike the two `ref=` tests above
+  // which call processUrl with prefs only).
+  //
+  // NOTE ON THE HOSTS CHOSEN: the maintainer's instruction named
+  // "PcComponentes, MediaMarkt ES/DE" as hosts to exclude because `ref` is
+  // a known creator-affiliate tag there. Verified against the LIVE
+  // processUrl + domainRules path (not just the affiliates-data.js #160
+  // comment, which is stale) and found the opposite of what that comment
+  // says: pccomponentes.com / mediamarkt.de / mediamarkt.es already carry
+  // `ref` in their OWN domain-rules.json `stripParams` (pre-existing,
+  // unrelated to this branch), and `tests/unit/config-integrity.test.mjs`'s
+  // `allowedOverrides` table explicitly documents this as intentional
+  // ("intentionally stripped on incompatible stores (redirect-based
+  // affiliate policy)"). So `ref` is NOT currently preserved on those three
+  // hosts — using them here would assert something false and would
+  // contradict an existing, deliberately-tested guard. `vercel.com` is
+  // used instead: it is the one host where `ref` is a genuine, currently
+  // enforced creator-affiliate tag (`AFFILIATE_PATTERNS` /
+  // `src/rules/manifest.data.js`'s "Vercel Referrals" direct-injection
+  // program). See odd/tasks/1463-adguard-coverage.md T3 for the full
+  // finding and the resulting maintainer-facing report.
+  test("ref is stripped on a T3-landed host (goodreads.com) and preserved where it is a real creator-affiliate tag (vercel.com)", () => {
+    const stripped = processUrl(
+      "https://goodreads.com/book/1?ref=tracking&utm_source=google",
+      PREFS,
+      domainRules,
+    );
+    assert.equal(new URL(stripped.cleanUrl).searchParams.has("ref"), false,
+      "ref must be stripped on goodreads.com (T3-landed host, exact AdGuard anchor)");
+    assert.ok(stripped.removedTracking.includes("ref"));
+
+    const preserved = processUrl(
+      "https://vercel.com/pricing?ref=some-affiliate-tag&utm_source=google",
+      PREFS,
+      domainRules,
+    );
+    assert.equal(new URL(preserved.cleanUrl).searchParams.get("ref"), "some-affiliate-tag",
+      "ref must stay preserved on vercel.com — a genuine AFFILIATE_PATTERNS creator-affiliate tag");
+    assert.ok(!preserved.removedTracking.includes("ref"));
+  });
+
 });
 
 // ---------------------------------------------------------------------------

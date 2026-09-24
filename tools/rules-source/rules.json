@@ -132,7 +132,7 @@
       },
       "asahi.com": {
         "emitStripParams": true,
-        "note": "Asahi Shimbun, Japanese newspaper. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2)."
+        "note": "Asahi Shimbun, Japanese newspaper. `cid` host-anchored via AdGuard `removeparam=cid`, not global (#1228 step 2). `ref` host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (see odd/tasks/1463-adguard-coverage.md)."
       },
       "auction.co.kr": {
         "emitStripParams": true,
@@ -644,7 +644,7 @@
       },
       "nikkei.com": {
         "emitStripParams": true,
-        "note": "Nikkei, Japanese financial newspaper. `n_cid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+        "note": "Nikkei, Japanese financial newspaper. `n_cid` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3). `ref` host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (see odd/tasks/1463-adguard-coverage.md)."
       },
       "notebooksbilliger.de": {
         "emitStripParams": true,
@@ -1189,6 +1189,314 @@
       "toomics.com": {
         "emitStripParams": true,
         "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+      },
+      "2chblog.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "account.proton.me": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "aeza.net": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "ai-porn.ai": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "animember.net": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "arcelik.com.tr": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "baseballchannel.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "bipblog.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "blog.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "blog.livedoor.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "boards.greenhouse.io": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "bubilet.com.tr": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "bunshun.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "buzzfeednews.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "camcam.cc": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "chunichi.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "click.redditmail.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "click.speee-ad.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "cnn.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "coconala.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "coincards.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "d-markets.net": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "darkfans.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "datafa.st": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "dennikn.sk": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "donga.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "freebies.indiegala.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "gamesplanet.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "gelocal.it": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "getidol.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "gillian-guide.github.io": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "goodreads.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "gotanynudes.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "gptgirlfriend.online": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "h-taikendan.net": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "hokkaido-np.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "hola.org": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "huffingtonpost.it": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "ieagent.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "ilsecoloxix.it": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "indianexpress.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "iotransfer.itopvpn.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "jiji.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "jin115.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "juicy-ai.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "kitizawa.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "land.muah.ai": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "livedoor.biz": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "mein.onlinekonto.de": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "money.smt.docomo.ne.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "natalie.mu": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "netkeiba.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "nicovideo.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "olybet.lv": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "oricon.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "protonvpn.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "record.pt": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "rephrasy.ai": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "resourify.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "sbbit.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "shareasale-analytics.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "shein.co.uk": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "shimotsuke.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "soundcore.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "sponichi.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "sportbank.ua": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "startmail.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "t.ly": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "techbook.de": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "teinei.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "tokyo-calendar.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "undressher.app": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "uspoloassn.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "video.laxd.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "weareholy.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "www.hcaptcha.com": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
+      },
+      "yomiuri.co.jp": {
+        "emitStripParams": true,
+        "note": "Host-anchored per the live AdGuard Filter 17 measurement; landed under the maintainer's 2026-09-25 decision on #1463 T3 (trust AdGuard's exact per-host anchor; ref is not a known creator-affiliate tag on this host in any of MUGA's own data; if users report breakage this host is revisited)."
       }
     }
   },
@@ -2502,6 +2810,7 @@
     {"scope":"apps.apple.com","param":"l","action":"preserve"},
     {"scope":"as.com","param":"q","action":"preserve"},
     {"scope":"asahi.com","param":"cid","action":"strip"},
+    {"scope":"asahi.com","param":"ref","action":"strip"},
     {"scope":"auction.co.kr","param":"keyword","action":"preserve"},
     {"scope":"auction.co.kr","param":"gdno","action":"preserve"},
     {"scope":"auction.co.kr","param":"itemno","action":"preserve"},
@@ -3366,6 +3675,7 @@
     {"scope":"nhk.or.jp","param":"cid","action":"strip"},
     {"scope":"nike.com","param":"q","action":"preserve"},
     {"scope":"nikkei.com","param":"n_cid","action":"strip"},
+    {"scope":"nikkei.com","param":"ref","action":"strip"},
     {"scope":"notebooksbilliger.de","param":"q","action":"preserve"},
     {"scope":"nytimes.com","param":"query","action":"preserve"},
     {"scope":"nytimes.com","param":"type","action":"preserve"},
@@ -3963,6 +4273,83 @@
     {"scope":"nikke-jp.com","param":"pid","action":"strip"},
     {"scope":"qcplay.co.jp","param":"pid","action":"strip"},
     {"scope":"toomics.com","param":"pid","action":"strip"},
+    {"scope":"2chblog.jp","param":"ref","action":"strip"},
+    {"scope":"account.proton.me","param":"ref","action":"strip"},
+    {"scope":"aeza.net","param":"ref","action":"strip"},
+    {"scope":"ai-porn.ai","param":"ref","action":"strip"},
+    {"scope":"animember.net","param":"ref","action":"strip"},
+    {"scope":"arcelik.com.tr","param":"ref","action":"strip"},
+    {"scope":"baseballchannel.jp","param":"ref","action":"strip"},
+    {"scope":"bipblog.com","param":"ref","action":"strip"},
+    {"scope":"blog.jp","param":"ref","action":"strip"},
+    {"scope":"blog.livedoor.jp","param":"ref","action":"strip"},
+    {"scope":"boards.greenhouse.io","param":"ref","action":"strip"},
+    {"scope":"bubilet.com.tr","param":"ref","action":"strip"},
+    {"scope":"bunshun.jp","param":"ref","action":"strip"},
+    {"scope":"buzzfeednews.com","param":"ref","action":"strip"},
+    {"scope":"camcam.cc","param":"ref","action":"strip"},
+    {"scope":"chunichi.co.jp","param":"ref","action":"strip"},
+    {"scope":"click.redditmail.com","param":"ref","action":"strip"},
+    {"scope":"click.speee-ad.jp","param":"ref","action":"strip"},
+    {"scope":"cnn.co.jp","param":"ref","action":"strip"},
+    {"scope":"coconala.com","param":"ref","action":"strip"},
+    {"scope":"coincards.com","param":"ref","action":"strip"},
+    {"scope":"d-markets.net","param":"ref","action":"strip"},
+    {"scope":"darkfans.com","param":"ref","action":"strip"},
+    {"scope":"datafa.st","param":"ref","action":"strip"},
+    {"scope":"dennikn.sk","param":"ref","action":"strip"},
+    {"scope":"donga.com","param":"ref","action":"strip"},
+    {"scope":"freebies.indiegala.com","param":"ref","action":"strip"},
+    {"scope":"gamesplanet.com","param":"ref","action":"strip"},
+    {"scope":"gelocal.it","param":"ref","action":"strip"},
+    {"scope":"getidol.com","param":"ref","action":"strip"},
+    {"scope":"gillian-guide.github.io","param":"ref","action":"strip"},
+    {"scope":"goodreads.com","param":"ref","action":"strip"},
+    {"scope":"gotanynudes.com","param":"ref","action":"strip"},
+    {"scope":"gptgirlfriend.online","param":"ref","action":"strip"},
+    {"scope":"h-taikendan.net","param":"ref","action":"strip"},
+    {"scope":"hokkaido-np.co.jp","param":"ref","action":"strip"},
+    {"scope":"hola.org","param":"ref","action":"strip"},
+    {"scope":"huffingtonpost.it","param":"ref","action":"strip"},
+    {"scope":"ieagent.jp","param":"ref","action":"strip"},
+    {"scope":"ilsecoloxix.it","param":"ref","action":"strip"},
+    {"scope":"indianexpress.com","param":"ref","action":"strip"},
+    {"scope":"iotransfer.itopvpn.com","param":"ref","action":"strip"},
+    {"scope":"jiji.com","param":"ref","action":"strip"},
+    {"scope":"jin115.com","param":"ref","action":"strip"},
+    {"scope":"juicy-ai.com","param":"ref","action":"strip"},
+    {"scope":"kitizawa.com","param":"ref","action":"strip"},
+    {"scope":"land.muah.ai","param":"ref","action":"strip"},
+    {"scope":"livedoor.biz","param":"ref","action":"strip"},
+    {"scope":"mein.onlinekonto.de","param":"ref","action":"strip"},
+    {"scope":"money.smt.docomo.ne.jp","param":"ref","action":"strip"},
+    {"scope":"natalie.mu","param":"ref","action":"strip"},
+    {"scope":"netkeiba.com","param":"ref","action":"strip"},
+    {"scope":"nicovideo.jp","param":"ref","action":"strip"},
+    {"scope":"olybet.lv","param":"ref","action":"strip"},
+    {"scope":"oricon.co.jp","param":"ref","action":"strip"},
+    {"scope":"protonvpn.com","param":"ref","action":"strip"},
+    {"scope":"record.pt","param":"ref","action":"strip"},
+    {"scope":"rephrasy.ai","param":"ref","action":"strip"},
+    {"scope":"resourify.com","param":"ref","action":"strip"},
+    {"scope":"sbbit.jp","param":"ref","action":"strip"},
+    {"scope":"shareasale-analytics.com","param":"ref","action":"strip"},
+    {"scope":"shein.co.uk","param":"ref","action":"strip"},
+    {"scope":"shimotsuke.co.jp","param":"ref","action":"strip"},
+    {"scope":"soundcore.com","param":"ref","action":"strip"},
+    {"scope":"sponichi.co.jp","param":"ref","action":"strip"},
+    {"scope":"sportbank.ua","param":"ref","action":"strip"},
+    {"scope":"startmail.com","param":"ref","action":"strip"},
+    {"scope":"t.ly","param":"ref","action":"strip"},
+    {"scope":"techbook.de","param":"ref","action":"strip"},
+    {"scope":"teinei.co.jp","param":"ref","action":"strip"},
+    {"scope":"tokyo-calendar.jp","param":"ref","action":"strip"},
+    {"scope":"undressher.app","param":"ref","action":"strip"},
+    {"scope":"uspoloassn.com","param":"ref","action":"strip"},
+    {"scope":"video.laxd.com","param":"ref","action":"strip"},
+    {"scope":"weareholy.com","param":"ref","action":"strip"},
+    {"scope":"www.hcaptcha.com","param":"ref","action":"strip"},
+    {"scope":"yomiuri.co.jp","param":"ref","action":"strip"},
     {"scope":"*","param":"_branch_match_id","action":"strip"},
     {"scope":"*","param":"_hsenc","action":"strip"},
     {"scope":"*","param":"_hsmi","action":"strip"},
