@@ -218,6 +218,17 @@ describe("popup.js / popup.html — userCustomRules can no longer be written fro
     );
   });
 
+  test("popup.js has no write path to userCustomRules in any shape (object key, string key, helper)", () => {
+    // The literal set() shape above is only one way to write it; a spread
+    // object, setPrefs({ userCustomRules }) or withSyncMutation(..., "userCustomRules")
+    // would all slip past it. popup.js may READ the key, never name it as a
+    // key or a string.
+    const code = popupJs.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    assert.doesNotMatch(code, /\buserCustomRules\s*[:,}]/, "no object-key or shorthand use of userCustomRules");
+    assert.doesNotMatch(code, /["'`]userCustomRules["'`]/, "no string-key use of userCustomRules");
+    assert.doesNotMatch(code, /withSyncMutation\(/, "the popup has no sync mutation path at all");
+  });
+
   test("popup.js no longer imports addUserCustomRule", () => {
     assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/user-custom-rules\.js"/);
   });
