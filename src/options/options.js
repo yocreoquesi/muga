@@ -8,8 +8,8 @@ import { PREF_DEFAULTS, getPrefs, setPrefs, getDevMode, setDevMode, getDevToolsM
 import { planDomainStatsView } from "../lib/domain-stats-view.js";
 import { planSuspiciousParamsSettingsView } from "../lib/suspicious-params-view.js";
 import { planSessionHistoryView } from "../lib/session-history-view.js";
-import { ACTIVITY_SCOPES, DEFAULT_ACTIVITY_SCOPE, planActivityScopeView } from "../lib/activity-scope-view.js";
-import { presentLedger, DEFAULT_LEDGER_CAPACITY } from "../lib/attribution-ledger.js";
+import { ACTIVITY_SCOPES, DEFAULT_ACTIVITY_SCOPE, isValidActivityScope, planActivityScopeView } from "../lib/activity-scope-view.js";
+import { presentLedger, DEFAULT_LEDGER_CAPACITY, EVENT_TYPES } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
 import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
@@ -579,7 +579,32 @@ async function init() {
     _activityLedgerScope = ACTIVITY_SCOPES.RECENT;
     _applyActivityScopeView();
   });
-  await renderActivityLedgerPanel(_currentLang);
+  // R3-radio-state-desync: the DOM (whichever radio is actually checked),
+  // not the module-scoped default, is the source of truth at render time —
+  // a browser-restored form value on reload could disagree with
+  // DEFAULT_ACTIVITY_SCOPE otherwise.
+  _activityLedgerScope = _readCheckedActivityScope();
+  // A back-forward/bfcache restore (pageshow with persisted:true) can flip
+  // a radio's checked state without firing "change" at all. Resync from
+  // the DOM again whenever that happens, so the visible sub-panel never
+  // goes stale relative to what the radio group actually shows.
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    _activityLedgerScope = _readCheckedActivityScope();
+    _applyActivityScopeView();
+  });
+  // R3-init-abort-on-render-throw: init() has no top-level try/catch (see
+  // `document.addEventListener("DOMContentLoaded", init)` at the bottom of
+  // this file), so an unhandled rejection here would abort every remaining
+  // init step below (show-badge, creator allowlist, toast duration, the
+  // mugaReady signal e2e tests wait on, ...). The two render sections
+  // inside renderActivityLedgerPanel already degrade to an empty state on
+  // their own; this .catch() is defense in depth for anything that still
+  // escapes (e.g. a throw before either try/catch, such as in
+  // _applyActivityScopeView or updateActivitySectionVisibility).
+  await renderActivityLedgerPanel(_currentLang).catch((err) => {
+    console.error("[MUGA] renderActivityLedgerPanel failed:", err);
+  });
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
   bindToggle("show-badge", "showBadge", prefs);
@@ -1007,6 +1032,22 @@ let _activityLedgerScope = DEFAULT_ACTIVITY_SCOPE;
 // their rows.
 let _activityLedgerRenderRun = 0;
 
+/**
+ * R3-radio-state-desync: reads whichever radio in the scope group is
+ * ACTUALLY checked in the DOM right now. Some browsers (notably Firefox)
+ * restore a radio's checked state on reload or a back-forward/bfcache
+ * navigation independently of page script — that restore can leave the DOM
+ * disagreeing with `_activityLedgerScope`, which only a "change" event
+ * updates. The DOM is the single source of truth: call this instead of
+ * trusting the module-scoped variable whenever the page may have just
+ * (re)appeared. Falls back to DEFAULT_ACTIVITY_SCOPE if neither radio
+ * exists or neither is checked, exactly like planActivityScopeView.
+ */
+function _readCheckedActivityScope() {
+  const checked = document.querySelector('input[name="activity-scope"]:checked');
+  return isValidActivityScope(checked?.value) ? checked.value : DEFAULT_ACTIVITY_SCOPE;
+}
+
 /** Shows/hides the session vs recent sub-panels for the current scope. Pure DOM application of planActivityScopeView() — synchronous, no isStale() guard needed. */
 function _applyActivityScopeView() {
   const sessionPanel = document.getElementById("activity-session-panel");
@@ -1081,7 +1122,18 @@ function _buildSessionHistoryRow(entry, lang) {
 
   entryDiv.appendChild(actionsDiv);
 
+  // R3-keydown-hijacks-inner-controls: this listener sits on entryDiv, so a
+  // keydown that BUBBLES from an inner interactive descendant (copyOrigBtn,
+  // copyCleanBtn, the removed-params <summary>) reaches it too. Handling
+  // Enter/Space unconditionally called e.preventDefault() (suppressing the
+  // browser's own click-simulation for a focused button) and then fired
+  // entryDiv.click() directly — a synthetic click whose target IS entryDiv,
+  // so the row's own click guard (`e.target === copyOrigBtn`, below) never
+  // sees it and the row's reprocess-and-copy action ran INSTEAD of the
+  // button's. Only activate the row's own keyboard affordance when the key
+  // event originated on entryDiv itself, never on a bubbled descendant.
   entryDiv.addEventListener("keydown", (e) => {
+    if (e.target !== entryDiv) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       entryDiv.click();
@@ -1232,13 +1284,29 @@ async function renderActivityLedgerPanel(lang) {
   const sessionList = document.getElementById("activity-session-list");
   const sessionEmpty = document.getElementById("activity-session-empty");
   if (sessionList && sessionEmpty) {
-    const { empty: sessionIsEmpty, entries: sessionEntries } = planSessionHistoryView(history);
-    sessionList.replaceChildren();
-    sessionEmpty.hidden = !sessionIsEmpty;
-    if (sessionIsEmpty) {
+    // R3-init-abort-on-render-throw: planSessionHistoryView already
+    // defensively drops malformed entries, but the row builder below
+    // (_buildSessionHistoryRow -> _renderActivityParamBreakdown ->
+    // buildParamBreakdownView) is NOT similarly hardened against every
+    // corrupt shape (e.g. a non-string item inside removedTracking). A
+    // throw anywhere in this block must degrade this ONE sub-panel to its
+    // empty state, never propagate out of renderActivityLedgerPanel and
+    // abort the rest of init() (see the try/catch around the whole call at
+    // its call site for the same reason, one layer up).
+    try {
+      const { empty: sessionIsEmpty, entries: sessionEntries } = planSessionHistoryView(history);
+      sessionList.replaceChildren();
+      sessionEmpty.hidden = !sessionIsEmpty;
+      if (sessionIsEmpty) {
+        sessionEmpty.textContent = t("history_empty", lang);
+      } else {
+        for (const entry of sessionEntries) sessionList.appendChild(_buildSessionHistoryRow(entry, lang));
+      }
+    } catch (err) {
+      console.error("[MUGA] renderActivityLedgerPanel session-history render failed, degrading to empty state:", err);
+      sessionList.replaceChildren();
+      sessionEmpty.hidden = false;
       sessionEmpty.textContent = t("history_empty", lang);
-    } else {
-      for (const entry of sessionEntries) sessionList.appendChild(_buildSessionHistoryRow(entry, lang));
     }
   }
 
@@ -1259,20 +1327,42 @@ async function renderActivityLedgerPanel(lang) {
   const recentList = document.getElementById("activity-recent-list");
   const recentEmpty = document.getElementById("activity-recent-empty");
   if (recentList && recentEmpty) {
-    const view = presentLedger(ledger);
-    const rows = renderLedgerEntries(view, (key, vars) => {
-      const template = t(key, lang);
-      if (!vars) return template;
-      let out = template;
-      for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
-      return out;
-    });
-    recentList.replaceChildren();
-    recentEmpty.hidden = rows.length !== 0;
-    if (rows.length === 0) {
+    try {
+      // R3-init-abort-on-render-throw: shape-check every event BEFORE it
+      // reaches presentLedger(). presentLedger does `ledger.events.map(...)`
+      // and its per-event mapper reads `ev.url`/`ev.type` unconditionally —
+      // a legacy/corrupt entry (null, a primitive, or an unrecognized
+      // `type`) throws there uncaught. Filtering here, rather than
+      // hardening the shared attribution-ledger.js module, keeps the fix
+      // scoped to this rendering path.
+      const safeEvents = Array.isArray(ledger.events)
+        ? ledger.events.filter((ev) => ev && typeof ev === "object" && typeof ev.url === "string" && EVENT_TYPES.includes(ev.type))
+        : [];
+      const safeLedger = {
+        events: safeEvents,
+        capacity: typeof ledger.capacity === "number" ? ledger.capacity : DEFAULT_LEDGER_CAPACITY,
+      };
+
+      const view = presentLedger(safeLedger);
+      const rows = renderLedgerEntries(view, (key, vars) => {
+        const template = t(key, lang);
+        if (!vars) return template;
+        let out = template;
+        for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
+        return out;
+      });
+      recentList.replaceChildren();
+      recentEmpty.hidden = rows.length !== 0;
+      if (rows.length === 0) {
+        recentEmpty.textContent = t("ledger_empty", lang);
+      } else {
+        for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
+      }
+    } catch (err) {
+      console.error("[MUGA] renderActivityLedgerPanel recent-activity render failed, degrading to empty state:", err);
+      recentList.replaceChildren();
+      recentEmpty.hidden = false;
       recentEmpty.textContent = t("ledger_empty", lang);
-    } else {
-      for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
     }
   }
 }

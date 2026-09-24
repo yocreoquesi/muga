@@ -163,12 +163,21 @@
           <legend class="list-group-title" data-i18n="activity_ledger_label">Cleaned URLs</legend>
           <p class="hint" data-i18n="activity_ledger_hint"></p>
           <div class="activity-scope-control">
+            <!-- autocomplete="off" (R3-radio-state-desync): some browsers
+                 (notably Firefox) restore a radio's checked state from
+                 navigation/form history independently of page script, which
+                 can leave the DOM disagreeing with in-memory JS state after
+                 a reload or a back-forward/bfcache restore. This reduces
+                 how often that happens; options.js additionally reads
+                 whichever radio is ACTUALLY checked at render time and on
+                 pageshow(persisted:true), so the DOM stays the single
+                 source of truth regardless. -->
             <label class="activity-scope-option">
-              <input type="radio" name="activity-scope" id="activity-scope-session" value="session" checked>
+              <input type="radio" name="activity-scope" id="activity-scope-session" value="session" checked autocomplete="off">
               <span data-i18n="history_label">This session</span>
             </label>
             <label class="activity-scope-option">
-              <input type="radio" name="activity-scope" id="activity-scope-recent" value="recent">
+              <input type="radio" name="activity-scope" id="activity-scope-recent" value="recent" autocomplete="off">
               <span data-i18n="ledger_section_title">Recent activity</span>
             </label>
           </div>

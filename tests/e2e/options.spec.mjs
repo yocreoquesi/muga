@@ -391,3 +391,90 @@ test.describe("Options — browsewrap Phase 1: never redirects to onboarding", (
     await page.close();
   });
 });
+
+test.describe("Options — unified Activity ledger panel (#1352)", () => {
+  test("the scope radio switches the visible sub-panel, including after a bfcache-style restore where the checked radio disagrees with in-memory state (R3-radio-state-desync)", async ({ optionsPage: page }) => {
+    const sessionPanel = page.locator("#activity-session-panel");
+    const recentPanel = page.locator("#activity-recent-panel");
+
+    // Baseline: default scope is "session".
+    await expect(sessionPanel).toBeVisible();
+    await expect(recentPanel).toBeHidden();
+
+    // An ordinary click flips the visible sub-panel via the change listener.
+    await page.locator("#activity-scope-recent").check();
+    await expect(recentPanel).toBeVisible();
+    await expect(sessionPanel).toBeHidden();
+
+    await page.locator("#activity-scope-session").check();
+    await expect(sessionPanel).toBeVisible();
+    await expect(recentPanel).toBeHidden();
+
+    // R3-radio-state-desync: some browsers (Firefox bfcache/form-restore)
+    // can flip a radio's `checked` DOM property WITHOUT firing a "change"
+    // event — e.g. restoring form state on a back-forward navigation. Set
+    // the "recent" radio checked directly (bypassing our change listener)
+    // to simulate that, then dispatch a real pageshow(persisted:true),
+    // which is the signal a bfcache restore fires. The fix must resync the
+    // visible panel from whichever radio is ACTUALLY checked.
+    await page.evaluate(() => {
+      const recentRadio = document.getElementById("activity-scope-recent");
+      recentRadio.checked = true; // no change event dispatched, deliberately
+      // PageTransitionEvent isn't declared in this file's eslint globals
+      // (it's Playwright-evaluated browser code, not Node) — a plain Event
+      // with `persisted` set manually is observably identical to our
+      // pageshow listener, which only reads `e.persisted`.
+      const evt = new Event("pageshow");
+      evt.persisted = true;
+      window.dispatchEvent(evt);
+    });
+    await expect(recentPanel).toBeVisible();
+    await expect(sessionPanel).toBeHidden();
+  });
+
+  test("keyboard Enter on an inner copy button activates the button, not the whole row (R3-keydown-hijacks-inner-controls)", async ({ optionsPage: page }) => {
+    // Seed one well-formed "This session" history entry so the row exists.
+    await page.evaluate(() => new Promise((resolve) => {
+      chrome.storage.session.set({
+        history: [{ original: "https://example.com/?utm_source=x", clean: "https://example.com/", ts: Date.now(), removedTracking: [] }],
+      }, resolve);
+    }));
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    const row = page.locator("#activity-session-list .history-entry").first();
+    await expect(row).toBeVisible();
+    const copyOrigBtn = row.locator(".history-copy-btn");
+    const originalLabel = await copyOrigBtn.textContent();
+
+    await copyOrigBtn.focus();
+    await page.keyboard.press("Enter");
+
+    // Fixed behavior: the button's OWN click handler ran (its label
+    // changes to the translated "Copied!" state) and the ROW's own
+    // reprocess-and-copy action did NOT also fire.
+    await expect(copyOrigBtn).not.toHaveText(originalLabel);
+    await expect(row).not.toHaveClass(/copied/);
+  });
+
+  test("corrupt Recent-activity ledger data does not abort Settings init — degrades to the empty state (R3-init-abort-on-render-throw)", async ({ optionsPage: page, context, extensionId }) => {
+    // Legacy/corrupt shapes: a non-object event and a non-array events list
+    // both previously reached ledger.events.map()/entryFor() unguarded and
+    // threw, aborting the REST of options.js's init() (everything queued
+    // after the awaited renderActivityLedgerPanel call never ran, so
+    // document.body.dataset.mugaReady was never set).
+    await seedStorage(context, extensionId, {
+      local: { attributionLedger: { events: [null, { type: "clean" }, "garbage"], capacity: 10 } },
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1", null, { timeout: 5000 });
+
+    // Init completed (the flag above proves it), and something wired up
+    // AFTER the Activity panel in init() actually ran too.
+    await expect(page.locator("#show-badge")).toBeAttached();
+
+    await page.locator("#activity-scope-recent").check();
+    await expect(page.locator("#activity-recent-empty")).toBeVisible();
+    await expect(page.locator("#activity-recent-list")).toBeEmpty();
+  });
+});
