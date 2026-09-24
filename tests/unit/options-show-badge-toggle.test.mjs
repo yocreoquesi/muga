@@ -30,11 +30,11 @@ describe("#910 — showBadge defaults to true", () => {
 });
 
 describe("#910 — the toggle has an HTML row and a bindToggle wiring", () => {
-  test('#show-badge checkbox exists with data-i18n-aria-label="aria_show_badge"', () => {
+  test('#show-badge checkbox is aria-labelledby its visible label', () => {
     assert.ok(optionsHtml.includes('id="show-badge"'), 'options.html must contain a checkbox with id="show-badge"');
     assert.ok(
-      optionsHtml.includes('data-i18n-aria-label="aria_show_badge"'),
-      'the #show-badge row must carry data-i18n-aria-label="aria_show_badge"'
+      optionsHtml.includes('aria-labelledby="show-badge-label"'),
+      'the #show-badge switch must be aria-labelledby its visible label (#1407)'
     );
   });
 
@@ -74,7 +74,7 @@ describe("#910 — export/import round-trips showBadge", () => {
 });
 
 describe("#910 — new i18n keys are complete across all locales", () => {
-  const newKeys = ["row_show_badge_label", "row_show_badge_hint", "aria_show_badge"];
+  const newKeys = ["row_show_badge_label", "row_show_badge_hint"];
 
   for (const key of newKeys) {
     test(`"${key}" exists and is non-empty for every supported locale`, () => {

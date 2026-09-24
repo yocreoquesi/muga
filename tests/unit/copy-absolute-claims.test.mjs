@@ -126,7 +126,7 @@ describe("#1259 — no absolute coverage or preservation claims", () => {
     // starts matching MUGA's own promises, this fails and says which.
     const en = readFileSync(join(ROOT, "src/lib/locales/en.mjs"), "utf8");
     for (const kept of [
-      "Remove all third-party affiliate tags",  // a MODE the user chose
+      "Remove all affiliate tags from other sources",  // a MODE the user chose
       "never adds its own",                     // MUGA's own behaviour
       "zero telemetry",
     ]) {

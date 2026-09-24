@@ -34,11 +34,11 @@
     <h2 data-i18n="section_affiliate_settings">Affiliate &amp; creators</h2>
     <div class="card">
       <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_notify_label">Alert me when a link has someone else's affiliate tag</strong>
+        <label class="row-label" for="notify">
+          <strong id="notify-label" data-i18n="row_notify_label">Alert me when a link has someone else's affiliate tag</strong>
           <small data-i18n="row_notify_hint">Shows a quick notification with options, then auto-dismisses</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="notify" data-i18n-aria-label="aria_notify"><span class="slider"></span></label>
+        </label>
+        <label class="toggle"><input type="checkbox" id="notify" aria-labelledby="notify-label"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
@@ -55,11 +55,11 @@
         </select>
       </div>
       <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_strip_affiliates_label">Remove all affiliate tags from other sources</strong>
+        <label class="row-label" for="strip-affiliates">
+          <strong id="strip-affiliates-label" data-i18n="row_strip_affiliates_label">Remove all affiliate tags from other sources</strong>
           <small data-i18n="row_strip_affiliates_hint">Removes the third-party affiliate tags MUGA recognises. Some will slip through. MUGA never adds its own.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="strip-affiliates" data-i18n-aria-label="aria_strip_affiliates"><span class="slider"></span></label>
+        </label>
+        <label class="toggle"><input type="checkbox" id="strip-affiliates" aria-labelledby="strip-affiliates-label"><span class="slider"></span></label>
       </div>
       <!-- D5 linked-suggestion nudge (referer-beacon-privacy PR 4): reveals ONLY
            on the transition to checked (see shouldRevealAffiliateNudge in
@@ -100,14 +100,15 @@
     </div>
   </section>
 
-  <!-- Your locally-stripped params (#925 — userCustomRules editor).
+  <!-- Params you strip everywhere (#925 — userCustomRules editor).
        UNGATED, and that is the fix for #1271 item 4: the list is a receipt for
-       an action taken in the POPUP ("Strip locally"), so a user who took that
-       action had no way back to it without first discovering Advanced and
-       turning it on. A record of what the user did is not an advanced setting.
-       View + remove only (no add box) — entries arrive from the popup. -->
+       an action the user took, so a user who took that action had no way back
+       to it without first discovering Advanced and turning it on. A record of
+       what the user did is not an advanced setting. View + remove only (no add
+       box) — entries arrive from the "Strip everywhere" button under Activity
+       (#1351; the popup's old "Strip locally" is gone, #1389). -->
   <section id="user-custom-rules">
-    <h2 data-i18n="section_user_custom_rules">Your locally-stripped params</h2>
+    <h2 data-i18n="section_user_custom_rules">Params you strip everywhere</h2>
     <div class="card">
       <div class="list-section">
         <div class="list-items" id="user-custom-rules-items"></div>
@@ -122,7 +123,7 @@
        report flow). ADR-0011 calls these "a record or an analysis rather
        than a glance" — Settings has the stable address and unbounded
        viewport a ledger needs, and the popup does not. TIER 1, ungated:
-       like "Your locally-stripped params" above, a record is not an
+       like "Params you strip everywhere" above, a record is not an
        advanced setting. Each panel owns its own id (domain-stats-panel
        collides with the Display card's plain domain-stats checkbox id
        otherwise) and its own hidden state; the SECTION is visible whenever
@@ -243,11 +244,11 @@
     <h2 data-i18n="section_general">General</h2>
     <div class="card">
       <div class="row">
-        <div class="row-label">
-          <strong data-i18n="row_context_menu_label">Right-click → Copy clean link or selection</strong>
+        <label class="row-label" for="context-menu-toggle">
+          <strong id="context-menu-toggle-label" data-i18n="row_context_menu_label">Right-click → Copy clean link or selection</strong>
           <small id="row-context-menu-hint" data-i18n="row_context_menu_hint">Works on a single link, a text selection with multiple URLs, or plain-text URLs. Ctrl+C also auto-cleans URLs in your selection.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="context-menu-toggle" data-i18n-aria-label="aria_context_menu"><span class="slider"></span></label>
+        </label>
+        <label class="toggle"><input type="checkbox" id="context-menu-toggle" aria-labelledby="context-menu-toggle-label"><span class="slider"></span></label>
       </div>
       <div class="row">
         <div class="row-label">
@@ -274,11 +275,10 @@
         </div>
       </div>
       <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="remote-rules-toggle" data-i18n-aria-label="aria_remote_rules_toggle">
-          <span class="slider"></span>
+        <label class="row-label" for="remote-rules-toggle">
+          <strong id="remote-rules-toggle-label" data-i18n="optionsRemoteRulesToggle"></strong>
         </label>
-        <span data-i18n="optionsRemoteRulesToggle"></span>
+        <label class="toggle"><input type="checkbox" id="remote-rules-toggle" aria-labelledby="remote-rules-toggle-label"><span class="slider"></span></label>
       </div>
       <div id="remote-rules-status" hidden>
         <div class="row">
@@ -328,11 +328,11 @@
     <h2 data-i18n="section_advanced">Advanced</h2>
     <div class="card">
       <div class="row">
-        <div class="row-label">
-          <strong data-i18n="advanced_mode_label">Show advanced settings</strong>
+        <label class="row-label" for="dev-mode">
+          <strong id="dev-mode-label" data-i18n="advanced_mode_label">Show advanced settings</strong>
           <small data-i18n="advanced_mode_hint">Fine-grained control over URL cleaning and privacy</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="dev-mode" data-i18n-aria-label="aria_dev_mode"><span class="slider"></span></label>
+        </label>
+        <label class="toggle"><input type="checkbox" id="dev-mode" aria-labelledby="dev-mode-label"><span class="slider"></span></label>
       </div>
     </div>
     <div id="dev-tools-card" class="dev-tools-hidden">
@@ -343,50 +343,50 @@
              implement the same predicate, and a user has no basis to prefer
              one. The pref stays internal with a default (src/lib/prefs.js). -->
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_active_defense_label">Keep cleaning after the page loads</strong>
+          <label class="row-label" for="active-defense-enabled">
+            <strong id="active-defense-enabled-label" data-i18n="row_active_defense_label">Keep cleaning after the page loads</strong>
             <small data-i18n="row_active_defense_hint">Keeps stripping tracking params a page re-adds after it loads: in-page navigation, rewritten links, and window.name. Turn off if a site misbehaves.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="active-defense-enabled" data-i18n-aria-label="aria_active_defense_enabled"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="active-defense-enabled" aria-labelledby="active-defense-enabled-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
+          <label class="row-label" for="unwrap-redirects">
+            <strong id="unwrap-redirects-label" data-i18n="row_unwrap_label">Unwrap redirect wrappers</strong>
             <small data-i18n="row_unwrap_hint">Extracts the real destination from redirect-wrapper URLs (e.g., ?redirect=https://example.com)</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="unwrap-redirects" data-i18n-aria-label="aria_unwrap_redirects"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="unwrap-redirects" aria-labelledby="unwrap-redirects-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_hover_preview_label">Hover destination preview</strong>
+          <label class="row-label" for="hover-preview-toggle">
+            <strong id="hover-preview-toggle-label" data-i18n="row_hover_preview_label">Hover destination preview</strong>
             <small data-i18n="row_hover_preview_hint">On desktop, hold the mouse over a link for a few seconds to preview its real cleaned destination (only for links that redirect elsewhere).</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="hover-preview-toggle" data-i18n-aria-label="aria_hover_preview"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="hover-preview-toggle" aria-labelledby="hover-preview-toggle-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_pings_label">Block click tracking beacons</strong>
+          <label class="row-label" for="block-pings">
+            <strong id="block-pings-label" data-i18n="row_pings_label">Block click tracking beacons</strong>
             <small data-i18n="row_pings_hint">Removes ping attributes from links so the browser doesn't send tracking beacons on click</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="block-pings" data-i18n-aria-label="aria_block_pings"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="block-pings" aria-labelledby="block-pings-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_amp_label">Skip AMP detours</strong>
+          <label class="row-label" for="amp-redirect">
+            <strong id="amp-redirect-label" data-i18n="row_amp_label">Skip AMP detours</strong>
             <small data-i18n="row_amp_hint">Replaces AMP links with the original article URL</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="amp-redirect" data-i18n-aria-label="aria_amp_redirect"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="amp-redirect" aria-labelledby="amp-redirect-label"><span class="slider"></span></label>
         </div>
       </div>
 
       <!-- Advanced: Creator honoring (#936 — moved into the gated card) -->
       <div class="card card-dev">
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="honor_creator_mode_label">Honor Creator Mode</strong>
+          <label class="row-label" for="honor-creator-mode">
+            <strong id="honor-creator-mode-label" data-i18n="honor_creator_mode_label">Honor Creator Mode</strong>
             <small data-i18n="honor_creator_mode_hint">Preserve creator referral chains on trusted social-media and link-shortener redirects. Off by default; enable to support creators you follow.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="honor-creator-mode" data-i18n-aria-label="aria_honor_creator"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="honor-creator-mode" aria-labelledby="honor-creator-mode-label"><span class="slider"></span></label>
         </div>
         <div class="list-section creator-allowlist-section">
           <strong class="creator-allowlist-title" data-i18n="creator_allowlist_label">Creators you support</strong>
@@ -430,18 +430,18 @@
              control moved to Developer tools (devToolsMode-gated), see
              #dev-tools-panel below. -->
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
-            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers in the popup. The analysis stays on your device.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="cross-site-frequency" data-i18n-aria-label="aria_cross_site_frequency"><span class="slider"></span></label>
+          <label class="row-label" for="cross-site-frequency">
+            <strong id="cross-site-frequency-label" data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
+            <small data-i18n="row_cross_site_frequency_hint">Locally correlates parameters seen across the sites you visit to flag likely cross-site identifiers under Activity. The analysis stays on your device.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="cross-site-frequency" aria-labelledby="cross-site-frequency-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_attribution_ledger_label">Recent activity</strong>
-            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations so the popup can show recent activity. Stored on this device only.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="attribution-ledger" data-i18n-aria-label="aria_attribution_ledger"><span class="slider"></span></label>
+          <label class="row-label" for="attribution-ledger">
+            <strong id="attribution-ledger-label" data-i18n="row_attribution_ledger_label">Recent activity</strong>
+            <small data-i18n="row_attribution_ledger_hint">Keeps a short local list of recently cleaned navigations to show under Activity. Stored on this device only.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="attribution-ledger" aria-labelledby="attribution-ledger-label"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -456,18 +456,18 @@
           </div>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_suppress_referer_label">Remove the referrer header on requests</strong>
+          <label class="row-label" for="suppress-referer">
+            <strong id="suppress-referer-label" data-i18n="row_suppress_referer_label">Remove the referrer header on requests</strong>
             <small data-i18n="row_suppress_referer_hint">Browsers already shorten the referrer to just the origin on cross-site requests. This removes it completely, including on same-origin requests and on sites that still request the full URL. Some sites use the referrer for anti-hotlink images, CSRF checks, or login redirects, so this can break them; add the site (and any separate domain its images load from) to Protected tags &amp; domains to keep it working there.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="suppress-referer" data-i18n-aria-label="aria_suppress_referer"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="suppress-referer" aria-labelledby="suppress-referer-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_block_beacons_label">Block tracking beacons and pings</strong>
-            <small data-i18n="row_block_beacons_hint">Blocks the sendBeacon() and &lt;a ping&gt; network requests some sites use to log clicks and page-leave events, closing a gap the Block &lt;a ping&gt; beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags &amp; domains to keep beacons working there.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="block-beacons" data-i18n-aria-label="aria_block_beacons"><span class="slider"></span></label>
+          <label class="row-label" for="block-beacons">
+            <strong id="block-beacons-label" data-i18n="row_block_beacons_label">Block tracking beacons and pings</strong>
+            <small data-i18n="row_block_beacons_hint">Blocks the sendBeacon() and &lt;a ping&gt; network requests some sites use to log clicks and page-leave events, closing a gap the Block click tracking beacons option above cannot reach on its own. Sites that rely on beacons for analytics may undercount visits while this is on. Add a site to Protected tags &amp; domains to keep beacons working there.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="block-beacons" aria-labelledby="block-beacons-label"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -481,18 +481,18 @@
              now lives in Settings (#1353, section-report), reachable by
              every user; the popup's own report button + flow are removed. -->
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
-            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site so the popup can show where the most noise comes from. Stored on this device only.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="domain-stats" data-i18n-aria-label="aria_domain_stats"><span class="slider"></span></label>
+          <label class="row-label" for="domain-stats">
+            <strong id="domain-stats-label" data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
+            <small data-i18n="row_domain_stats_hint">Counts cleaned URLs and stripped parameters per site to show under Activity where the most noise comes from. Stored on this device only.</small>
+          </label>
+          <label class="toggle"><input type="checkbox" id="domain-stats" aria-labelledby="domain-stats-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_show_badge_label">Show a running count on the toolbar icon</strong>
+          <label class="row-label" for="show-badge">
+            <strong id="show-badge-label" data-i18n="row_show_badge_label">Show a running count on the toolbar icon</strong>
             <small data-i18n="row_show_badge_hint">Displays a badge on the toolbar icon with the number of tracking parameters MUGA has stripped in the current tab. Resets only when you close the tab.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="show-badge" data-i18n-aria-label="aria_show_badge"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="show-badge" aria-labelledby="show-badge-label"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -506,18 +506,16 @@
             </div>
           </div>
           <div class="row">
-            <label class="toggle">
-              <input type="checkbox" id="resolveShortenersOnClick" data-i18n-aria-label="enable_resolve_on_click_cta">
-              <span class="slider"></span>
+            <label class="row-label" for="resolveShortenersOnClick">
+              <strong id="resolveShortenersOnClick-label" data-i18n="resolve_on_click_label"></strong>
             </label>
-            <span data-i18n="resolve_on_click_label"></span>
+            <label class="toggle"><input type="checkbox" id="resolveShortenersOnClick" aria-labelledby="resolveShortenersOnClick-label"><span class="slider"></span></label>
           </div>
           <div class="row">
-            <label class="toggle">
-              <input type="checkbox" id="resolveShortenersOnHover" data-i18n-aria-label="enable_resolve_on_hover_cta">
-              <span class="slider"></span>
+            <label class="row-label" for="resolveShortenersOnHover">
+              <strong id="resolveShortenersOnHover-label" data-i18n="resolve_on_hover_label"></strong>
             </label>
-            <span data-i18n="resolve_on_hover_label"></span>
+            <label class="toggle"><input type="checkbox" id="resolveShortenersOnHover" aria-labelledby="resolveShortenersOnHover-label"><span class="slider"></span></label>
           </div>
           <div class="row">
             <p class="hint" id="shortener-regrant-notice" hidden data-i18n="shortener_regrant_notice"></p>
@@ -583,11 +581,11 @@
     <h2 data-i18n="section_dev_tools">Developer tools</h2>
     <div class="card">
       <div class="row">
-        <div class="row-label">
-          <strong data-i18n="dev_tools_disclosure">Tools for inspecting MUGA itself</strong>
-          <small data-i18n="dev_tools_disclosure_hint">None of these change how URLs are cleaned. They replay onboarding, preview notifications and dump logs.</small>
-        </div>
-        <label class="toggle"><input type="checkbox" id="dev-tools-mode" data-i18n-aria-label="aria_dev_tools_mode"><span class="slider"></span></label>
+        <label class="row-label" for="dev-tools-mode">
+          <strong id="dev-tools-mode-label" data-i18n="dev_tools_disclosure">Tools for inspecting MUGA itself</strong>
+          <small data-i18n="dev_tools_disclosure_hint">Tools for testing MUGA (replay onboarding, preview notifications, export logs), plus two cleaning options still under evaluation that do change how URLs are cleaned.</small>
+        </label>
+        <label class="toggle"><input type="checkbox" id="dev-tools-mode" aria-labelledby="dev-tools-mode-label"><span class="slider"></span></label>
       </div>
     </div>
     <div id="dev-tools-panel" class="dev-tools-hidden">
@@ -649,19 +647,19 @@
            (devToolsMode-gated) rather than Advanced (devMode-gated). -->
       <div class="card card-dev">
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_canonical_extractor_label">Find the real destination when a wrapper hides it</strong>
+          <label class="row-label" for="canonical-extractor">
+            <strong id="canonical-extractor-label" data-i18n="row_canonical_extractor_label">Find the real destination when a wrapper hides it</strong>
             <small data-i18n="row_canonical_extractor_hint">When a wrapper hides its destination, MUGA reads the page's canonical link to find the real target before giving up.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="canonical-extractor" data-i18n-aria-label="aria_canonical_extractor"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="canonical-extractor" aria-labelledby="canonical-extractor-label"><span class="slider"></span></label>
         </div>
         <div class="row">
-          <div class="row-label">
-            <strong data-i18n="exp_param_classes_label">Experimental: strip params that look like trackers</strong>
+          <label class="row-label" for="experimental-param-classes">
+            <strong id="experimental-param-classes-label" data-i18n="exp_param_classes_label">Experimental: strip params that look like trackers</strong>
             <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
             <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
+          </label>
+          <label class="toggle"><input type="checkbox" id="experimental-param-classes" aria-labelledby="experimental-param-classes-label"><span class="slider"></span></label>
         </div>
       </div>
     </div>
