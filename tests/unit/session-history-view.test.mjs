@@ -65,3 +65,29 @@ describe("planSessionHistoryView", () => {
     assert.deepStrictEqual(planSessionHistoryView({}), { empty: true, entries: [] });
   });
 });
+
+// #1352 native review hardening: malformed stored data degrades, never
+// leaks through to the renderer.
+describe("planSessionHistoryView — defensive input handling (#1352)", () => {
+  const row = (i) => ({ original: `https://a.example/?u=${i}`, clean: "https://a.example/", ts: i });
+
+  test("a negative, NaN or non-numeric limit falls back to the default cap", () => {
+    const history = Array.from({ length: 15 }, (_, i) => row(i));
+    for (const limit of [-3, NaN, "5", Infinity]) {
+      assert.equal(planSessionHistoryView(history, { limit }).entries.length, 10, `limit=${String(limit)}`);
+    }
+    assert.equal(planSessionHistoryView(history, { limit: 3 }).entries.length, 3);
+  });
+
+  test("removedTracking keeps only string elements and is a copy, not the stored array", () => {
+    const stored = ["utm_source", null, 42, { x: 1 }, "fbclid"];
+    const [entry] = planSessionHistoryView([{ ...row(1), removedTracking: stored }]).entries;
+    assert.deepStrictEqual(entry.removedTracking, ["utm_source", "fbclid"]);
+    assert.notStrictEqual(entry.removedTracking, stored);
+  });
+
+  test("an entry without a numeric ts has no ts key at all", () => {
+    const [entry] = planSessionHistoryView([{ original: "https://a.example/?x=1", clean: "https://a.example/" }]).entries;
+    assert.equal(Object.hasOwn(entry, "ts"), false);
+  });
+});

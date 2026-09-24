@@ -25,18 +25,29 @@
  * @param {{limit?: number}} [options]
  * @returns {{empty: boolean, entries: Array<{original: string, clean: string, ts?: number, removedTracking: string[]}>}}
  */
-export function planSessionHistoryView(history, { limit = 10 } = {}) {
+const DEFAULT_LIMIT = 10;
+
+export function planSessionHistoryView(history, { limit = DEFAULT_LIMIT } = {}) {
   const list = Array.isArray(history) ? history : [];
+  // A negative, NaN, infinite or non-numeric limit would make slice() drop
+  // or hide entries silently; fall back to the default cap instead.
+  const cap = Number.isInteger(limit) && limit >= 0 ? limit : DEFAULT_LIMIT;
 
   const entries = list
     .filter((entry) => entry && typeof entry === "object" && typeof entry.original === "string" && typeof entry.clean === "string")
-    .map((entry) => ({
-      original: entry.original,
-      clean: entry.clean,
-      ts: typeof entry.ts === "number" ? entry.ts : undefined,
-      removedTracking: Array.isArray(entry.removedTracking) ? entry.removedTracking : [],
-    }))
-    .slice(0, limit);
+    .map((entry) => {
+      const out = {
+        original: entry.original,
+        clean: entry.clean,
+        // Copy and keep only strings: stored data is untrusted shape.
+        removedTracking: Array.isArray(entry.removedTracking)
+          ? entry.removedTracking.filter((name) => typeof name === "string")
+          : [],
+      };
+      if (typeof entry.ts === "number") out.ts = entry.ts;
+      return out;
+    })
+    .slice(0, cap);
 
   return { empty: entries.length === 0, entries };
 }
