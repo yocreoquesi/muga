@@ -601,6 +601,23 @@ describe("validateParams — content validation (REQ-VALIDATE-2 through REQ-VALI
     assert.strictEqual(r.ok, true, `Expected equal version to be accepted, got: ${r.code}`);
   });
 
+  // #1404 native review: an equal version is only a re-serve when its
+  // published stamp does not go backwards; an older stamp at the same version
+  // is a replay of a superseded payload.
+  test("equal version with an OLDER published stamp → VERSION_REGRESSION", () => {
+    const storedPublished = new Date(nowMs - 1000 * 60 * 60).toISOString();
+    const olderPublished = new Date(nowMs - 1000 * 60 * 60 * 24).toISOString();
+    const r = validateParams(["utm_x"], { version: 5, published: storedPublished }, nowMs, { newVersion: 5, newPublished: olderPublished });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.code, ERR.VERSION_REGRESSION);
+  });
+
+  test("equal version with the SAME published stamp → accepted", () => {
+    const storedPublished = new Date(nowMs - 1000 * 60 * 60).toISOString();
+    const r = validateParams(["utm_x"], { version: 5, published: storedPublished }, nowMs, { newVersion: 5, newPublished: storedPublished });
+    assert.strictEqual(r.ok, true, `Expected same-stamp re-serve to be accepted, got: ${r.code}`);
+  });
+
   test("version less than stored → VERSION_REGRESSION", () => {
     const r = validateParams(["utm_x"], { version: 5, published: null }, nowMs, { newVersion: 3 });
     assert.strictEqual(r.ok, false);
@@ -2294,8 +2311,9 @@ describe("#1404 — same-version payload: refresh when cached, re-apply when cle
     assert.deepEqual(after.remoteParams, PARAMS, "re-enable must restore the remote params");
     const lastGlobal = [...dnr._calls].reverse().find((c) => c.addRules?.some((r) => r.id === 1001));
     assert.ok(lastGlobal, "rule 1001 must be re-added after re-enable");
-    assert.ok(dnr._calls.indexOf(lastGlobal) > dnr._calls.findIndex((c) => c.removeRuleIds?.includes(1001) && !c.addRules?.length),
-      "the re-add must come after the disable cleared the rule");
+    const clearIdx = dnr._calls.findIndex((c) => c.removeRuleIds?.includes(1001) && !c.addRules?.length);
+    assert.ok(clearIdx >= 0, "the disable must have cleared rule 1001");
+    assert.ok(dnr._calls.indexOf(lastGlobal) > clearIdx, "the re-add must come after the disable cleared the rule");
   });
 
   test("an OLDER version than the surviving floor is still a regression", async () => {

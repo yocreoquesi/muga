@@ -73,6 +73,10 @@ describe("unbumpedContentChanges (#1421)", () => {
     assert.deepEqual(unbumpedContentChanges({ ...base }, { ...base, sig: "s", scopedSig: "t" }), []);
   });
 
+  test("a source version LOWER than the published one is caught (#1421 native review)", () => {
+    assert.deepEqual(unbumpedContentChanges({ ...base, version: 15 }, base), ["version"]);
+  });
+
   test("a SCOPED-only change at an unchanged version is caught", () => {
     const source = { ...base, scoped: [{ param: "y", hosts: ["b.com"] }] };
     assert.deepEqual(unbumpedContentChanges(source, base), ["scoped"]);

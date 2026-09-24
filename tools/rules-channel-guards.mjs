@@ -64,17 +64,20 @@ export function publishedAgeProblems(payload, nowMs, maxAgeDays = DEFAULT_MAX_AG
  * absent-when-empty convention).
  *
  * @param {{version: number, published: string, params: string[], scoped?: unknown[]}} source
- * @param {{version: number, published: string, params: string[], scoped?: unknown[]}} published
- * @returns {string[]} names of the changed fields; empty when bumped or unchanged
+ * @param {{version: number, published: string, params: string[], scoped?: unknown[]}} live the signed artifact currently published
+ * @returns {string[]} names of the changed fields; ["version"] when the source goes backwards; empty when bumped or unchanged
  */
-export function unbumpedContentChanges(source, published) {
-  if (source.version !== published.version) return [];
+export function unbumpedContentChanges(source, live) {
+  // A LOWER source version would publish a payload every installed build
+  // rejects as VERSION_REGRESSION, silently keeping the old rules.
+  if (source.version < live.version) return ["version"];
+  if (source.version !== live.version) return [];
   const changed = [];
-  if (JSON.stringify(source.params) !== JSON.stringify(published.params)) changed.push("params");
-  if (JSON.stringify(source.scoped ?? []) !== JSON.stringify(published.scoped ?? [])) {
+  if (JSON.stringify(source.params) !== JSON.stringify(live.params)) changed.push("params");
+  if (JSON.stringify(source.scoped ?? []) !== JSON.stringify(live.scoped ?? [])) {
     changed.push("scoped");
   }
-  if (source.published !== published.published) changed.push("published");
+  if (source.published !== live.published) changed.push("published");
   return changed;
 }
 
@@ -100,7 +103,15 @@ function main(argv) {
   }
   if (mode === "--bump" && a && b) {
     const source = readJson(a);
-    const changed = unbumpedContentChanges(source, readJson(b));
+    const live = readJson(b);
+    const changed = unbumpedContentChanges(source, live);
+    if (changed.includes("version")) {
+      console.error(
+        `[rules-channel-guards] ${a} has version ${source.version}, below the published ${live.version}. ` +
+          "Installed builds reject a lower version as VERSION_REGRESSION: raise it above the published one."
+      );
+      process.exit(1);
+    }
     if (changed.length > 0) {
       console.error(
         `[rules-channel-guards] ${a} changes ${changed.join(", ")} at the published version ` +

@@ -716,6 +716,15 @@ export function validateParams(params, stored, nowMs, opts = {}) {
   if (newVersion < storedVersion) {
     return { ok: false, code: ERR.VERSION_REGRESSION };
   }
+  // At an equal version the published stamp must not go backwards: an older
+  // stamp is a replay of a superseded payload, not the same one served again.
+  if (newVersion === storedVersion && stored?.published && newPublished) {
+    const storedMs = Date.parse(stored.published);
+    const newMs = Date.parse(newPublished);
+    if (!isNaN(storedMs) && !isNaN(newMs) && newMs < storedMs) {
+      return { ok: false, code: ERR.VERSION_REGRESSION };
+    }
+  }
 
   // 6. Freshness (STALE_PAYLOAD). Reject payloads that are too OLD (beyond the
   // staleness window) AND too far in the FUTURE (#738): a future `published`
