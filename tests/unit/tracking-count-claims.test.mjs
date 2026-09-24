@@ -36,6 +36,7 @@ const SURFACES = [
   "src/onboarding/onboarding.html",
   "docs/index.html",
   "docs/transparency.html",
+  "landing/index.html", // #1412: the landing stat row was missed by #1259
 ];
 
 /**

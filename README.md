@@ -13,9 +13,9 @@
 
 ---
 
-**MUGA is an open-source browser extension that strips tracking parameters from your URLs and, by default, tries to preserve the referral credit of whoever sent you the link.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup shows a "Creator referral preserved" badge so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
+**MUGA is an open-source browser extension that strips tracking parameters from your URLs and, by default, tries to preserve the referral credit of whoever sent you the link.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone, and when it does, the popup says "Looks like a creator referral. Kept." so you can see it. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
 
-> **MUGA?** Maximally Unannoying Garbage Auditor. **MUGA.** Make URLs Quiet Again. **MUGA!** Clean URLs, tracking removed.
+> **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Making URLs Good Again.
 
 > **3.1.0 shipped.** `Referer` suppression and `<a ping>` beacon blocking are enforced at the network layer, and short-link resolution is split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
@@ -82,7 +82,7 @@ The popup shows what MUGA cleaned on the current page: which parameters were rem
 
 ![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
 
-Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in English and Spanish (officially maintained); Portuguese, German, French, Italian, and Japanese are community-contributed and may have gaps that fall back to English.
+Settings give you full control: affiliate behavior, per-domain rules (Blocked domains, Protected tags & domains), and advanced features. The UI ships in 7 languages: English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations, and corrections are welcome.
 
 ![Settings page](docs/assets/screenshot-ss3-options.png)
 
@@ -98,26 +98,25 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - **Alt+Shift+C**: copy clean URL of current tab to clipboard
 - Badge counter showing params stripped on current tab
 - Popup with before/after preview for the current page
+- Pre-navigation cleaning: browser-native network rules remove tracking patterns *before* the page loads, covering address-bar navigation, bookmarks, and external apps
 
-### Optional, configured during first setup
+### On by default, adjustable in Settings > Advanced
 
-- **Pre-navigation cleaning**: browser-native DNR rules remove tracking patterns *before* the page loads, covering address-bar navigation, bookmarks, and external apps
-- **Block `<a ping>` beacons**: prevents background ping requests on click
+- **Block click tracking beacons**: prevents background ping requests on click
 - **AMP redirect**: silently redirects AMP pages to the canonical article URL
 - **Redirect-wrapper unwrapping**: detects and bypasses intermediary redirect wrappers so you land on the real URL
 
 ### Configurable
 
-- Per-domain blacklist: strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
+- **Blocked domains** (per-domain): strip everything on a specific site, a single param value (`domain::param::value`), or a param regardless of its value (`domain::param::*`)
 - Per-domain disable (`domain::disabled`): opt entire domains out of MUGA
-- Whitelist: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Whitelist match always wins over a Blacklist match for the same parameter
+- **Protected tags & domains**: protect specific creator affiliate tags from detection. Supports `domain::param::value` (one exact value) and `domain::param::*` (any value of that param). A Protected match always wins over a Blocked match for the same parameter
 - Custom tracking params: add your own parameter names
-- Strip all affiliate parameters (opt-in)
 - Strip all third-party affiliate tags (opt-in; off by default, the original referral is respected until you turn this on; MUGA never adds a tag of its own in their place)
 - Toast notification when a third-party affiliate is detected (opt-in)
 - **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default**: the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
 - Export / Import settings as JSON
-- Languages: English and Spanish (officially maintained), Portuguese, German, French, Italian, and Japanese (community-contributed; missing entries fall back to English)
+- Languages: 7. English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations (corrections welcome)
 
 ### Two optional toggles
 
@@ -128,7 +127,7 @@ Beyond the default local cleaning, MUGA has two independent switches:
 | **Honor Creator Mode** | Off | Tries to preserve creator referral chains on trusted social-media and link-shortener redirects, so the creator who recommended you the link keeps the credit. This is best-effort, not a guarantee, and you can override it. Redirect-based affiliate-network referrals pass through untouched by default, independent of this toggle, unless you opt in to "strip all third-party affiliate tags". |
 | **Follow shortener redirects** | On for links you open, off for links you only hover | Resolves the 19 generic URL shorteners (`bit.ly`, `t.co`, and the like) so you can see where a short link actually leads. Resolution is native: the extension performs the same HTTP request your browser would, reads the redirect target, and rewrites the URL locally, with no MUGA server involved. It is two separate switches: resolving a link you open is on by default, resolving one you merely hover over is opt-in. The toggle is the gate, not a permission prompt: MUGA's manifest already carries broad host access on both browsers, so nothing extra is requested before the first resolution. Affiliate-redirect networks are never resolved this way; they pass through unchanged. |
 
-All of them toggle on and off at any time in Settings. Turning off "Follow shortener redirects" does not revoke the host permissions automatically; remove them from your browser's extension manager if you prefer.
+All of them toggle on and off at any time in Settings. Each "Follow shortener redirects" switch stops its own kind of resolution immediately: the click switch for short links you open, the hover switch for links you only hover.
 
 ---
 
@@ -155,14 +154,15 @@ This is explained during onboarding, disclosed in the extension description, doc
 - Every URL is processed **locally in your browser**. You stay in control of what MUGA does.
 - No browsing data collected, no analytics, no telemetry
 - No account, no sign-in, no cloud
-- Minimal permissions: `storage`, `activeTab`, `contextMenus`, `declarativeNetRequestWithHostAccess`, `clipboardWrite`. Nothing else.
-- The extension also holds `host_permissions: <all_urls>`, required by `declarativeNetRequestWithHostAccess` to clean URLs on all sites.
+- Permissions on Chrome: `storage`, `activeTab`, `contextMenus`, `clipboardWrite`, `declarativeNetRequestWithHostAccess`, plus `host_permissions: <all_urls>`, which `declarativeNetRequestWithHostAccess` needs to clean URLs on all sites.
+- Permissions on Firefox: `storage`, `activeTab`, `contextMenus`, `clipboardWrite`, `declarativeNetRequest`, `webRequest`, `webRequestBlocking` and `<all_urls>`. Firefox strips tracking parameters at the network layer with a blocking `webRequest` listener.
+- Both builds also declare optional host permissions for `rules.muga.app` and the 19 short-link hosts, so the list stays visible. The broad host access already covers them, so the Settings switches, not these grants, decide whether MUGA contacts them. The [privacy policy](https://rules.muga.app/privacy-page.html) lists every one.
 
 ---
 
 ## Supported stores
 
-MUGA preserves creator affiliate tags on **6 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy, Apple Performance Partners. The full allowlist is documented in [`src/rules/manifest.json`](src/rules/manifest.json); the decision algorithm that governs preservation is in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
+MUGA preserves creator affiliate tags on **8 programs**: Amazon, eBay, Vercel, DigitalOcean, Lemon Squeezy and Apple Performance Partners (query-parameter tags, the `AFFILIATE_PATTERNS` table in [`src/lib/affiliates.js`](src/lib/affiliates.js)), Bookshop.org (path-based, [`src/rules/path-affiliate-rules.json`](src/rules/path-affiliate-rules.json)) and Steam Curator (`curator_clanid`, [`src/rules/domain-rules.json`](src/rules/domain-rules.json)). Program metadata lives in [`src/rules/manifest.json`](src/rules/manifest.json); the decision algorithm that governs preservation is in [`docs/rules/decision-algorithm.md`](docs/rules/decision-algorithm.md).
 
 MUGA does not hold an affiliate account of its own on any store and does not add any affiliate tag. It only recognizes and preserves existing referrals placed by creators or third-party networks, per the "Affiliate model" above.
 
@@ -189,7 +189,7 @@ Load unpacked from `chrome://extensions` (Developer mode) or `about:debugging` i
 ## Development
 
 ```bash
-npm test               # 4,399+ unit tests
+npm test               # 8,500+ unit tests
 npm run test:e2e       # 90+ E2E tests (Playwright, requires headed Chromium)
 npm run build:chrome
 npm run build:firefox

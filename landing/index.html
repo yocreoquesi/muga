@@ -689,14 +689,14 @@
   <div class="wrap">
     <div class="stats">
       <div class="stat">
-        <div class="num">450<span class="unit">+</span></div>
+        <div class="num">362<span class="unit">+</span></div>
         <div class="label">Tracking patterns</div>
         <div class="desc">utm_*, fbclid, gclid, mc_cid, msclkid and 357 more, removed at request time.</div>
       </div>
       <div class="stat">
         <div class="num">100<span class="unit">%</span></div>
         <div class="label">Open source</div>
-        <div class="desc">Every line is public under GPL v3. Read it, audit it, or fork it. No build step to hide anything.</div>
+        <div class="desc">Every line is public under GPL v3. Read it, audit it, or fork it. Every build step is in the repo.</div>
       </div>
       <div class="stat">
         <div class="num">0</div>
@@ -717,9 +717,9 @@
           tracking. MUGA tries not to.
         </p>
         <p>
-          When MUGA recognizes a referral like that, it tries to leave it alone and shows a small
-          <span class="chip">Creator referral preserved</span> toast so you know it happened. It is a
-          best-effort intention, not a guarantee.
+          When MUGA recognizes a referral like that, it tries to leave it alone and tells you in the popup:
+          <span class="chip">Looks like a creator referral. Kept.</span> A toast for it is an opt-in in Settings.
+          It is a best-effort intention, not a guarantee.
         </p>
         <p>
           And you stay in control: keep those referrals, or strip every third-party one if you prefer.
@@ -735,7 +735,7 @@
         <div class="row"><span class="k">path</span><span class="v">/p/AZ12345</span></div>
         <div class="row"><span class="k">strip</span><span class="v strip">utm_source, utm_campaign, fbclid, gclid, ref_</span></div>
         <div class="row"><span class="k">keep</span><span class="v keep-v">ref=creator</span></div>
-        <div class="row"><span class="k">action</span><span class="v action">strip the tracking, keep the referral, show a toast</span></div>
+        <div class="row"><span class="k">action</span><span class="v action">strip the tracking, keep the referral, say so in the popup</span></div>
       </div>
     </div>
   </section>
@@ -784,7 +784,7 @@
         <div class="trust-cell">
           <span class="ic">01 · open</span>
           <h3>GPL v3, every line</h3>
-          <p>Full source on GitHub. Build it yourself, audit it, fork it. Reproducible builds for both stores. <a href="https://github.com/yocreoquesi/muga">Repo →</a></p>
+          <p>Full source on GitHub. Build it yourself, audit it, fork it. The same build script makes both store packages. <a href="https://github.com/yocreoquesi/muga">Repo →</a></p>
         </div>
         <div class="trust-cell">
           <span class="ic">02 · quiet</span>
@@ -805,7 +805,7 @@
         </figure>
         <figure class="shot">
           <img src="https://rules.muga.app/assets/cws-ss4-toast.png" alt="Toast notification: Creator referral preserved" loading="lazy">
-          <figcaption>toast · referral preserved</figcaption>
+          <figcaption>opt-in toast · referral preserved</figcaption>
         </figure>
         <figure class="shot">
           <img src="https://rules.muga.app/assets/cws-ss3-options.png" alt="MUGA options page with per-site rules" loading="lazy">
@@ -894,7 +894,7 @@
     </div>
     <div class="footer-meta">
       <span>© 2026 muga.app · Released under GPL v3</span>
-      <span>v3.1.0 · published 2026-08-08</span>
+      <span>v3.1.0 · published 2026-09-11</span>
     </div>
   </div>
 </footer>
@@ -1199,7 +1199,7 @@
   })();
 
   // Stat count-up — progressive enhancement, no dependencies.
-  // The static markup already shows the final numbers (450+, 100%, 0), so if
+  // The static markup already shows the final numbers (362+, 100%, 0), so if
   // IntersectionObserver or requestAnimationFrame is unavailable, or the
   // visitor prefers reduced motion, this does nothing and those numbers stay
   // exactly as written. Only when it can also observe and animate does it

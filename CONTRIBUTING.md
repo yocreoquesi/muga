@@ -8,7 +8,7 @@ Thanks for your interest in contributing! This document covers how to set up the
 
 Most contributions don't need a pull request. The fastest paths in:
 
-- **A site MUGA broke?** Use the [broken-site issue template](.github/ISSUE_TEMPLATE/broken-site.yml). The popup's "Report broken site" button prefills it for you.
+- **A site MUGA broke?** Use the [broken-site issue template](.github/ISSUE_TEMPLATE/broken-site.yml). Settings > Report a problem prefills it for you.
 - **A tracking parameter MUGA missed?** Use the [missed-tracking-param template](.github/ISSUE_TEMPLATE/missed-tracking-param.yml). Names only — never values or full URLs.
 - **A new affiliate program to add?** Use the [new-affiliate-program template](.github/ISSUE_TEMPLATE/new-affiliate-program.yml). MUGA detects and preserves the creator's tag on direct-injection programs; it never adds a tag of its own (see [ADR-0006](docs/adr/0006-remove-own-tag-affiliate-injection.md)). Preservation on redirect-based networks (AliExpress, CJ, Awin, Impact, Partnerize, Admitad and six more) shipped under [ADR-0002](docs/adr/0002-denoise-pivot-creator-agnostic.md); `tests/integration/affiliate-harness.test.mjs` guards it. See [Adding affiliate stores](#adding-affiliate-stores) for the shape a new program takes.
 - **General question or design discussion?** Open a [GitHub Discussion](https://github.com/yocreoquesi/muga/discussions) instead of an Issue.

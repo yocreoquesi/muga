@@ -1,11 +1,11 @@
 # ADR-0011: The popup is "glance + act" — what it carries, and every pref classified
 
 **Date**: 2026-09-12
-**Status**: **Accepted** — the decision is the deliverable. The panel moves it authorises are downstream and unstarted.
+**Status**: **Accepted** (the panel moves it authorises shipped in #1350, #1351, #1352, #1353 and #1355, 2026-09-24)
 **Issue**: [#1340](https://github.com/yocreoquesi/muga/issues/1340) (and [#1271](https://github.com/yocreoquesi/muga/issues/1271) item 3, the popup half of the same question)
 **Builds on**: [ADR-0001](./0001-per-device-consent.md) (per-device consent, which is why three consent fields sit in `PREF_DEFAULTS` without being preferences), [ADR-0004](./0004-decommission-unwrap-server-native-shortener-resolution.md) (native shortener resolution, later split into the two prefs classified below), [ADR-0007](./0007-terms-available-not-accepted.md) (no re-acceptance gate)
 **Amends**: nothing structurally — no code, markup, or locale changes ship with this ADR
-**Milestone**: 3.2.0 for the moves; the decision itself lands now
+**Milestone**: 3.2.0 (the moves are merged on `main`)
 
 ## Context
 

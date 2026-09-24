@@ -44,6 +44,7 @@ const USER_FACING_DOCS = [
   "docs/tos.html",
   "docs/store-listing.md",
   "src/privacy/privacy.html",
+  "src/privacy/tos.html",
   "landing/index.html",
 ];
 
@@ -160,6 +161,80 @@ describe("(C) docs name only pref keys that exist", () => {
         `${docPath} mentions retired pref key(s):\n  ${found.join("\n  ")}\n` +
           "These were removed from PREF_DEFAULTS and are documented as retired in src/lib/prefs.js. " +
           "Describe the switch that replaced them instead."
+      );
+    });
+  }
+});
+
+// ── (D) Resolution mechanism (#1386) ──────────────────────────────────────────
+
+/**
+ * The resolver fetches with `redirect: "follow"` and reads `response.url`
+ * (src/lib/native-shortener-resolver.js). A manual redirect yields an opaque
+ * response in a service worker, so the `Location` header is never read. A doc
+ * that describes the manual/Location mechanism understates the egress: the
+ * browser follows the whole chain and also contacts the destination.
+ */
+const MANUAL_MECHANISM_RE =
+  /redirect\s*:\s*(?:"|&quot;|')manual|(?:`|<code>)Location(?:`|<\/code>)\s+header/gi;
+
+describe("(D) docs describe the redirect chain being followed", () => {
+  test("the resolver really follows the chain (source of truth)", () => {
+    const src = read("src/lib/native-shortener-resolver.js");
+    assert.match(src, /redirect:\s*"follow"/);
+    assert.match(src, /response\.url/);
+  });
+
+  for (const docPath of USER_FACING_DOCS) {
+    test(`${docPath} does not describe a manual redirect / Location header read`, () => {
+      const found = [...read(docPath).matchAll(MANUAL_MECHANISM_RE)].map((m) => m[0]);
+      assert.deepStrictEqual(
+        found,
+        [],
+        `${docPath} describes the retired manual-redirect mechanism:\n  ${found.join("\n  ")}\n` +
+          'The resolver uses redirect: "follow" and reads response.url, so the whole chain ' +
+          "(including the destination) is contacted."
+      );
+    });
+  }
+});
+
+// ── (E) No promised permission prompt (#1431) ─────────────────────────────────
+
+/**
+ * Both manifests carry <all_urls>, and neither RESOLVE_SHORTENER nor the
+ * remote-rules fetch checks a permission: the Settings switches are the gate,
+ * and shortener resolution on open plus remote rules ship ON. A doc that
+ * promises a permission prompt before those requests, or says revoking the
+ * optional grant stops them, describes a consent step that does not exist.
+ */
+const PERMISSION_PROMPT_CLAIMS = [
+  /asks for your permission/i,
+  /requested through your explicit action/i,
+  /requested when you (?:turn on|enable)/i,
+  /does not revoke the host permissions/i,
+  /revoke this permission at any time/i,
+  // The Terms' wording (#1386 native review): no browser prompts for it.
+  /requests? permission for the shortener/i,
+];
+
+describe("(E) docs do not promise a permission prompt the code never shows", () => {
+  test("the default-on network features are gated by prefs, not permissions (source of truth)", () => {
+    assert.equal(PREF_DEFAULTS.resolveShortenersOnClick, true);
+    assert.equal(PREF_DEFAULTS.remoteRulesEnabled, true);
+    const mv2 = JSON.parse(read("src/manifest.v2.json"));
+    assert.ok(mv2.permissions.includes("<all_urls>"), "Firefox manifest carries <all_urls>");
+  });
+
+  for (const docPath of USER_FACING_DOCS) {
+    test(`${docPath} promises no permission prompt for default-on requests`, () => {
+      const content = read(docPath);
+      const found = PERMISSION_PROMPT_CLAIMS.filter((re) => re.test(content)).map(String);
+      assert.deepStrictEqual(
+        found,
+        [],
+        `${docPath} promises a permission step the code does not have:\n  ${found.join("\n  ")}\n` +
+          "The Settings switches are the gate; <all_urls> already covers the hosts."
       );
     });
   }
