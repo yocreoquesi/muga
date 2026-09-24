@@ -86,22 +86,59 @@ async function disableRemoteRules(driver) {
 }
 
 /**
- * Loads a start page on the capturing server, then navigates to DIRTY_PATH
- * from page script. Loading the start page also re-warms the prefs cache: the
- * listener fails OPEN on a cold cache (`!cachedPrefs`) and every storage write
- * invalidates it. Returns the paths the server saw for that navigation only.
+ * Loads a start page on the capturing server, then navigates to `dirtyPath`
+ * from page script. Returns the paths the server saw for that navigation only.
+ *
+ * Asserts the start page itself actually reached the server (previously
+ * `pollFor`'s return value was discarded here, so a start page that never
+ * arrived silently fell through to the real navigation instead of failing
+ * with a clear cause).
  */
-async function navigateFromPage(driver, server) {
+async function navigateFromPage(driver, server, dirtyPath = DIRTY_PATH) {
+  const basePath = dirtyPath.split("?")[0];
   await driver.get(`${server.origin}/start`);
-  await pollFor(server, (r) => r.path === "/start");
-  await sleep(300);
+  const gotStart = await pollFor(server, (r) => r.path === "/start");
+  assert.ok(gotStart, "the start page never reached the server");
   server.requests.length = 0;
 
-  await driver.executeScript(`window.location.assign(${JSON.stringify(DIRTY_PATH)})`);
-  const arrived = await pollFor(server, (r) => r.path.startsWith("/page"));
+  await driver.executeScript(`window.location.assign(${JSON.stringify(dirtyPath)})`);
+  const arrived = await pollFor(server, (r) => r.path.startsWith(basePath));
   assert.ok(arrived, "the navigation never reached the server");
   await sleep(300);
-  return server.requests.map((r) => r.path).filter((p) => p.startsWith("/page"));
+  return server.requests.map((r) => r.path).filter((p) => p.startsWith(basePath));
+}
+
+/**
+ * Retries `navigateFromPage` until it observes `expectedPaths`, or re-throws
+ * the real assertion failure once `timeoutMs` elapses.
+ *
+ * Loading the start page re-warms the prefs cache (the listener fails OPEN —
+ * passes the dirty URL through unmodified — on a cold `cachedPrefs`, and
+ * every storage write invalidates it), but that warm-up is async
+ * (`getPrefsWithCache()` plus the domain/path rule loaders) and has no
+ * externally observable "ready" signal. A single navigation attempted while
+ * still cold would look identical to a genuine regression: both leave the
+ * dirty URL on the wire. Retrying until the strip is actually observed turns
+ * that race into a real positive readiness signal instead of a fixed guess
+ * at how long warm-up takes — the previous fixed 300ms sleep here.
+ *
+ * NOT a substitute for `navigateFromPage` when the two possible outcomes
+ * (warm-but-passthrough vs. cold-and-passthrough) are indistinguishable on
+ * the wire, e.g. an exempt/allowlisted host: see the control-navigation
+ * pattern in the allowlist test below for that case instead.
+ */
+async function navigateUntilClean(driver, server, dirtyPath, expectedPaths, { timeoutMs = 10000, intervalMs = 500 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const paths = await navigateFromPage(driver, server, dirtyPath);
+    try {
+      assert.deepStrictEqual(paths, expectedPaths);
+      return paths;
+    } catch (err) {
+      if (Date.now() >= deadline) throw err;
+      await sleep(intervalMs);
+    }
+  }
 }
 
 async function withFirefox(fn) {
@@ -123,18 +160,35 @@ async function withFirefox(fn) {
 test("Firefox smoke: onBeforeRequest strips tracking params before the request leaves the browser", async () => {
   await withFirefox(async ({ driver, server }) => {
     await setStorageSync(driver, EXTENSION_ORIGIN, { whitelist: [], blacklist: [] });
-    const paths = await navigateFromPage(driver, server);
-    assert.deepStrictEqual(
-      paths,
-      [CLEAN_PATH],
-      `the server must only see the cleaned URL; it saw ${JSON.stringify(paths)}`,
-    );
+    // navigateUntilClean rather than a single navigateFromPage + fixed sleep:
+    // see its docstring for why a retry-until-observed strip is the real
+    // positive readiness signal for the async prefs-cache warm-up.
+    await navigateUntilClean(driver, server, DIRTY_PATH, [CLEAN_PATH]);
   });
 });
 
 test("Firefox smoke: an allowlisted host is navigated to untouched", async () => {
   await withFirefox(async ({ driver, server }) => {
     const host = new URL(server.origin).hostname;
+
+    // An allowlisted navigation is indistinguishable on the wire between two
+    // very different causes: the listener is warm and correctly skipping an
+    // exempt host, or the listener has not warmed up yet (fail-open passes
+    // the dirty URL through either way) — retrying (navigateUntilClean)
+    // cannot tell these apart either, since "still dirty" is what BOTH
+    // produce. Prove the listener is live and warm first, against a second
+    // server, BEFORE the allowlist below exists: every capturing server in
+    // this suite binds to the same 127.0.0.1 host on a different port, and
+    // the allowlist matches by hostname only (no port), so a same-host
+    // "control" server would be exempted too once the real allowlist is set.
+    await setStorageSync(driver, EXTENSION_ORIGIN, { whitelist: [], blacklist: [] });
+    const control = await serveCapturingServer({ html: START_HTML });
+    try {
+      await navigateUntilClean(driver, control, DIRTY_PATH, [CLEAN_PATH]);
+    } finally {
+      await control.close();
+    }
+
     await setStorageSync(driver, EXTENSION_ORIGIN, { whitelist: [host], blacklist: [] });
     const paths = await navigateFromPage(driver, server);
     assert.deepStrictEqual(
@@ -145,35 +199,103 @@ test("Firefox smoke: an allowlisted host is navigated to untouched", async () =>
   });
 });
 
-// Reproducer for a defect this spec surfaced, kept as a todo so it reports
-// without blocking CI until the fix lands. The remote channel installs DNR
-// redirect rules (1001 and the scoped 3100+ range) that match EVERY
-// main_frame request, with a queryTransform. On Firefox, while one of them
-// matches, the webRequest listener's redirect is not applied, so built-in
-// params such as utm_source go out on the wire. Measured locally on Firefox
-// 156 with the live channel: every page-initiated navigation (location
-// assignment, a 302, a meta refresh) reached the server uncleaned, and all of
-// them were cleaned once the dynamic rules were removed.
-test("Firefox smoke: built-in cleaning still applies while a remote DNR redirect rule is installed", {
-  todo: "remote-channel DNR redirect rules override the Firefox webRequest strip (found by #1408)",
-}, async () => {
+// #1448 fix, formerly a todo reproducer here. The defect: the remote channel
+// installed DNR redirect rules (1001, matching EVERY main_frame request with
+// no urlFilter, and the host-scoped 3100+ range) on Firefox too. While either
+// matched, Firefox did not apply the webRequest listener's own redirect for
+// that request — measured true for both the unscoped rule and a rule scoped
+// by requestDomains — so built-in params like utm_source silently rode along
+// uncleaned. Fixed by making Firefox NEVER install a remote-channel DNR rule:
+// reconcileRemoteDnrRule and mergeIntoCache (both in src, not this spec) now
+// short-circuit to a remove-only update on Firefox, and onBeforeNavigateStrip
+// hands the host-scoped facts to processUrl as prefs.remoteScopedFacts (#1409)
+// so nothing is lost — the listener
+// becomes Firefox's sole cleaning authority for the built-in list AND both
+// halves of the remote channel.
+test("Firefox smoke: remote rules install no DNR redirect rule; built-in and remote (global + scoped) params are all still stripped", async () => {
   await withFirefox(async ({ driver, server }) => {
+    const host = new URL(server.origin).hostname;
+
+    // Seed a cached remote-rules payload directly into local storage — this
+    // spec stays hermetic (no live fetch) — one global param and one fact
+    // scoped to this test's own host.
     await driver.get(`${EXTENSION_ORIGIN}/popup/popup.html`);
-    await driver.executeAsyncScript((cb) => {
-      chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [1001],
-        addRules: [{
-          id: 1001,
-          priority: 1,
-          action: {
-            type: "redirect",
-            redirect: { transform: { queryTransform: { removeParams: ["muga_smoke_remote_only"] } } },
-          },
-          condition: { resourceTypes: ["main_frame"] },
-        }],
+    await driver.executeAsyncScript((hostArg, cb) => {
+      chrome.storage.local.set({
+        remoteParams: ["muga_smoke_remote_only"],
+        remoteRulesMeta: {
+          version: 1,
+          fetchedAt: new Date().toISOString(),
+          paramCount: 1,
+          lastError: null,
+          published: new Date().toISOString(),
+          scopedFacts: [{ param: "muga_smoke_scoped_only", hosts: [hostArg] }],
+        },
       }, () => cb());
+    }, host);
+
+    // Drive the real gate-open reconcile path (applyDnrState ->
+    // reconcileRemoteDnrRule) the same way the ENABLE_REMOTE_RULES message
+    // does, without its live fetch: flip dnrEnabled off then on — a genuine
+    // value transition, guaranteed to fire storage.onChanged — with
+    // remoteRulesEnabled set in the same pass. Firefox's background page is
+    // persistent (unlike Chrome's service worker), so there is no wake/
+    // eviction race here to retry against, unlike the Chromium scoped-DNR
+    // spec's equivalent seeding dance.
+    await setStorageSync(driver, EXTENSION_ORIGIN, { dnrEnabled: false });
+    await setStorageSync(driver, EXTENSION_ORIGIN, {
+      dnrEnabled: true, remoteRulesEnabled: true, whitelist: [], blacklist: [],
     });
-    const paths = await navigateFromPage(driver, server);
-    assert.deepStrictEqual(paths, [CLEAN_PATH]);
+
+    // Neither remote-channel DNR rule may exist on Firefox. Poll briefly:
+    // the reconcile above is async relative to this check.
+    const isRemoteRule = (id) => id === 1001 || (id >= 3100 && id < 5100);
+    const deadline = Date.now() + 5000;
+    let ids = await dynamicRuleIds(driver);
+    while (Date.now() < deadline && ids.some(isRemoteRule)) {
+      await sleep(200);
+      ids = await dynamicRuleIds(driver);
+    }
+    assert.ok(
+      !ids.some(isRemoteRule),
+      `no remote-channel DNR rule may be installed on Firefox (ids: ${JSON.stringify(ids)})`,
+    );
+
+    // Both halves of the remote payload, AND the built-in params, must be
+    // stripped — by the webRequest listener alone.
+    const dirtyPath = "/page?utm_source=newsletter&gclid=abc123&muga_smoke_remote_only=x&muga_smoke_scoped_only=y&keep=1";
+    await navigateUntilClean(driver, server, dirtyPath, [CLEAN_PATH]);
+  });
+});
+
+// #1461: same defect class as #1448, for rule 1000 (syncCustomParamsDNR)
+// instead of the remote channel. Rule 1000 is a DNR redirect with
+// urlFilter: "*", matching every main_frame request, and had no Firefox
+// gate either — so a user with a single custom param lost built-in
+// network-layer cleaning the same way. Fixed by never installing rule 1000
+// on Firefox at all: the webRequest stripper already applies customParams
+// (and userCustomRules) via processUrl, so nothing is lost.
+test("Firefox smoke: a custom param installs no DNR redirect rule (rule 1000); built-in params are still stripped", async () => {
+  await withFirefox(async ({ driver, server }) => {
+    // customParams is already in the storage listener's applyDnrState
+    // trigger list (unlike remoteRulesEnabled above), so one write is enough.
+    await setStorageSync(driver, EXTENSION_ORIGIN, {
+      whitelist: [], blacklist: [], customParams: ["muga_smoke_custom_only"],
+    });
+
+    // Rule 1000 must never exist on Firefox. Poll briefly: the sync above is
+    // async relative to this check.
+    const deadline = Date.now() + 5000;
+    let ids = await dynamicRuleIds(driver);
+    while (Date.now() < deadline && ids.includes(1000)) {
+      await sleep(200);
+      ids = await dynamicRuleIds(driver);
+    }
+    assert.ok(!ids.includes(1000), `rule 1000 must never be installed on Firefox (ids: ${JSON.stringify(ids)})`);
+
+    // The custom param AND the built-in params must all be stripped — by the
+    // webRequest listener alone.
+    const dirtyPath = "/page?utm_source=newsletter&gclid=abc123&muga_smoke_custom_only=x&keep=1";
+    await navigateUntilClean(driver, server, dirtyPath, [CLEAN_PATH]);
   });
 });

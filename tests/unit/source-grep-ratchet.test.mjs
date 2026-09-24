@@ -246,7 +246,15 @@ const BASELINE = {
   "i18n-hardcoded.test.mjs": 1,
   "import-settings-cap.test.mjs": 3,
   "increment-stat.test.mjs": 5,
-  "mv-parity.test.mjs": 6,
+  // #1448: "no message.type check is gated..." now also scans for a next
+  // PLAIN "\nfunction " declaration (not just "\nasync function"), because a
+  // plain deps-factory helper (_remoteRulesDeps, which gained an isFirefoxMV2
+  // field) sits between the message listener and the next async function and
+  // was being swept into the "listener body" scan by the old async-only
+  // heuristic. service-worker.js is not Node-importable (module-scope
+  // chrome.* calls), so this stays a source guard; +1 raise, not a new kind
+  // of check.
+  "mv-parity.test.mjs": 7,
   "onboarding-aria-i18n.test.mjs": 2,
   "onboarding-tab-dedup-967.test.mjs": 1,
   "onboarding.test.mjs": 40,

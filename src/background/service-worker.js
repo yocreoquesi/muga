@@ -320,7 +320,11 @@ function getPrefsWithCache() {
       prefs.remoteParams = remote.remoteParams || [];
       // #1409: the host-scoped half of the same signed payload. Without it,
       // copy-clean, the context menu, selection and PROCESS_URL kept a scoped
-      // param that the DNR scoped rules strip on navigation.
+      // param that the DNR scoped rules strip on navigation. processUrl
+      // (cleaner.js, via scoped-params.js) folds this into every caller's
+      // effective remote-strip set, including computeNavigationStrip — so
+      // Firefox's onBeforeNavigateStrip gets host-scoped cleaning for free
+      // too, with no #1448-specific merge step needed here.
       prefs.remoteScopedFacts = Array.isArray(remote.remoteRulesMeta?.scopedFacts)
         ? remote.remoteRulesMeta.scopedFacts
         : [];
@@ -421,6 +425,9 @@ function onBeforeNavigateStrip(details) {
   // warm-up on the way past so it resolves as soon as possible.
   if (!_fxStripperReady || !cachedPrefs) { getPrefsWithCache(); return; }
 
+  // #1448: computeNavigationStrip -> processUrl already folds in this host's
+  // scoped remote facts via cachedPrefs.remoteScopedFacts (cleaner.js,
+  // scoped-params.js, #1409) — no Firefox-specific merge needed here.
   const decision = computeNavigationStrip(
     details.url, cachedPrefs, domainRules, pathStripRules, pathAffiliateRules, frequencyTracker,
   );
@@ -1418,6 +1425,11 @@ function _remoteRulesDeps() {
     dnr: hasDNR() ? {
       updateDynamicRules: (opts) => chrome.declarativeNetRequest.updateDynamicRules(opts),
     } : { updateDynamicRules: async () => {} },
+    // #1448: mergeIntoCache must never install a remote-channel DNR redirect
+    // rule on Firefox (see dnr-sync.js's reconcileRemoteDnrRule for why) — the
+    // weekly opportunistic fetch runs through runRemoteRulesFetch independently
+    // of the gate-open reconcile, so it needs the same platform signal.
+    isFirefoxMV2: isFirefoxMV2(),
   };
 }
 

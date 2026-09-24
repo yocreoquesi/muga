@@ -450,10 +450,10 @@ describe("service-worker.js source guards — #810 fix present", () => {
 
   test("storage listener re-triggers applyDnrState on ampRedirect changes", () => {
     // Find the sync-area storage listener block and confirm it watches ampRedirect.
-    // Use 2500 chars — the condition is ~2076 chars into the listener body.
+    // Use 3000 chars (with margin) — the condition is ~2394 chars into the listener body.
     const storageListenerIdx = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
     assert.ok(storageListenerIdx !== -1, "storage onChanged listener must exist");
-    const listenerBlock = swSource.slice(storageListenerIdx, storageListenerIdx + 2500);
+    const listenerBlock = swSource.slice(storageListenerIdx, storageListenerIdx + 3000);
     assert.ok(
       listenerBlock.includes("ampRedirect"),
       "storage listener must include ampRedirect in the condition that calls applyDnrState"
@@ -463,7 +463,7 @@ describe("service-worker.js source guards — #810 fix present", () => {
   test("storage listener re-triggers applyDnrState on unwrapRedirects changes", () => {
     const storageListenerIdx = swSource.lastIndexOf("chrome.storage.onChanged.addListener");
     assert.ok(storageListenerIdx !== -1, "storage onChanged listener must exist");
-    const listenerBlock = swSource.slice(storageListenerIdx, storageListenerIdx + 2500);
+    const listenerBlock = swSource.slice(storageListenerIdx, storageListenerIdx + 3000);
     assert.ok(
       listenerBlock.includes("unwrapRedirects"),
       "storage listener must include unwrapRedirects in the condition that calls applyDnrState"

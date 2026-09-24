@@ -937,10 +937,10 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *
  * @param {string[]} accepted - Validated and deduped remote params.
  * @param {{ version: number, fetchedAt: string|null, paramCount: number, lastError: null, published: string|null, scopedFacts?: Array<{param: string, hosts: string[]}> }} meta
- * @param {{ storage: object, dnr: object }} deps - Injected storage and DNR facades.
+ * @param {{ storage: object, dnr: object, isFirefoxMV2?: boolean }} deps - Injected storage and DNR facades.
  * @returns {Promise<void>}
  */
-export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
+export async function mergeIntoCache(accepted, meta, { storage, dnr, isFirefoxMV2 = false }) {
   // Defense-in-depth (#631 item 2): assert MAX_PARAM_COUNT before touching the
   // DNR table. `validateRemotePayload` already enforces this cap on the input,
   // but an explicit guard here makes the contract impossible to bypass if a
@@ -953,13 +953,20 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
     );
   }
 
+  // #1448: Firefox never gets a remote-channel DNR redirect rule — global
+  // (1001) or host-scoped (3100-5099) — regardless of what the payload
+  // contains. See dnr-sync.js's reconcileRemoteDnrRule for the full
+  // reasoning; onBeforeNavigateStrip (service-worker.js) is Firefox's sole
+  // cleaning authority for both halves instead. Only ever remove here, in
+  // case a rule from a previous version survives.
+  //
   // An empty accepted set (a valid signed payload whose params all dedupe
   // against the built-ins) must NOT produce a rule with an empty removeParams
   // transform — the DNR API rejects that, which used to throw AFTER the version
   // had already been persisted, poisoning the cache so the next payload at the
   // same version failed VERSION_REGRESSION forever. Emit a remove-only update
   // instead so any stale rule 1001 is cleared and nothing invalid is added. (#923)
-  const dnrUpdate = accepted.length === 0
+  const dnrUpdate = isFirefoxMV2 || accepted.length === 0
     ? { removeRuleIds: [REMOTE_RULE_ID] }
     : { removeRuleIds: [REMOTE_RULE_ID], addRules: [buildRemoteDnrRule(accepted)] };
 
@@ -978,8 +985,9 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr }) {
   // Host-scoped rules (#1221 slice 2), AFTER the global rule and in their own
   // call so a failure here cannot take the global channel down with it. An
   // empty or absent scoped section clears the range, which is what makes a
-  // payload that withdraws a scoped fact actually withdraw it.
-  await applyScopedDnrRules(meta?.scopedFacts, dnr);
+  // payload that withdraws a scoped fact actually withdraw it. On Firefox,
+  // always clear-only (#1448) — see above.
+  await applyScopedDnrRules(isFirefoxMV2 ? [] : meta?.scopedFacts, dnr);
 
   // Build the weekly changelog against the PREVIOUS cache before overwriting
   // it (#984). This runs for every successful merge, including the
@@ -1319,6 +1327,11 @@ export async function runRemoteRulesFetch(deps = {}) {
   const nowMs = deps.nowMs ?? Date.now();
   const storage = deps.storage ?? _defaultStorage();
   const dnr = deps.dnr ?? _defaultDnr();
+  // #1448: on Firefox, mergeIntoCache must never install a remote-channel DNR
+  // redirect rule — see dnr-sync.js's reconcileRemoteDnrRule for the full
+  // reasoning. Defaults to false (assume Chrome) when the caller does not say,
+  // matching partitionRulesets()'s isFirefoxMV2 default in dnr-ruleset-state.js.
+  const isFirefoxMV2 = deps.isFirefoxMV2 ?? false;
 
   // Test-only key override: globalThis.__MUGA_TRUSTED_KEYS__ when MUGA_TEST=1 (design §19.3)
   const trustedKeys =
@@ -1503,7 +1516,7 @@ export async function runRemoteRulesFetch(deps = {}) {
       lastError: null,
       published: obj.published,
       scopedFacts, // #1221 — persisted and applied as scoped DNR rules by mergeIntoCache
-    }, { storage, dnr });
+    }, { storage, dnr, isFirefoxMV2 });
 
   } finally {
     _remoteFetchInFlight = false;

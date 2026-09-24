@@ -119,17 +119,29 @@ function isStringOnlyHostPatterns(wrapper) {
 
 /**
  * Builds the regexFilter string for a given recipe.  Shape:
- *   ^https?://<hostRegex><pathPrefixOrAny>[?&]<paramName>=([^&]+)
+ *   ^https?://<hostRegex><pathPrefixOrAny>[?&]<paramName>=([^&]+).*$
  *
- * The capture group is the URL-encoded destination value.  regexSubstitution
- * "\\1" copies it verbatim into the redirect target.
+ * The capture group is the URL-encoded destination value, bounded to the
+ * `<paramName>` value only (`[^&]+` stops at the next literal `&`, which is
+ * where a percent-encoded destination's own `&` would already be encoded as
+ * `%26`).  regexSubstitution "\\1" copies it verbatim into the redirect
+ * target.
+ *
+ * Chrome's DNR redirect only replaces the substring the regexFilter
+ * matched — anything in the URL outside that match survives untouched.
+ * Without a trailing `.*$`, the match ends right where the capture group
+ * ends, so any params after `<paramName>=` (e.g. Facebook's `&h=AT0` link-shim
+ * token) are NOT part of the match and get appended, verbatim, after the
+ * substitution (issue #1449). Anchoring the match through the end of the
+ * URL with `.*$` pulls that trailing tail into the matched span so it is
+ * discarded along with the rest, leaving only the captured destination.
  *
  * @param {{ hostRegex: string, pathPrefix: string|null, paramName: string }} recipe
  * @returns {string}
  */
 function buildRegexFilter({ hostRegex, pathPrefix, paramName }) {
   const path = pathPrefix ?? "";
-  return `^https?://${hostRegex}${path}.*[?&]${paramName}=([^&]+)`;
+  return `^https?://${hostRegex}${path}.*[?&]${paramName}=([^&]+).*$`;
 }
 
 /**

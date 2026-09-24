@@ -118,12 +118,9 @@ test.describe("DNR wrapper-redirect rules (#510)", () => {
     return hits;
   }
 
-  // `u=` is the LAST param on purpose. `regexSubstitution` replaces only the
-  // part of the URL the regex matched, and the live regexes stop right after
-  // the `([^&]+)` capture, so anything after it is appended to the
-  // destination. Measured here: `l.php?u=<dest>&h=AT0` redirects to
-  // `<dest>&h=AT0`. That is recorded by the fixme test below rather than
-  // hidden by this one.
+  // `u=` is the LAST param on purpose here — the case with trailing params
+  // after `u=` (e.g. Facebook's `&h=AT0` link-shim token) is covered by the
+  // "params after u= are not appended" tests below (#1449).
   for (const host of ["l.facebook.com", "lm.facebook.com"]) {
     test(`${host}: an unencoded u= destination is redirected by DNR before the wrapper is hit`, async ({ context }) => {
       const page = await context.newPage();
@@ -139,19 +136,20 @@ test.describe("DNR wrapper-redirect rules (#510)", () => {
     });
   }
 
-  test.fixme("l.facebook.com: params after u= are not appended to the destination", async ({ context }) => {
-    // Found while repointing this spec (#1410). The rule regex ends at the
-    // capture, so the unmatched tail `&h=AT0` survives the substitution and
-    // lands on the destination path. Fixing it means reshaping the rule
-    // (#510's open decision), not this test.
-    const page = await context.newPage();
-    await stubHost(page, DEST_HOST);
-    await recordingStub(page, "l.facebook.com");
-    await page.goto(`https://l.facebook.com/l.php?u=${DEST_URL}&h=AT0`);
-    await page.waitForLoadState("domcontentloaded");
-    expect(page.url()).toBe(DEST_URL);
-    await page.close();
-  });
+  // Fixed for #1449: the rule regex now matches through the end of the URL
+  // (`.*$` after the capture), so the unmatched tail is pulled into the
+  // match and discarded along with it instead of surviving the substitution.
+  for (const host of ["l.facebook.com", "lm.facebook.com"]) {
+    test(`${host}: params after u= are not appended to the destination`, async ({ context }) => {
+      const page = await context.newPage();
+      await stubHost(page, DEST_HOST);
+      await recordingStub(page, host);
+      await page.goto(`https://${host}/l.php?u=${DEST_URL}&h=AT0`);
+      await page.waitForLoadState("domcontentloaded");
+      expect(page.url()).toBe(DEST_URL);
+      await page.close();
+    });
+  }
 
   test("an l.facebook.com/l.php URL without u= is NOT redirected", async ({ context }) => {
     // The live rule is anchored to `l.facebook.com/l.php.*[?&]u=([^&]+)`. The

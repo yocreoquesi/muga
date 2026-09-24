@@ -89,6 +89,22 @@ export function hasDNR() {
 export async function syncCustomParamsDNR(customParams) {
   if (!hasDNR()) return;
   try {
+    // #1461: same defect class #1448 fixed for the remote channel. Rule 1000
+    // is a DNR redirect with urlFilter: "*", matching every main_frame
+    // request. On Firefox, ANY matching DNR redirect rule suppresses the
+    // blocking webRequest stripper's own redirect for that request — so a
+    // user with a single custom param would silently lose built-in
+    // (utm_source, gclid, ...) network-layer cleaning on every navigation.
+    // The webRequest stripper already applies customParams (and
+    // userCustomRules) via processUrl/classifyAndStripTracking, so Firefox
+    // never needs rule 1000 at all. Remove-only, mirroring
+    // reconcileRemoteDnrRule's Firefox branch below.
+    if (isFirefoxMV2()) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
+      });
+      return;
+    }
     if (!customParams || customParams.length === 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
@@ -584,6 +600,27 @@ export async function applyDnrState(prefs) {
 export async function reconcileRemoteDnrRule(prefs) {
   if (!hasDNR()) return;
   try {
+    // #1448: NEVER install a remote-channel DNR redirect rule on Firefox —
+    // neither the global rule (1001) nor the host-scoped range (3100-5099).
+    // Measured on real Firefox: while EITHER matches a request, Firefox does
+    // not apply the blocking webRequest stripper's own redirect for that
+    // request, even for params the DNR rule itself does not touch — so a
+    // remote rule that matches every main_frame navigation (1001 has no
+    // urlFilter) silently disabled the ENTIRE built-in strip. Firefox's sole
+    // cleaning authority for a navigation is onBeforeNavigateStrip
+    // (service-worker.js), which calls computeNavigationStrip -> processUrl —
+    // the same pipeline that already applies prefs.remoteParams (the global
+    // list) and, since #1409, prefs.remoteScopedFacts (the host-scoped half,
+    // via cleaner.js/scoped-params.js) for every caller. So removing these
+    // rules here costs Firefox nothing. Only ever REMOVE on Firefox, in case
+    // an old rule installed by a previous version survives across an update.
+    if (isFirefoxMV2()) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [DNR_REMOTE_PARAMS_RULE_ID, ...SCOPED_RULE_ID_RANGE],
+      });
+      return;
+    }
+
     const cache = prefs.remoteRulesEnabled ? await getRemoteParams() : null;
 
     // The host-scoped range (#1221 slice 2) is restored from the SAME cache and
