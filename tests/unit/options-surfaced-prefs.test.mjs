@@ -287,13 +287,20 @@ describe("#1355/#1354 — paramBreakdown is retired", () => {
     assert.ok(!popupJs.includes("prefs.paramBreakdown"));
   });
 
-  test("popup.js still renders the breakdown unconditionally when there are removed params", () => {
+  test("popup.js's per-page preview breakdown still renders unconditionally when there are removed params", () => {
     assert.ok(
       /if\s*\(\s*result\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
       "the per-page breakdown must render whenever there is something to show, no pref gate",
     );
+  });
+
+  // #1352: the per-history-entry breakdown moved to options.js along with
+  // the rest of the "This session" ledger (showHistory, now
+  // renderActivityLedgerPanel/_buildSessionHistoryRow) — popup.js no longer
+  // has a history entry to gate at all.
+  test("options.js's per-history-entry breakdown still renders unconditionally when there are removed params", () => {
     assert.ok(
-      /if\s*\(\s*entry\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
+      /if\s*\(\s*entry\.removedTracking\?\.length\s*>\s*0\s*\)/.test(optionsJs),
       "the per-history-entry breakdown must render whenever there is something to show, no pref gate",
     );
   });

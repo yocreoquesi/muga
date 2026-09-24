@@ -43,7 +43,7 @@
   </section>
 
   <section class="stats">
-    <div class="stat stat-clickable" id="stat-urls-wrap" role="button" tabindex="0" title="Show history" data-i18n-title="show_history" aria-expanded="false">
+    <div class="stat" id="stat-urls-wrap">
       <span class="stat-value" id="stat-urls">0</span>
       <span class="stat-label" data-i18n="stat_urls">URLs cleaned</span>
     </div>
@@ -56,9 +56,9 @@
   <!-- Zero state (#1260). Bare zeros are the first thing a fresh install sees,
        and they read as "nothing works" rather than "nothing has happened yet".
        Shown only while every counter is 0, so an established user never sees
-       it. (#1339 removed a third tile that could only ever read 0.) Same pattern as #recent-activity-empty below: the string
-       is in the markup with its data-i18n key, so it is translated even before
-       the JS layer reads chrome.storage.local. -->
+       it. (#1339 removed a third tile that could only ever read 0.) The
+       string is in the markup with its data-i18n key, so it is translated
+       even before the JS layer reads chrome.storage.local. -->
   <p id="stats-empty" class="stats-empty" data-i18n="stats_zero_state" hidden>
     Nothing cleaned yet. Open a link with tracking on it and these counters start moving.
   </p>
@@ -79,10 +79,9 @@
     <div id="suspicious-params-list"></div>
   </details>
 
-  <details class="history" id="history" hidden>
-    <summary class="history-summary" data-i18n="history_label">This session</summary>
-    <div id="history-list"></div>
-  </details>
+  <!-- "This session" (#178, #237) moved to Settings' unified Activity
+       ledger panel (#1352, maintainer decision), alongside "Recent
+       activity" below. See src/options/options.html #activity-ledger-panel. -->
 
   <section class="preview" id="preview" hidden>
     <div class="preview-header">
@@ -124,19 +123,8 @@
          Settings counterpart at all. -->
   </section>
 
-  <!-- Recent activity section (#460, A2). Surfaces the Attribution Ledger
-       ring buffer (last N navigations) BELOW the per-page badge area
-       (#preview). Same <details> pattern as #suspicious-params. The list
-       slot is filled at runtime; the empty-state slot carries the
-       data-i18n key so a fresh install still gets a translated message
-       even before the JS layer reads chrome.storage.local. -->
-  <details class="recent-activity" id="recent-activity">
-    <summary data-i18n="ledger_section_title">Recent activity</summary>
-    <div id="recent-activity-list" class="recent-activity-list"></div>
-    <p id="recent-activity-empty" class="recent-activity-empty" data-i18n="ledger_empty">
-      No recent navigations yet. Start browsing. MUGA will list cleaned URLs here.
-    </p>
-  </details>
+  <!-- "Recent activity" (#460, A2) moved to Settings' unified Activity
+       ledger panel too (#1352) — see the comment above #preview. -->
 
   <div class="growth-bar" id="growth-bar" hidden>
     <button class="growth-btn" id="rate-btn" hidden><span aria-hidden="true">⭐ </span><span data-i18n="rate_muga_short">Rate MUGA</span></button>

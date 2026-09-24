@@ -17,7 +17,6 @@ export default Object.freeze({
   history_copy_hint: "Klicken zum Kopieren der bereinigten URL",
   history_copied: "Kopiert!",
   history_copy_original: "Mit Rauschen kopieren",
-  show_history: "Verlauf anzeigen",
   confirm_cancel: "Abbrechen",
   confirm_ok: "OK",
   domain_stats_label: "Woher das meiste Rauschen kommt",

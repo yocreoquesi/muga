@@ -33,6 +33,8 @@ const ROOT = join(__dirname, "../..");
 
 const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
+const popupHtml = readFileSync(join(ROOT, "src/popup/popup.html"), "utf8");
+const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
 
 /** Extracts every `id="..."` value from raw HTML, ignoring HTML comments. */
 function extractIds(html) {
@@ -271,5 +273,52 @@ describe("i18n — new Activity ledger keys exist in all locales", () => {
         assert.ok(!value.includes("—"), `${key}.${lang} must not contain an em dash`);
       }
     }
+  });
+});
+
+// ── The issue's explicit ask: popup no longer renders either ledger ────────
+
+describe("popup.html / popup.js — no longer render either ledger (#1352)", () => {
+  test("popup.html no longer declares #history", () => {
+    assert.doesNotMatch(popupHtml, /id="history"/, "popup.html must not contain id=\"history\" anymore");
+  });
+
+  test("popup.html no longer declares #history-list", () => {
+    assert.doesNotMatch(popupHtml, /id="history-list"/, "popup.html must not contain id=\"history-list\" anymore");
+  });
+
+  test("popup.html no longer declares #recent-activity", () => {
+    assert.doesNotMatch(popupHtml, /id="recent-activity"/, "popup.html must not contain id=\"recent-activity\" anymore");
+  });
+
+  test("popup.html no longer declares #recent-activity-list or #recent-activity-empty", () => {
+    assert.doesNotMatch(popupHtml, /id="recent-activity-list"/);
+    assert.doesNotMatch(popupHtml, /id="recent-activity-empty"/);
+  });
+
+  test("popup.js no longer declares showHistory", () => {
+    assert.doesNotMatch(popupJs, /function\s+showHistory/, "popup.js must not declare showHistory anymore");
+  });
+
+  test("popup.js no longer calls showHistory", () => {
+    assert.doesNotMatch(popupJs, /showHistory\s*\(/, "popup.js must not call showHistory anymore");
+  });
+
+  test("popup.js no longer declares showRecentActivity", () => {
+    assert.doesNotMatch(popupJs, /function\s+showRecentActivity/, "popup.js must not declare showRecentActivity anymore");
+  });
+
+  test("popup.js no longer calls showRecentActivity", () => {
+    assert.doesNotMatch(popupJs, /showRecentActivity\s*\(/, "popup.js must not call showRecentActivity anymore");
+  });
+
+  test("popup.js no longer imports the attribution-ledger presenter/view (moved to options.js)", () => {
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/attribution-ledger\.js"/);
+    assert.doesNotMatch(popupJs, /from\s+"\.\.\/lib\/attribution-ledger-view\.js"/);
+  });
+
+  test("the stat-urls-wrap tile is no longer clickable (its target, #history, is gone)", () => {
+    assert.doesNotMatch(popupHtml, /class="stat stat-clickable"/);
+    assert.doesNotMatch(popupJs, /statUrlsWrap\.setAttribute\(\s*["']aria-controls["']/);
   });
 });

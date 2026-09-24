@@ -2,7 +2,7 @@
  * E2E: Popup UI
  *
  * Tests the popup page: stats display, enable toggle, URL preview,
- * history, and settings link.
+ * and settings link.
  */
 
 import { test, expect } from "./fixtures.mjs";
@@ -79,9 +79,9 @@ test.describe("Popup", () => {
     await optionsPage.close();
   });
 
-  test("history section is hidden when empty", async ({ popupPage: page }) => {
-    await expect(page.locator("#history")).toBeHidden();
-  });
+  // (Removed: "history section is hidden when empty" — #1352 moved the
+  // "This session" ledger to Settings' unified Activity ledger panel;
+  // #history no longer exists in popup.html.)
 
   // (Removed: "domain stats section is hidden when empty" — obsolete after PR-F
   // changed the panel to show an empty-state message instead of hiding. The

@@ -17,7 +17,6 @@ export default Object.freeze({
   history_copy_hint: "クリックでクリーンURLをコピー",
   history_copied: "コピーしました!",
   history_copy_original: "ノイズ付きでコピー",
-  show_history: "履歴を表示",
   confirm_cancel: "キャンセル",
   confirm_ok: "OK",
   domain_stats_label: "最もノイズが多い発生源",
