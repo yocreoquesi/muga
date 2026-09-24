@@ -371,3 +371,50 @@ export async function migrateFollowShortenersSplit() {
     // Migration is best-effort — a failure here must never break startup.
   }
 }
+
+/**
+ * One-time migration (#1355 review finding R3-001): deletes the stale
+ * `dnrEnabled` key from chrome.storage.sync, if present. Its Settings
+ * control was removed (#1355, ADR-0011 internal-with-a-default) — the pref
+ * is now a fixed internal default (getPrefs() in prefs.js no longer reads
+ * this key back from storage at all, so a stale value can no longer strand
+ * a user off the DNR path). This migration exists purely so an existing
+ * install stops carrying the dead byte forever, mirroring
+ * migrateDropCookieConsent's shape exactly.
+ *
+ * Unlike migrateFollowShortenersSplit/migrateLegacyProxyPref, there is no
+ * value to preserve — ANY stored value (true or false) is discarded, never
+ * read into a computation, so there is no read-modify-write step and no
+ * intermediate state where the key holds a partially-migrated value. At
+ * every point during execution the key is either present (untouched) or
+ * absent (removed); `chrome.storage.sync.remove()` of an already-absent key
+ * is itself a no-op. This makes the migration trivially idempotent and safe
+ * under the concurrent module-scope/onInstalled/onStartup calls #1257's
+ * single `runOneTimeMigrations()` call site (service-worker.js) already
+ * guards against — even without that guard, N concurrent calls here could
+ * never observe or produce a torn state.
+ *
+ * Fail-safe: wrapped in try/catch — a storage error must never throw out to
+ * the caller or break startup.
+ */
+export async function migrateDropDnrEnabledPref() {
+  try {
+    const data = await new Promise((resolve) => {
+      chrome.storage.sync.get(["dnrEnabled"], (result) => {
+        void chrome.runtime.lastError; // non-critical
+        resolve(result || {});
+      });
+    });
+    if (data.dnrEnabled === undefined) return; // already absent — nothing to do
+
+    await new Promise((resolve) => {
+      chrome.storage.sync.remove("dnrEnabled", () => {
+        void chrome.runtime.lastError; // non-critical
+        resolve();
+      });
+    });
+  } catch {
+    // Migration is best-effort — a storage error must never throw out to
+    // the caller or break startup.
+  }
+}

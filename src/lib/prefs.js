@@ -242,7 +242,20 @@ export async function getPrefs() {
   // Per-device pref overlay (#364). Any key set in overrides wins
   // over sync. Boolean shape is enforced at the source (overrides
   // can only be set via per-device-prefs.setOverrides).
-  return { ...sync, ...overlay, ...overrides };
+  //
+  // dnrEnabled (#1355 review finding R3-001): forced to the internal
+  // default AFTER the merge above, discarding whatever `sync` read back.
+  // Its Settings control was removed, but `sync` above still comes from
+  // `chrome.storage.sync.get(PREF_DEFAULTS)`, which returns a STORED value
+  // over the default when one exists — so a user who had explicitly set
+  // `dnrEnabled: false` before the control's removal would otherwise stay
+  // stranded on the DNR-off path forever, with no control left to flip it
+  // back. "Control removed" must mean "value no longer matters", not
+  // "value still applies, just unreachable". migrateDropDnrEnabledPref()
+  // (storage-migrations.js) separately deletes the stale stored key so it
+  // stops taking up space; this override is what makes correctness NOT
+  // depend on that migration having run yet.
+  return { ...sync, ...overlay, ...overrides, dnrEnabled: PREF_DEFAULTS.dnrEnabled };
 }
 
 /**
