@@ -322,3 +322,43 @@ describe("popup.html / popup.js — no longer render either ledger (#1352)", () 
     assert.doesNotMatch(popupJs, /statUrlsWrap\.setAttribute\(\s*["']aria-controls["']/);
   });
 });
+
+// ── i18n for the ledger now rendered in Settings (#1352 review R3-002) ──
+// Ported from the deleted popup-recent-activity.test.mjs, widened to all
+// seven locales since the panel is user-facing in every one of them.
+describe("#1352 — ledger strings the Settings panel renders", async () => {
+  // Some modules touch chrome at import time; a minimal stub is enough here.
+  const { makeChromeMock } = await import("./helpers/chrome-stub.mjs");
+  globalThis.chrome ??= makeChromeMock();
+  const { TRANSLATIONS } = await import("../../src/lib/i18n.js");
+  const LOCALES = ["en", "es", "pt", "de", "fr", "it", "ja"];
+  const REQUIRED_KEYS = [
+    "ledger_section_title",
+    "ledger_empty",
+    "ledger_badge_cleaned",
+    "ledger_badge_preserve_affiliate",
+    "ledger_badge_honor_creator",
+    "ledger_badge_blocked_opaque",
+    "ledger_creator_credit_template",
+    "ledger_network_template",
+    "ledger_copy_btn_label",
+    "ledger_copy_btn_copied",
+  ];
+
+  for (const key of REQUIRED_KEYS) {
+    test(`${key} exists and is non-empty in all 7 locales`, () => {
+      const entry = TRANSLATIONS[key];
+      assert.ok(entry, `${key} must exist in TRANSLATIONS`);
+      for (const lang of LOCALES) {
+        assert.ok(typeof entry[lang] === "string" && entry[lang].length > 0, `${key}.${lang} non-empty`);
+      }
+    });
+  }
+
+  test("the templates keep their placeholders in every locale", () => {
+    for (const lang of LOCALES) {
+      assert.ok(TRANSLATIONS.ledger_creator_credit_template[lang].includes("{creator}"), `creator template (${lang})`);
+      assert.ok(TRANSLATIONS.ledger_network_template[lang].includes("{network}"), `network template (${lang})`);
+    }
+  });
+});
