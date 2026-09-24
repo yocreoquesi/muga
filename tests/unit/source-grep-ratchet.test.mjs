@@ -223,7 +223,7 @@ const BASELINE = {
   "a11y-contrast.test.mjs": 1,
   "a11y-structure.test.mjs": 9,
   "amp-redirect.test.mjs": 15,
-  "audit-2.5.0-copy-cleanups.test.mjs": 2,
+  "audit-2.5.0-copy-cleanups.test.mjs": 4, // rebase re-count onto the #1405 widened heuristic (audit behaviour branch, 2026-09-24): 2 -> 4, no new assertions added, the wider identifier-binding count simply now sees 2 more on the same file (#824)
   "bounce-state-affiliate-redirect.test.mjs": 2,
   "bounce-state-wrappers-parity.test.mjs": 4,
   "cleaner.test.mjs": 3,
@@ -269,6 +269,7 @@ const BASELINE = {
   "options-show-badge-toggle.test.mjs": 7,
   "options-strip-globally-button.test.mjs": 23,
   "options-surfaced-prefs.test.mjs": 13,
+  "options-sync-save-failed.test.mjs": 3, // new file, audit behaviour branch (#1430): sync-mutation.js is importable in Node and covered behaviorally in sync-mutation.test.mjs; these 3 pin that addEntry/removeEntry actually wire the sync_save_failed toast + skip re-render on a failed write, read from options.js source (#824)
   "popup-aria-i18n.test.mjs": 9,
   "popup-autoinject-badge.test.mjs": 16,
   "popup-count-celebration.test.mjs": 15,
@@ -285,10 +286,12 @@ const BASELINE = {
   "sanitize-import.test.mjs": 43,
   "service-worker-autoinject-passthrough.test.mjs": 1,
   "session-storage-race-1097.test.mjs": 2,
+  "settings-activity-controls-relocation.test.mjs": 38, // new file, audit behaviour branch (#1398/#1390/#1392): options.html/options.js not importable as DOM in Node; pins the recording switches + Reset stats living inside Settings > Activity (not duplicated in Advanced) and the ledger-disable/Clear/re-render wiring, mirroring settings-activity-ledger-copy.test.mjs's pattern (#824)
   "settings-activity-domain-stats.test.mjs": 21,
   "settings-activity-ledger-copy.test.mjs": 36,
   "settings-activity-ledger.test.mjs": 62,
   "settings-activity-suspicious-params.test.mjs": 52,
+  "store-links.test.mjs": 4, // new file, audit behaviour branch (#1387): store-links.js's own URL/getRateUrl() behavior is covered behaviorally above; these 4 pin that it imports isFirefox() rather than reimplementing it, and that both call sites import getRateUrl from the shared module, read from source (#824)
   "strip-test-seams.test.mjs": 4,
   "tos-version-sync.test.mjs": 1,
   "validation.test.mjs": 5,
