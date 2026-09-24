@@ -13,8 +13,15 @@
  * dnrEnabled from before its control was removed. Both cases must degrade
  * safely:
  *   1. getPrefs() must never throw, and must never surface a retired key.
- *   2. dnrEnabled's stored value (if any) is still honoured — "control
- *      removed" is not "value discarded", it is "no longer user-settable".
+ *   2. dnrEnabled's stored value is now IGNORED — the internal default
+ *      governs unconditionally (#1355 review finding R3-001, fixed after
+ *      this file was first written: a stored `dnrEnabled: false` from
+ *      before the control's removal would otherwise strand a user off the
+ *      DNR path forever, with no control left to flip it back). getPrefs()
+ *      forces the default regardless of storage, and a one-time migration
+ *      (migrateDropDnrEnabledPref, storage-migrations.js) deletes the stale
+ *      key. See tests/unit/dnr-enabled-internal-default.test.mjs for the
+ *      dedicated coverage of both halves of that fix.
  *   3. A settings-export file (any vintage) carrying any of these keys must
  *      import cleanly via planImport(), with retired keys ignored.
  *
@@ -69,15 +76,20 @@ describe("getPrefs() tolerates a pre-upgrade chrome.storage.sync payload (#1355)
     assert.strictEqual(prefs.enabled, true, "unrelated real prefs must still read through normally");
   });
 
-  test("dnrEnabled's stored value is still honoured — control removed, not value discarded", async () => {
+  // #1355 R3-001: this used to assert the stored value was honoured
+  // ("control removed" != "value discarded"). That left a real user stranded
+  // off the DNR path with no control to flip it back. Maintainer decision:
+  // the internal default governs unconditionally instead — see
+  // dnr-enabled-internal-default.test.mjs for the full dedicated coverage.
+  test("dnrEnabled's stored value is IGNORED — the internal default governs unconditionally (#1355 R3-001)", async () => {
     installRealisticSyncStub({ dnrEnabled: false });
 
     const { getPrefs } = await import("../../src/lib/prefs.js?t=" + Date.now());
     const prefs = await getPrefs();
 
     assert.strictEqual(
-      prefs.dnrEnabled, false,
-      "dnrEnabled stays a real internal pref: an explicit stored value from before the control was removed must still apply",
+      prefs.dnrEnabled, true,
+      "a pre-#1355-fix stored dnrEnabled=false must not strand the user off the DNR path — the internal default (true) always wins",
     );
   });
 
