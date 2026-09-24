@@ -55,7 +55,8 @@
       letter-spacing: -0.01em;
       text-wrap: balance;
     }
-    .tagline span:nth-child(2) { display: block; font-size: 15px; color: var(--text-2); font-weight: 400; margin-top: 6px; }
+    .tagline h1 { font: inherit; letter-spacing: inherit; }
+    .tagline-sub { display: block; font-size: 15px; color: var(--text-2); font-weight: 400; margin-top: 6px; }
 
     /* Sections */
     .section { margin-bottom: 24px; }

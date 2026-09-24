@@ -4,7 +4,8 @@
  * Verifies that:
  * 1. --text-3 CSS variable in popup.css and options.css achieves ≥4.5:1
  *    contrast ratio against the documented background colours.
- * 2. No inline color:#666 remains on dark (#1c1c1e) backgrounds in options.js.
+ * 2. No inline color:#666 remains on the dark (#1c1c1e) toasts in options.js or
+ *    content/cleaner.js, and every inline toast colour clears AA there (#1394).
  */
 
 import { test, describe } from "node:test";
@@ -89,16 +90,29 @@ describe("WCAG AA contrast — --text-3 light mode", () => {
 
 describe("WCAG AA contrast — dismiss button not using #666 on dark background", () => {
   const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
+  const cleanerJs = readFileSync(join(ROOT, "src/content/cleaner.js"), "utf8");
 
-  test('options.js: no inline color:#666 on dark (#1c1c1e) background', () => {
-    // The nudge dismiss button previously used color:#666 on background:#1c1c1e
-    // which yielded 2.96:1. Ensure that pattern is gone.
-    const hasBadColor = /color:#666[^;'"]/i.test(optionsJs);
-    assert.ok(
-      !hasBadColor,
-      'Found color:#666 in options.js — this fails WCAG AA on dark (#1c1c1e) background'
-    );
-  });
+  // #1394: the old guard, /color:#666[^;'"]/, could never match the real
+  // `color:#666;` (the `;` is excluded by the character class) and only read
+  // options.js, so the in-page toasts kept a 2.96:1 Dismiss button.
+  for (const [label, src] of [["options.js", optionsJs], ["content/cleaner.js", cleanerJs]]) {
+    test(`${label}: no inline color:#666 (2.96:1 on the #1c1c1e toast)`, () => {
+      assert.doesNotMatch(src, /color:\s*#666\b/i);
+    });
+
+    // Every inline text colour in these files styles the dark toast / nudge
+    // (background:#1c1c1e), so each one must clear AA against it.
+    test(`${label}: every inline text colour clears ${MIN_RATIO}:1 on #1c1c1e`, () => {
+      const colors = [...src.matchAll(/(?<![-\w])color:\s*(#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b)/g)].map((m) => m[1]);
+      assert.ok(colors.length > 0, `expected inline colours in ${label}`);
+      const expand = (hex) => hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex;
+      const failing = colors
+        .map((c) => ({ c, ratio: contrast(expand(c), "#1c1c1e") }))
+        .filter(({ ratio }) => ratio < MIN_RATIO)
+        .map(({ c, ratio }) => `${c} (${ratio.toFixed(2)}:1)`);
+      assert.deepEqual(failing, [], `${label}: inline colours below AA on #1c1c1e`);
+    });
+  }
 
   test('options.js: dismiss button uses an accessible color on dark bg (≥4.5:1 on #1c1c1e)', () => {
     // Extract the actual color used for the dismiss button

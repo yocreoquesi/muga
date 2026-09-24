@@ -1060,7 +1060,7 @@
     btnDiv.appendChild(blockBtn);
 
     const dismissDiv = document.createElement("button");
-    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissDiv.style.cssText = "margin-top:6px;font-size:11px;color:#9A9A9A;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
     dismissDiv.id = "muga-dismiss";
     dismissDiv.textContent = s.toast_dismiss;
     dismissDiv.setAttribute("aria-label", s.toast_dismiss);
@@ -1182,7 +1182,7 @@
     btnDiv.appendChild(removeBtn);
 
     const dismissDiv = document.createElement("button");
-    dismissDiv.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissDiv.style.cssText = "margin-top:6px;font-size:11px;color:#9A9A9A;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
     dismissDiv.id = "muga-dismiss";
     dismissDiv.textContent = s.toast_dismiss;
     dismissDiv.setAttribute("aria-label", s.toast_dismiss);

@@ -119,3 +119,48 @@ test("popup.js's suspicious-params section renders no strip/report action (#1351
   assert.doesNotMatch(body, /strip-locally-btn|strip-globally-btn/);
   assert.doesNotMatch(body, /report-upstream-btn/);
 });
+
+// ── #1417: plain language and a next step ────────────────────────────────────
+//
+// The list said "On this page (entropy)" and "score 4.2": jargon, and no word
+// on what the flag means (the param was KEPT) or where to act. It stays
+// read-only, but now says what happened and points to Settings.
+
+const { SUPPORTED_LANGS } = await import("../../src/lib/i18n.js");
+
+test("#1417: the group label is plain language in every locale (no 'entropy')", () => {
+  for (const { code } of SUPPORTED_LANGS) {
+    const value = TRANSLATIONS.suspicious_params_entropy_group[code];
+    assert.doesNotMatch(value, /entrop|エントロピー/i, `${code}: ${value}`);
+  }
+});
+
+test("#1417: a hint and an Open Settings button follow the list, translated in every locale", () => {
+  const html = readFileSync(resolve(root, "src/popup/popup.html"), "utf8");
+  const open = html.indexOf('id="suspicious-params"');
+  const section = html.slice(open, html.indexOf("</details>", open));
+  assert.match(section, /data-i18n="suspicious_params_popup_hint"/);
+  assert.match(section, /<button[^>]*id="suspicious-open-settings"[^>]*data-i18n="suspicious_params_open_settings"/);
+  for (const key of ["suspicious_params_popup_hint", "suspicious_params_open_settings"]) {
+    for (const { code } of SUPPORTED_LANGS) {
+      const value = TRANSLATIONS[key]?.[code];
+      assert.ok(typeof value === "string" && value.trim() && !value.includes("—"), `${key}.${code}`);
+    }
+  }
+});
+
+test("#1417: Open Settings opens the options page", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  assert.match(
+    popupSrc,
+    /getElementById\("suspicious-open-settings"\)[\s\S]{0,200}chrome\.runtime\.openOptionsPage\(\)/,
+  );
+});
+
+test("#1417: rows no longer print a bare score; the number moves to a tooltip", () => {
+  const popupSrc = readFileSync(resolve(root, "src/popup/popup.js"), "utf8");
+  const start = popupSrc.indexOf("async function showSuspiciousParams(lang)");
+  const body = popupSrc.slice(start, popupSrc.indexOf("\n}", start));
+  assert.doesNotMatch(body, /suspicious-detail/);
+  assert.match(body, /row\.title = t\("entropy_score_label", lang\)/);
+});

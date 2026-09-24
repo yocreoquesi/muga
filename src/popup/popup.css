@@ -707,14 +707,39 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
 
 .suspicious-row {
   display: grid;
-  /* #1351: read-only entropy row — name | score. The strip/report actions
-     (and their button columns) moved to Settings' Activity section. */
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  /* #1351: read-only entropy row. The strip/report actions (and their
+     button columns) moved to Settings' Activity section; #1417 moved the
+     score into the row's tooltip, so only the name remains. */
+  grid-template-columns: 1fr;
   align-items: center;
   padding: 4px 14px;
   font-size: 11px;
 }
+
+/* #1417: what the flag means and where to act on it. */
+.suspicious-next-step {
+  padding: 4px 14px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.suspicious-next-step small {
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.suspicious-settings-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-1);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.suspicious-settings-btn:hover { color: var(--accent-strong); }
 
 .suspicious-name {
   color: var(--text-1);
@@ -722,13 +747,6 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.suspicious-detail {
-  color: var(--text-3);
-  white-space: nowrap;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Recent activity (#460, A2) moved to Settings' unified Activity ledger

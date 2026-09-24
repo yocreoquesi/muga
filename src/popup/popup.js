@@ -126,6 +126,12 @@ async function init() {
     chrome.runtime.openOptionsPage();
   });
 
+  // #1417: the suspicious-params list is read-only; acting on a param
+  // (Custom tracking params, Report a problem) happens in Settings.
+  document.getElementById("suspicious-open-settings")?.addEventListener("click", () => {
+    chrome.runtime.openOptionsPage();
+  });
+
   // Footer rate link: always available, passive
   const popupRateLink = document.getElementById("popup-rate-link");
   if (popupRateLink) {
@@ -746,12 +752,9 @@ async function showSuspiciousParams(lang) {
     nameEl.textContent = flag.param;
     row.appendChild(nameEl);
 
-    const detailEl = document.createElement("span");
-    detailEl.className = "suspicious-detail";
-    // Score gives the user a defensible "why this looks fishy" without
-    // forcing them to read the heuristic's reason codes.
-    detailEl.textContent = t("entropy_score_label", lang).replace("{score}", String(flag.score));
-    row.appendChild(detailEl);
+    // #1417: an unscaled score means nothing at a glance, so it no longer
+    // prints; it stays available as a tooltip for the curious.
+    row.title = t("entropy_score_label", lang).replace("{score}", String(flag.score));
 
     list.appendChild(row);
   }

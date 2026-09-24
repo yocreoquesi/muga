@@ -2242,7 +2242,7 @@ function initDevTools() {
     btnDiv.appendChild(removeBtn);
 
     const dismissBtn = document.createElement("button");
-    dismissBtn.style.cssText = "margin-top:6px;font-size:10px;color:#666;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
+    dismissBtn.style.cssText = "margin-top:6px;font-size:11px;color:#9A9A9A;text-align:right;cursor:pointer;background:none;border:none;display:block;width:100%";
     dismissBtn.textContent = t("toast_dismiss", _currentLang);
 
     notice.appendChild(titleDiv);

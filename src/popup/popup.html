@@ -77,6 +77,12 @@
   <details class="suspicious-params" id="suspicious-params" hidden>
     <summary data-i18n="suspicious_params_label">Suspicious params</summary>
     <div id="suspicious-params-list"></div>
+    <!-- #1417: say the params were kept, and where to act on one. Still
+         read-only: the button only opens Settings. -->
+    <div class="suspicious-next-step">
+      <small data-i18n="suspicious_params_popup_hint">MUGA left these in place. To strip or report one, open Settings.</small>
+      <button type="button" class="suspicious-settings-btn" id="suspicious-open-settings" data-i18n="suspicious_params_open_settings">Open Settings</button>
+    </div>
   </details>
 
   <!-- "This session" (#178, #237) moved to Settings' unified Activity
