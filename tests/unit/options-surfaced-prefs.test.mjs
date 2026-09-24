@@ -31,8 +31,10 @@ const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8")
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
 
 // Each surfaced boolean pref → { id, prefKey, ariaKey }
+// #1355: canonicalExtractorEnabled moved into the devToolsMode-gated
+// Developer tools panel — see the dedicated describe block below — so it is
+// no longer part of the dev-mode-gated-Advanced-card group tested here.
 const BOOLEAN_CONTROLS = [
-  { id: "canonical-extractor",  prefKey: "canonicalExtractorEnabled", ariaKey: "aria_canonical_extractor" },
   { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled", ariaKey: "aria_cross_site_frequency" },
   { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled",  ariaKey: "aria_attribution_ledger" },
   { id: "param-breakdown",      prefKey: "paramBreakdown",            ariaKey: "aria_param_breakdown" },
@@ -40,7 +42,17 @@ const BOOLEAN_CONTROLS = [
   { id: "domain-stats",         prefKey: "domainStats",               ariaKey: "aria_domain_stats" },
 ];
 
-describe("#925 — the six surfaced boolean prefs are all ON by default", () => {
+// #1355 (ADR-0011 internal-with-a-default): canonicalExtractorEnabled's
+// control moved into Developer tools; experimentalParamClassesEnabled's
+// control moved there too (previously in the dev-mode-gated Advanced card,
+// same as the ones above). Both stay real, user-settable, exported prefs —
+// only their Settings location changed.
+const DEV_TOOLS_CONTROLS = [
+  { id: "canonical-extractor",      prefKey: "canonicalExtractorEnabled",       ariaKey: "aria_canonical_extractor" },
+  { id: "experimental-param-classes", prefKey: "experimentalParamClassesEnabled", ariaKey: "aria_experimental_params" },
+];
+
+describe("#925 — the remaining surfaced boolean prefs are all ON by default", () => {
   for (const { prefKey } of BOOLEAN_CONTROLS) {
     test(`PREF_DEFAULTS.${prefKey} is true`, () => {
       assert.strictEqual(
@@ -71,6 +83,58 @@ describe("#925 — each surfaced toggle has an HTML row and a bindToggle wiring"
       );
     });
   }
+});
+
+describe("#1355 — canonical-extractor / experimental-param-classes have an HTML row and bindToggle wiring", () => {
+  for (const { id, prefKey, ariaKey } of DEV_TOOLS_CONTROLS) {
+    test(`#${id} checkbox exists with data-i18n-aria-label="${ariaKey}"`, () => {
+      assert.ok(optionsHtml.includes(`id="${id}"`), `options.html must contain a checkbox with id="${id}"`);
+      assert.ok(
+        optionsHtml.includes(`data-i18n-aria-label="${ariaKey}"`),
+        `the #${id} row must carry data-i18n-aria-label="${ariaKey}"`
+      );
+    });
+
+    test(`options.js binds #${id} to "${prefKey}"`, () => {
+      assert.ok(
+        optionsJs.includes(`bindToggle("${id}", "${prefKey}", prefs)`),
+        `options.js must call bindToggle("${id}", "${prefKey}", prefs)`
+      );
+    });
+  }
+});
+
+// #1355: these two controls moved OUT of the dev-mode-gated Advanced card
+// and INTO the devToolsMode-gated Developer tools panel (#dev-tools-panel).
+// Moved, not retired: both stay real, default-preserving, exported prefs.
+describe("#1355 — canonical-extractor / experimental-param-classes live inside #dev-tools-panel, not #dev-tools-card", () => {
+  const cardIdx = optionsHtml.indexOf('id="dev-tools-card"');
+  const panelIdx = optionsHtml.indexOf('id="dev-tools-panel"');
+  const verIdx = optionsHtml.indexOf("version-info");
+
+  for (const { id } of DEV_TOOLS_CONTROLS) {
+    test(`#${id} appears inside #dev-tools-panel, after #dev-tools-card`, () => {
+      const idx = optionsHtml.indexOf(`id="${id}"`);
+      assert.ok(idx > panelIdx && idx < verIdx, `#${id} must be inside #dev-tools-panel`);
+      assert.ok(idx > cardIdx, `#${id} must come after #dev-tools-card opens (sanity: document order)`);
+    });
+  }
+
+  test("neither control remains inside #dev-tools-card", () => {
+    const cardBlock = optionsHtml.slice(cardIdx, panelIdx);
+    for (const { id } of DEV_TOOLS_CONTROLS) {
+      assert.ok(!cardBlock.includes(`id="${id}"`), `#${id} must not remain inside #dev-tools-card`);
+    }
+  });
+});
+
+describe("#1355 — canonicalExtractorEnabled / experimentalParamClassesEnabled defaults are unchanged by the move", () => {
+  test("canonicalExtractorEnabled still defaults to true", () => {
+    assert.strictEqual(PREF_DEFAULTS.canonicalExtractorEnabled, true);
+  });
+  test("experimentalParamClassesEnabled still defaults to false (unpromoted experimental flag)", () => {
+    assert.strictEqual(PREF_DEFAULTS.experimentalParamClassesEnabled, false);
+  });
 });
 
 describe("#925 — surfaced controls live inside the dev-mode-gated Advanced card", () => {

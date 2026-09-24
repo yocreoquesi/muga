@@ -223,6 +223,22 @@ test.describe("Options — developer tools (#1271 item 1)", () => {
     await expect(devToolsPanel).toBeHidden();
   });
 
+  // #1355: canonicalExtractorEnabled and experimentalParamClassesEnabled
+  // moved from the dev-mode-gated Advanced card into this devToolsMode-gated
+  // panel. Still real, exported prefs — only the location changed.
+  test("canonical-extractor and experimental-param-classes live in Developer tools, not Advanced", async ({ optionsPage: page }) => {
+    await setCheckbox(page, "dev-mode", true);
+    await expect(page.locator("#dev-tools-card #canonical-extractor")).toHaveCount(0);
+    await expect(page.locator("#dev-tools-card #experimental-param-classes")).toHaveCount(0);
+    await setCheckbox(page, "dev-mode", false);
+
+    await setCheckbox(page, "dev-tools-mode", true);
+    await expect(page.locator("#canonical-extractor")).toBeVisible();
+    await expect(page.locator("#canonical-extractor")).toBeChecked();
+    await expect(page.locator("#experimental-param-classes")).toBeVisible();
+    await setCheckbox(page, "dev-tools-mode", false);
+  });
+
   test("URL tester produces a clean result", async ({ optionsPage: page }) => {
     // The developer tools have their own gate now (#1271 item 1): reaching a
     // real Advanced setting no longer hands the user a panel that can replay

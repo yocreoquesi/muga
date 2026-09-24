@@ -357,17 +357,10 @@
         </div>
       </div>
 
-      <!-- Advanced: Experimental (#936 — moved into the gated card; fixes the inverted gate) -->
-      <div class="card card-dev">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="exp_param_classes_label">Experimental: strip params that look like trackers</strong>
-            <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
-            <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
-        </div>
-      </div>
+      <!-- #1355 (ADR-0011 internal-with-a-default): experimentalParamClassesEnabled's
+           control moved to Developer tools (devToolsMode-gated), see
+           #dev-tools-panel below, until false-positive evidence supports
+           promoting it out of "experimental" entirely. -->
 
       <!-- Advanced: Tracking categories -->
       <h2 class="mt-16" data-i18n="section_tracking_categories">Tracking categories</h2>
@@ -390,13 +383,9 @@
       <!-- Advanced: Privacy (#925 — newly surfaced prefs, all ON by default) -->
       <h2 class="mt-16" data-i18n="section_privacy_controls">Privacy</h2>
       <div class="card">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_canonical_extractor_label">Find the real destination when a wrapper hides it</strong>
-            <small data-i18n="row_canonical_extractor_hint">When a wrapper hides its destination, MUGA reads the page's canonical link to find the real target before giving up.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="canonical-extractor" data-i18n-aria-label="aria_canonical_extractor"><span class="slider"></span></label>
-        </div>
+        <!-- #1355 (ADR-0011 internal-with-a-default): canonicalExtractorEnabled's
+             control moved to Developer tools (devToolsMode-gated), see
+             #dev-tools-panel below. -->
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_cross_site_frequency_label">Cross-site identifier detection</strong>
@@ -616,6 +605,28 @@
               <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- #1355 (ADR-0011 internal-with-a-default): moved here from the
+           dev-mode-gated Advanced card. Both stay real, exported prefs —
+           only the control's location changed, to Developer tools
+           (devToolsMode-gated) rather than Advanced (devMode-gated). -->
+      <div class="card card-dev">
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="row_canonical_extractor_label">Find the real destination when a wrapper hides it</strong>
+            <small data-i18n="row_canonical_extractor_hint">When a wrapper hides its destination, MUGA reads the page's canonical link to find the real target before giving up.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="canonical-extractor" data-i18n-aria-label="aria_canonical_extractor"><span class="slider"></span></label>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <strong data-i18n="exp_param_classes_label">Experimental: strip params that look like trackers</strong>
+            <small data-i18n="exp_param_classes_hint">Strips params whose value shape matches a tracker pattern (long, high-entropy, base64/hex/uuid). Ships behind this flag because false positives can break some sites.</small>
+            <small class="hint warn" data-i18n="exp_param_classes_warn">May break some sites. Disable if you see issues.</small>
+          </div>
+          <label class="toggle"><input type="checkbox" id="experimental-param-classes" data-i18n-aria-label="aria_experimental_params"><span class="slider"></span></label>
         </div>
       </div>
     </div>
