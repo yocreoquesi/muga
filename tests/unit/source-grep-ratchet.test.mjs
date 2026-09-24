@@ -291,6 +291,7 @@ const BASELINE = {
   "options-toggle-accessible-names.test.mjs": 4,
   "settings-hint-copy-drift.test.mjs": 4,
   "settings-report-copy.test.mjs": 3,
+  "scoped-facts-process-url.test.mjs": 11, // #1409: 3 wiring checks on service-worker.js (browser-only composition root), counted per bound slice
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
