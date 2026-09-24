@@ -18,6 +18,7 @@ on:
       - "Auto-ingest rule parameters"
       - "Moat expansion — weekly affiliate-param discovery"
       - "Import upstream tracking params"
+      - "Anchored-only globals — monthly report"
     types: [completed]
 
 permissions:
