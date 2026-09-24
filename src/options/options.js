@@ -11,7 +11,7 @@ import { planSessionHistoryView } from "../lib/session-history-view.js";
 import { ACTIVITY_SCOPES, DEFAULT_ACTIVITY_SCOPE, isValidActivityScope, planActivityScopeView } from "../lib/activity-scope-view.js";
 import { presentLedger, DEFAULT_LEDGER_CAPACITY, EVENT_TYPES } from "../lib/attribution-ledger.js";
 import { renderEntries as renderLedgerEntries } from "../lib/attribution-ledger-view.js";
-import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
+import { buildParamBreakdownView, buildParamIndex, resolveCategoryText } from "../lib/param-breakdown-view.js";
 import { writeToClipboard } from "../lib/clipboard.js";
 import {
   createTracker as createFrequencyTracker,
@@ -145,33 +145,14 @@ async function getCopySafeCleanUrl(originalUrl) {
 
 // ── Activity ledger param breakdown (#1352) ─────────────────────────────────
 //
-// Ported from popup.js's _buildParamIndex/_renderParamBreakdown for the
-// session-history scope's "why was this cleaned?" breakdown. popup.js keeps
-// its OWN copy of these two functions because its per-page preview
-// breakdown (showUrlPreview) still needs them there; this is a second,
-// independent copy for the Settings surface, not a shared import, since
-// popup.js has no exports (see every other tests/unit/popup-*.test.mjs
-// comment on that constraint).
+// Ported from popup.js's _renderParamBreakdown for the session-history
+// scope's "why was this cleaned?" breakdown. The reverse index comes from
+// the shared pure builder in param-breakdown-view.js (#1445), so popup,
+// Settings and the web tool resolve category names the same way.
 
 let _activityParamIndex = null;
 function _buildActivityParamIndex() {
-  if (_activityParamIndex) return _activityParamIndex;
-  _activityParamIndex = new Map();
-  for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-    for (const param of catData.params) {
-      _activityParamIndex.set(param.toLowerCase(), {
-        categoryKey: catKey,
-        label: catData.label,
-        labelEs: catData.labelEs,
-        labelPt: catData.labelPt,
-        labelDe: catData.labelDe,
-        description: catData.description,
-        descriptionEs: catData.descriptionEs,
-        descriptionPt: catData.descriptionPt,
-        descriptionDe: catData.descriptionDe,
-      });
-    }
-  }
+  if (!_activityParamIndex) _activityParamIndex = buildParamIndex(TRACKING_PARAM_CATEGORIES);
   return _activityParamIndex;
 }
 
@@ -1745,9 +1726,8 @@ function renderCategories(disabledCategories) {
   const disabled = new Set(disabledCategories);
 
   for (const [key, cat] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-    const langSuffix = { es: "Es", pt: "Pt", de: "De" }[_currentLang];
-    const label = (langSuffix && cat["label" + langSuffix]) || cat.label;
-    const desc = (langSuffix && cat["description" + langSuffix]) || cat.description;
+    // #1400: every UI language resolves through the locale files.
+    const { label, description: desc } = resolveCategoryText(cat, _currentLang, t);
 
     const row = document.createElement("div");
     row.className = "row";

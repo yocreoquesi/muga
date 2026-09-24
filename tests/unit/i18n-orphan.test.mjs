@@ -99,18 +99,10 @@ describe("All TRANSLATIONS keys are referenced in HTML or JS", () => {
 
   const allSource = getAllFiles(srcDir).map(f => readFileSync(f, "utf8")).join("\n");
 
-  // param_category_* keys (except "other") are kept in TRANSLATIONS as a reference
-  // mirror of affiliates.js label values. The breakdown in popup.js reads labelEs/labelPt/labelDe
-  // directly from TRACKING_PARAM_CATEGORIES for performance; the i18n keys exist so contributors
-  // have one canonical place to update translations. They are verified by param-categories.test.mjs.
+  // (#1400 retired the seven reference-only param_category_* keys: the
+  // category_<id>_label/_desc keys are named by TRACKING_PARAM_CATEGORIES
+  // itself and resolved through t() by param-breakdown-view.js.)
   const REFERENCE_ONLY = new Set([
-    "param_category_analytics",
-    "param_category_social",
-    "param_category_advertising",
-    "param_category_email",
-    "param_category_affiliate",
-    "param_category_marketplace",
-    "param_category_ecommerce",
     // affiliate-autoinject-notice: these four are consumed via content/
     // cleaner.js's hand-mirrored STRINGS table (content scripts cannot
     // import src/lib/i18n.js — same reason as the pre-existing toast_*

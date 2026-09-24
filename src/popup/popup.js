@@ -12,7 +12,7 @@ import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
 import { findSuspiciousParams } from "../lib/entropy-heuristic.js";
-import { buildParamBreakdownView } from "../lib/param-breakdown-view.js";
+import { buildParamBreakdownView, buildParamIndex } from "../lib/param-breakdown-view.js";
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
@@ -26,29 +26,12 @@ import { isFreshInstall } from "../lib/stats-zero-state.js";
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
 /**
- * Builds a reverse index: param name → { category key, label*, description* }.
- * Cached as singleton (rebuilt across popup sessions only, not per render —
- * the history list can render this for many entries in a single popup open).
+ * Reverse index: param name → category info. Built once per popup open by
+ * the shared pure builder (#1445), not per render.
  */
 let _paramIndex = null;
 function _buildParamIndex() {
-  if (_paramIndex) return _paramIndex;
-  _paramIndex = new Map();
-  for (const [catKey, catData] of Object.entries(TRACKING_PARAM_CATEGORIES)) {
-    for (const param of catData.params) {
-      _paramIndex.set(param.toLowerCase(), {
-        categoryKey: catKey,
-        label: catData.label,
-        labelEs: catData.labelEs,
-        labelPt: catData.labelPt,
-        labelDe: catData.labelDe,
-        description: catData.description,
-        descriptionEs: catData.descriptionEs,
-        descriptionPt: catData.descriptionPt,
-        descriptionDe: catData.descriptionDe,
-      });
-    }
-  }
+  if (!_paramIndex) _paramIndex = buildParamIndex(TRACKING_PARAM_CATEGORIES);
   return _paramIndex;
 }
 
