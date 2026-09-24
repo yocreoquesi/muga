@@ -23,6 +23,13 @@ export const PREF_DEFAULTS = {
   blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]
   customParams: [],  // e.g. ["ref_code", "promo_id"]
+  // Selects which of two matchers strips a request: the declarative network
+  // layer (dnrEnabled: true) or the runtime cleaner. Both implement the same
+  // predicate (kept honest by tests/unit/dnr-runtime-parity.test.mjs). A user
+  // has no basis to prefer one, so its Settings control was removed (#1355,
+  // ADR-0011 internal-with-a-default) — this stays a real internal default,
+  // not a user-facing preference. Not in SETTINGS_FIELDS: no control, no
+  // export/import round-trip (see settings-schema.js).
   dnrEnabled: true,
   // Active-defense content scripts toggle (#1006): gates the history
   // pushState/replaceState defuser, the window.name defuser, and the DOM

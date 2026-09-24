@@ -137,7 +137,16 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "enabled", kind: "boolean", label: "toggle_enabled" },
   { key: "notifyForeignAffiliate", kind: "boolean", label: "row_notify_label" },
   { key: "stripAllAffiliates", kind: "boolean", label: "row_strip_affiliates_label" },
-  { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },
+  // dnrEnabled (#1355, ADR-0011 internal-with-a-default): its Settings
+  // control was removed — it only ever selected which of two matchers (the
+  // declarative network layer vs the runtime cleaner) strips a request, and
+  // both implement the same predicate (kept honest by
+  // tests/unit/dnr-runtime-parity.test.mjs). A user has no basis to prefer
+  // one. The pref stays a real internal default in PREF_DEFAULTS; it is
+  // simply no longer user-settable, so — same precedent as
+  // hoverPreviewDelayMs above — it is not described here and does not
+  // round-trip through export/import. A legacy export still carrying the key
+  // imports cleanly with the key ignored.
   { key: "activeDefenseEnabled", kind: "boolean", label: "row_active_defense_label" },
   { key: "blockPings", kind: "boolean", label: "row_pings_label" },
   // referer-beacon-privacy (PR 1): opt-in, default false. Labels are placeholder

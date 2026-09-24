@@ -183,12 +183,21 @@ test.describe("Options — advanced settings", () => {
   test("advanced toggles are visible when dev mode is on", async ({ optionsPage: page }) => {
     await setCheckbox(page, "dev-mode", true);
 
-    const advancedToggles = ["dnr-enabled", "block-pings", "amp-redirect", "unwrap-redirects"];
+    const advancedToggles = ["block-pings", "amp-redirect", "unwrap-redirects"];
     for (const id of advancedToggles) {
       await expect(page.locator(`#${id}`)).toBeAttached();
       await expect(page.locator(`#${id}`)).toBeChecked();
     }
 
+    await setCheckbox(page, "dev-mode", false);
+  });
+
+  // #1355: dnrEnabled's control was removed entirely (ADR-0011
+  // internal-with-a-default) — no checkbox anywhere, not even gated behind
+  // Advanced or Developer tools. The pref stays internal with a default.
+  test("dnr-enabled has no control anywhere (#1355)", async ({ optionsPage: page }) => {
+    await setCheckbox(page, "dev-mode", true);
+    await expect(page.locator("#dnr-enabled")).toHaveCount(0);
     await setCheckbox(page, "dev-mode", false);
   });
 });

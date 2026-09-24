@@ -41,7 +41,6 @@ const SAMPLE_PREFS = {
   blacklist: ["evil.com"],
   whitelist: ["good.com::tag::abc"],
   customParams: ["ref_code"],
-  dnrEnabled: true,
   activeDefenseEnabled: true,
   contextMenuEnabled: true,
   blockPings: true,
@@ -76,10 +75,10 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 21 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "notifyForeignAffiliate", "stripAllAffiliates",
-      "dnrEnabled", "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
+      "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
       "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled", "hoverPreviewEnabled",
@@ -87,7 +86,7 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
       "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 21);
+    assert.strictEqual(BOOLEAN_KEYS.length, 20);
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -97,6 +96,19 @@ describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
     assert.ok(!BOOLEAN_KEYS.includes("remoteRulesEnabled"));
     assert.ok(!BOOLEAN_KEYS.includes("devMode"));
     assert.ok(!BOOLEAN_KEYS.includes("devToolsMode"));
+  });
+
+  // #1355 (ADR-0011 "internal-with-a-default"): dnrEnabled's Settings control
+  // was removed — it selects which of two matchers strips (DNR vs runtime),
+  // a decision a user has no basis to prefer either way. It stays a REAL
+  // internal pref in PREF_DEFAULTS with a default (see prefs.js), but is no
+  // longer user-settable, so — same precedent as hoverPreviewDelayMs before
+  // it and injectOwnAffiliate/cookieConsentMode after removal — it is not in
+  // SETTINGS_FIELDS/BOOLEAN_KEYS and does not round-trip through export/import.
+  test("dnrEnabled has no Settings control, so it is not part of the schema (#1355)", () => {
+    const field = SETTINGS_FIELDS.find((f) => f.key === "dnrEnabled");
+    assert.strictEqual(field, undefined, "dnrEnabled must not be in SETTINGS_FIELDS — no control to round-trip");
+    assert.ok(!BOOLEAN_KEYS.includes("dnrEnabled"));
   });
 
   test("SETTINGS_FIELDS has no duplicate keys (single source of truth)", () => {
@@ -392,6 +404,22 @@ describe("planImport — injectOwnAffiliate removed from the schema (drop-affili
     assert.strictEqual(plan.toSave.injectOwnAffiliate, undefined);
     const planFalse = planImport(validImportData({ injectOwnAffiliate: false }));
     assert.strictEqual(planFalse.toSave.injectOwnAffiliate, undefined);
+  });
+});
+
+// #1355: dnrEnabled's control was removed but the pref itself stays internal
+// (PREF_DEFAULTS keeps a default). An older settings export made while the
+// control still existed may still carry the key — it must import cleanly,
+// with the key simply ignored, same precedent as cookieConsentMode/
+// followShortenersEnabled above.
+describe("planImport — dnrEnabled has no control, so it is ignored on import (#1355)", () => {
+  test("a legacy export carrying dnrEnabled imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport(validImportData({ dnrEnabled: true }));
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.dnrEnabled, undefined);
+    const planFalse = planImport(validImportData({ dnrEnabled: false }));
+    assert.strictEqual(planFalse.ok, true);
+    assert.strictEqual(planFalse.toSave.dnrEnabled, undefined);
   });
 });
 

@@ -294,13 +294,11 @@
     </div>
     <div id="dev-tools-card" class="dev-tools-hidden">
       <!-- Advanced: URL cleaning (kept under Advanced per locked decision) --><div class="card card-dev">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_dnr_label">Clean links before navigation</strong>
-            <small data-i18n="row_dnr_hint">Cleans URLs as you type in the address bar, from bookmarks, and links from other apps. Before the page loads.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="dnr-enabled" data-i18n-aria-label="aria_dnr_enabled"><span class="slider"></span></label>
-        </div>
+        <!-- #1355 (ADR-0011 internal-with-a-default): dnrEnabled's control
+             was removed here. It selected which of two matchers strips a
+             request (declarative network layer vs runtime cleaner) — both
+             implement the same predicate, and a user has no basis to prefer
+             one. The pref stays internal with a default (src/lib/prefs.js). -->
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_active_defense_label">Keep cleaning after the page loads</strong>
