@@ -379,10 +379,6 @@
       "category": "email"
     },
     {
-      "param": "axr_tref",
-      "category": "generic"
-    },
-    {
       "param": "bance_xuid",
       "category": "generic"
     },
@@ -929,10 +925,6 @@
       "category": "email"
     },
     {
-      "param": "mnv_sid",
-      "category": "generic"
-    },
-    {
       "param": "mscid",
       "category": "ads"
     },
@@ -1236,10 +1228,6 @@
       "category": "email"
     },
     {
-      "param": "sprtype",
-      "category": "generic"
-    },
-    {
       "param": "spuserid",
       "category": "email"
     },
@@ -1326,10 +1314,6 @@
     {
       "param": "twclid",
       "category": "ads"
-    },
-    {
-      "param": "ucx_ref",
-      "category": "generic"
     },
     {
       "param": "unicorn_click_id",
