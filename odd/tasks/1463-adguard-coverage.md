@@ -213,14 +213,11 @@ required for this area; the deliverable is this documented decision record.
 
 **T2/T3 — the 18 "other" host-anchored misses, resolved:**
 
-Landed (9 host entries, `domain-rules.json` `stripParams`, no existing
+Landed (8 host entries, `domain-rules.json` `stripParams`, no existing
 conflict):
 - `www.nicovideo.jp`: `at`
 - `hotosena.com`: `landing` (new entry; single AdGuard anchor, no counter-
   evidence, plausible ad-tracking name)
-- `onelink.me` (covers `nikke.onelink.me` via suffix match): append `pid`
-  to existing `stripParams` (already strips `af_sub1` for the same
-  AppsFlyer OneLink family, #1228 precedent)
 - `announcements.bybit.com`, `app.5-delivery.ru`, `getir.com`,
   `nikke-jp.com`, `qcplay.co.jp`, `toomics.com`: new entries, `pid`
 
@@ -239,6 +236,29 @@ silently overridden):
 - `ref_` at `imdb.com` — already in `imdb.com`'s `preserveParams`.
 - `src_tab_page_id` at `shein.com` — already in `shein.com`'s
   `preserveParams`.
+
+**Correction (2026-09-25, parent review of commit 39bc932): `pid` at
+`onelink.me` — REJECTED, not landed.** The original commit appended `pid`
+to the existing `onelink.me` `domain-rules.json` entry. AdGuard's actual
+anchor for this fact is `nikke.onelink.me`, not `onelink.me` — appending it
+to the broader parent entry widens the anchor via `getDomainParamSets`'
+suffix walk, stripping `pid` on EVERY OneLink subdomain (every app/brand
+using AppsFlyer OneLink), not just nikke's. This is exactly the "never
+widen an anchor" violation the issue's safety principles forbid. Separately,
+AppsFlyer's `pid` is the partner/media-source id that attributes an install
+to a specific partner — which can include influencers/affiliates — putting
+it in the same affiliate-risk class as Area 4's params, not a plain generic
+tracking name. A corrected narrower fix (a new `nikke.onelink.me` child
+entry) was considered and rejected too: `domain-rules.json`'s nested-domain
+DNR generation has a known one-rule-per-request trap (see
+`muga-dnr-one-rule-per-request` in project memory / #1021) where a
+parent+child domain pair can produce ambiguous/incomplete DNR coverage.
+Given the affiliate-risk-adjacent semantics, `pid` at `nikke.onelink.me` is
+simply not landed at all — reverted to the pre-#1463 `onelink.me` entry
+(`af_sub1` only). Re-synced via `build-rules-store.mjs --import`,
+regenerated `tracking-params.json`/`rules-manifest.json`/web+landing engine
+mirrors. `domain-rules.json` entry count unchanged (297 — `onelink.me` was
+an existing entry, not a new one, so no count-claim update needed).
 
 **T3 — `ref` (79 facts): none landed. Returned to maintainer.**
 

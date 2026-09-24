@@ -3471,10 +3471,9 @@ export const DOMAIN_RULES = [
     "domain": "onelink.me",
     "preserveParams": [],
     "stripParams": [
-      "af_sub1",
-      "pid"
+      "af_sub1"
     ],
-    "note": "AppsFlyer OneLink, mobile deep-link/attribution service. `af_sub1` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3). `pid` (AppsFlyer partner id, same family) host-anchored at nikke.onelink.me per the live AdGuard Filter 17 measurement (#1463)."
+    "note": "AppsFlyer OneLink, mobile deep-link/attribution service. `af_sub1` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
   },
   {
     "domain": "online.nojima.co.jp",
