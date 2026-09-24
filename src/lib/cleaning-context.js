@@ -31,6 +31,7 @@
  */
 
 import { processUrl } from "./cleaner.js";
+import { getRemoteParams } from "./storage.js";
 
 /**
  * Rule files the cleaner needs beyond the prefs. Fetched from the extension
@@ -71,13 +72,59 @@ async function readRules(path, resolveUrl) {
 }
 
 /**
- * Loads the full cleaning context, cached for the life of the page.
+ * Reads the signed remote channel's cached payload (#1442).
  *
- * @param {{ resolveUrl?: (p: string) => string }} [opts] injection seam for tests
- * @returns {Promise<{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array}>}
+ * The global params used to travel only on `prefs.remoteParams`, which the
+ * service worker's getPrefsWithCache() alone merges in. Every preview read its
+ * prefs somewhere else, so it cleaned without them and could call a URL clean
+ * that MUGA strips. Carrying them in the context means no caller can forget.
+ *
+ * Best-effort, like the rule files: a failed read yields an empty channel,
+ * never a failed context.
+ *
+ * @param {() => Promise<any>} readRemote resolves to getRemoteParams()'s shape
+ * @returns {Promise<{remoteParams: string[], scopedFacts: Array}>}
+ */
+async function readRemoteChannel(readRemote) {
+  try {
+    const { remoteParams, remoteRulesMeta } = (await readRemote()) ?? {};
+    return {
+      remoteParams: Array.isArray(remoteParams) ? remoteParams : [],
+      scopedFacts: Array.isArray(remoteRulesMeta?.scopedFacts) ? remoteRulesMeta.scopedFacts : [],
+    };
+  } catch {
+    return { remoteParams: [], scopedFacts: [] };
+  }
+}
+
+/**
+ * Loads the full cleaning context.
+ *
+ * The packaged rule files are cached for the life of the page. The remote
+ * channel is re-read on every call: a fetch can land while Settings is open,
+ * and a preview must answer with the payload the service worker cleans with.
+ *
+ * @param {{ resolveUrl?: (p: string) => string, readRemote?: () => Promise<any> }} [opts]
+ *   injection seams for tests
+ * @returns {Promise<{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams: string[], scopedFacts: Array}>}
  */
 export async function loadCleaningContext(opts = {}) {
   const resolveUrl = opts.resolveUrl ?? ((p) => chrome.runtime.getURL(p));
+  const readRemote = opts.readRemote ?? getRemoteParams;
+  const [rules, remote] = await Promise.all([
+    loadRuleFiles(resolveUrl),
+    readRemoteChannel(readRemote),
+  ]);
+  return { ...rules, ...remote };
+}
+
+/**
+ * The packaged rule files, cached for the life of the page.
+ *
+ * @param {(p: string) => string} resolveUrl
+ * @returns {Promise<{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array}>}
+ */
+async function loadRuleFiles(resolveUrl) {
   if (_cached) return _cached;
   if (_pending) return _pending;
 
@@ -113,17 +160,26 @@ export function resetCleaningContextCache() {
  * call sites were already spreading that override in by hand, which is one
  * more thing that only worked while everyone remembered it.
  *
+ * The remote channel's global params (#1442) come from the context too, and
+ * only while remote rules are on for this device (`remoteRulesEnabled` is a
+ * per-device guarded pref, so callers must pass getPrefs() output). That is
+ * the same gate the DNR sync applies to the network rule.
+ *
  * @param {string} rawUrl
  * @param {object} prefs
- * @param {{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array}} context
+ * @param {{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams?: string[]}} context
  * @param {{referrer?: string}} [opts] referrer drives honor-creator; "" disables it
  * @returns {object} the processUrl result
  */
 export function cleanForPreview(rawUrl, prefs, context, opts = {}) {
   const { domainRules = [], pathStripRules = [], pathAffiliateRules = [] } = context ?? {};
+  const remoteOn = prefs?.remoteRulesEnabled !== false;
+  const remoteParams = !remoteOn
+    ? []
+    : Array.isArray(context?.remoteParams) ? context.remoteParams : (prefs?.remoteParams ?? []);
   return processUrl(
     rawUrl,
-    { ...prefs, notifyForeignAffiliate: false },
+    { ...prefs, notifyForeignAffiliate: false, remoteParams },
     domainRules,
     undefined,
     undefined,
