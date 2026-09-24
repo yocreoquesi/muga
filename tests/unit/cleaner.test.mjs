@@ -1256,7 +1256,9 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("strips pd_rd_i and content-id — preserves th", () => {
     const raw = "https://www.amazon.es/edihome/dp/B0GQ4N9N33/?content-id=amzn1.sym.def&pd_rd_i=B0GQ4N9N33&th=1";
-    const { cleanUrl } = processUrl(raw, PREFS);
+    // domainRules passed on purpose (#1228 step 4): content-id is no longer in
+    // the global list, so amazon.es's own profile is what strips it.
+    const { cleanUrl } = processUrl(raw, PREFS, domainRules);
     const u = new URL(cleanUrl);
     assert.equal(u.searchParams.get("pd_rd_i"), null);
     assert.equal(u.searchParams.get("content-id"), null);
@@ -1280,7 +1282,9 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("full real URL 1 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/Emergencia-Homologada/dp/B0GF8C2S62/?_encoding=UTF8&content-id=amzn1.sym.0a1e4d50&ref_=pd_hp_d_atf_unk&th=1";
-    const { cleanUrl } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
+    // domainRules passed on purpose (#1228 step 4): _encoding/content-id are no
+    // longer in the global list, so amazon.es's own profile strips them.
+    const { cleanUrl } = processUrl(raw, PREFS, domainRules, undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GF8C2S62/", "slug must be stripped, ASIN path preserved");
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");
@@ -1289,7 +1293,7 @@ describe("Amazon — real-world URL cleaning", () => {
 
   test("full real URL 2 from issue #1 — slug stripped, th preserved", () => {
     const raw = "https://www.amazon.es/edihome-Puff/dp/B0GQ4N9N33/ref=zg_bsnr_c_kitchen_d_sccl_3/258-3201434-8228601?content-id=amzn1.sym.8303e4e0&pd_rd_i=B0GQ4N9N33&th=1";
-    const { cleanUrl, junkRemoved } = processUrl(raw, PREFS, [], undefined, undefined, undefined, pathStripRulesFixture);
+    const { cleanUrl, junkRemoved } = processUrl(raw, PREFS, domainRules, undefined, undefined, undefined, pathStripRulesFixture);
     const u = new URL(cleanUrl);
     assert.equal(u.pathname, "/dp/B0GQ4N9N33/", "slug must be stripped, ASIN path preserved");
     assert.equal(u.searchParams.get("th"), "1", "th must be preserved");

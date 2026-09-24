@@ -49,7 +49,11 @@
  * #1326: `ved` and `sca_esv` removed for the same class of reason, one level
  * narrower — they are now PATH-scoped (google.com /search, /webhp), not just
  * host-scoped, and this table has no way to express a path scope any more
- * than it can express a host one. `sxsrf` (never path-scoped) stays.
+ * than it can express a host one.
+ *
+ * #1228 step 4: `sxsrf` removed — it is now host-anchored to google.com in
+ * domain-rules.json rather than stripped everywhere, and this table has no
+ * way to express a host scope either.
  */
 
 /** @type {ReadonlyArray<ReadonlyArray<string>>} */
@@ -72,7 +76,6 @@ export const HOT_PATH_STRIP_ROWS = Object.freeze([
   ["mtm_campaign", "mtm_source", "mtm_medium", "mtm_content"],
   ["hsctatracking"],
   ["__s", "_ga", "_gl", "_gac"],
-  ["sxsrf"],
   ["_pos", "_ss", "_psq", "_sid", "_fid"],
 ].map((row) => Object.freeze(row)));
 

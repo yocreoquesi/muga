@@ -52,11 +52,14 @@ export const TRACKING_PARAMS = [
   // Amazon: internal / referral noise (not the affiliate tag)
   "psc", "spla",
 
-  "linkcode", "creativeasin", "spia",
+  "linkcode", "creativeasin",
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
   "asc_contentid", "asc_contenttype",
-  "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
+  // spia / _encoding / content-id / social_share / skiptwisterog / starsleft
+  // removed (#1228): host-anchored only (ClearURLs "amazon"/"amazon search"
+  // providers; AdGuard has retracted its own content-id line). All six are
+  // already in every amazon.* profile's stripParams.
   // Amazon: store page / brand referral noise
   "lp_asin", "store_ref", "bl_grd_status", "ingress",
   // Amazon: search/browse noise
@@ -81,7 +84,9 @@ export const TRACKING_PARAMS = [
   // AliExpress: non-attribution noise only. The aff_trace_key / algo_* / btsid /
   // ws_ab_test / aff_request_id family is required-at-landing per matrix v1.0 and
   // declared in REDIRECT_NETWORK_PATTERNS.landingParams.
-  "afsmartredirect", "gatewayadapt", "mall_affr",
+  // mall_affr removed (#1228): host-anchored only (ClearURLs "aliexpress"
+  // provider); already in aliexpress.com's stripParams.
+  "afsmartredirect", "gatewayadapt",
 
   // Pinterest
   "e_t", "epik",
@@ -208,7 +213,9 @@ export const TRACKING_PARAMS = [
   // (/search, /webhp) — #1326 slice 2. Upstream anchors them to a path, not
   // the whole host, and domain-rules.json can now express that; see
   // docs/adr/0010-path-scoped-param-rules.md.
-  "sxsrf",      // Google CSRF/tracking token
+  // sxsrf removed (#1228): host-anchored only (ClearURLs "google" provider,
+  // whole-host pattern, no path restriction); already in google.com's
+  // stripParams.
 
   // Branch.io (deep link attribution)
   "_branch_match_id",  // Branch match ID
@@ -683,10 +690,12 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Amazon
       "psc", "spla",
 
-      "linkcode", "creativeasin", "spia",
+      "linkcode", "creativeasin",
       // ascsubtag removed: affiliate attribution (#794)
       "asc_contentid", "asc_contenttype",
-      "_encoding", "content-id", "social_share", "skiptwisterog", "starsleft",
+      // spia / _encoding / content-id / social_share / skiptwisterog /
+      // starsleft removed (#1228): host-anchored only, already in every
+      // amazon.* profile's stripParams.
       "lp_asin", "store_ref", "bl_grd_status", "ingress",
       "sprefix", "sbo", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
@@ -696,10 +705,11 @@ export const TRACKING_PARAM_CATEGORIES = {
       // AliExpress: non-attribution noise only. The aff_trace_key / algo_* /
       // btsid / ws_ab_test / aff_request_id family is declared in
       // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
-      "afsmartredirect", "gatewayadapt", "mall_affr",
+      "afsmartredirect", "gatewayadapt",
       // Google search tracking (ved/sca_esv/gs_lcp are now path-scoped on
-      // google.com /search, /webhp — #1326 slice 2 — not global)
-      "sxsrf",
+      // google.com /search, /webhp — #1326 slice 2 — not global; sxsrf
+      // removed #1228, host-anchored only, already in google.com's
+      // stripParams)
       // GA4 cross-domain
       "_gl", "_ga", "_gac",
       // TikTok share tracking
