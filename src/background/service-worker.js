@@ -6,7 +6,7 @@
 
 import { computeNavigationStrip, parseListEntry, isSiteFullyExempt, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, migrateDropDnrEnabledPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -210,6 +210,10 @@ runOneTimeMigrations({
   // by the retired cookie-consent-minimizer subsystem (sync pref + legacy
   // keys, plus the dead Tier2 remote-rules local cache).
   migrateDropCookieConsent,
+  // #1355 R3-001: dnrEnabled's Settings control was removed and getPrefs()
+  // no longer honours a stored value (internal default governs) — this
+  // deletes the now-meaningless stale key so it stops taking up space.
+  migrateDropDnrEnabledPref,
 });
 
 // --- Session log (actions + errors, exported via debug log) ---

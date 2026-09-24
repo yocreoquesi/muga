@@ -10,8 +10,9 @@
  *   2. Source guards on src/content/hover-preview.js: the PC-only gate, the
  *      prefs fetch, the site-exemption check, the delay/default wiring, the
  *      host-change decision, and the pref name it gates on.
- *   3. PREF_DEFAULTS carries the shipped defaults (hoverPreviewEnabled: true,
- *      hoverPreviewDelayMs: 2500).
+ *   3. PREF_DEFAULTS carries the shipped default (hoverPreviewEnabled: true).
+ *      hoverPreviewDelayMs is retired (#1355): a fixed 2500ms constant in
+ *      hover-preview.js, no pref, no control, no export.
  *
  * Content scripts cannot import ES modules (MV3/MV2), so hover-preview.js
  * itself cannot be executed under Node the way a module can — it is instead
@@ -95,14 +96,18 @@ describe("hover-preview.js — source guards", () => {
     );
   });
 
-  test("uses hoverPreviewDelayMs with a 2500ms default", () => {
+  test("uses a fixed 2500ms hold delay (hoverPreviewDelayMs retired, #1355)", () => {
+    // #1355: hoverPreviewDelayMs had no Settings control, was excluded from
+    // export, and both readers hardcoded the same `|| 2500` fallback anyway —
+    // it paid sync/migration cost for a value that was already a constant.
+    // Retired to a plain in-file constant; no pref, no control, no export.
     assert.ok(
-      HOVER_PREVIEW_SRC.includes("hoverPreviewDelayMs"),
-      "must reference prefs.hoverPreviewDelayMs",
+      !HOVER_PREVIEW_SRC.includes("hoverPreviewDelayMs"),
+      "the retired hoverPreviewDelayMs pref must not remain in hover-preview.js",
     );
     assert.ok(
-      /hoverPreviewDelayMs\)\s*\|\|\s*2500/.test(HOVER_PREVIEW_SRC),
-      "must default the hold delay to 2500ms when hoverPreviewDelayMs is unset",
+      /HOVER_PREVIEW_DELAY_MS\s*=\s*2500/.test(HOVER_PREVIEW_SRC),
+      "must define a fixed HOVER_PREVIEW_DELAY_MS = 2500 constant",
     );
   });
 
@@ -208,8 +213,11 @@ describe("PREF_DEFAULTS — hover preview (#1028)", () => {
     assert.equal(PREF_DEFAULTS.hoverPreviewEnabled, true);
   });
 
-  test("hoverPreviewDelayMs defaults to 2500", () => {
-    assert.equal(PREF_DEFAULTS.hoverPreviewDelayMs, 2500);
+  test("hoverPreviewDelayMs is retired (no pref, fixed 2500ms in code, #1355)", () => {
+    assert.ok(
+      !Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, "hoverPreviewDelayMs"),
+      "PREF_DEFAULTS must not carry hoverPreviewDelayMs — it is a fixed constant now",
+    );
   });
 });
 
@@ -252,7 +260,7 @@ describe("hover-preview source guards — reachable by keyboard (#1260)", () => 
     );
     assert.ok(focusBlock.length > 0, "expected a focusin handler before the focusout one");
     assert.ok(
-      /hoverPreviewDelayMs/.test(focusBlock) && /setTimeout\(/.test(focusBlock),
+      /HOVER_PREVIEW_DELAY_MS/.test(focusBlock) && /setTimeout\(/.test(focusBlock),
       "the focusin handler must schedule the same hold as hover, not call fireHover directly",
     );
   });

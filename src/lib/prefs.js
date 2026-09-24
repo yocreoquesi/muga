@@ -23,6 +23,13 @@ export const PREF_DEFAULTS = {
   blacklist: [],     // e.g. ["amazon.es", "booking.com::aid::123456"]
   whitelist: [],     // e.g. ["amazon.es::tag::youtuber-21"]
   customParams: [],  // e.g. ["ref_code", "promo_id"]
+  // Selects which of two matchers strips a request: the declarative network
+  // layer (dnrEnabled: true) or the runtime cleaner. Both implement the same
+  // predicate (kept honest by tests/unit/dnr-runtime-parity.test.mjs). A user
+  // has no basis to prefer one, so its Settings control was removed (#1355,
+  // ADR-0011 internal-with-a-default) — this stays a real internal default,
+  // not a user-facing preference. Not in SETTINGS_FIELDS: no control, no
+  // export/import round-trip (see settings-schema.js).
   dnrEnabled: true,
   // Active-defense content scripts toggle (#1006): gates the history
   // pushState/replaceState defuser, the window.name defuser, and the DOM
@@ -138,8 +145,12 @@ export const PREF_DEFAULTS = {
   // activates on touch-only devices), and unobtrusive (appears only after a
   // ~2.5s hold). Opt-out any time in Settings > Advanced.
   hoverPreviewEnabled: true,
-  // Hold duration (ms) before the hover preview tooltip appears.
-  hoverPreviewDelayMs: 2500,
+  // hoverPreviewDelayMs was retired (#1355, ADR-0011): it had no Settings
+  // control anywhere, was deliberately excluded from export, and its only
+  // two readers hardcoded a `|| 2500` fallback anyway — a constant paying
+  // sync/migration/import cost as if it were a preference. It is now a
+  // plain HOVER_PREVIEW_DELAY_MS = 2500 constant in
+  // src/content/hover-preview.js. Do NOT add it back here.
   // Shortener resolution split (browsewrap Phase 2, follow-up to ADR-0004).
   // The single `followShortenersEnabled` pref used to gate BOTH click-time
   // resolution (content/cleaner.js) and hover/proactive resolution
@@ -231,7 +242,20 @@ export async function getPrefs() {
   // Per-device pref overlay (#364). Any key set in overrides wins
   // over sync. Boolean shape is enforced at the source (overrides
   // can only be set via per-device-prefs.setOverrides).
-  return { ...sync, ...overlay, ...overrides };
+  //
+  // dnrEnabled (#1355 review finding R3-001): forced to the internal
+  // default AFTER the merge above, discarding whatever `sync` read back.
+  // Its Settings control was removed, but `sync` above still comes from
+  // `chrome.storage.sync.get(PREF_DEFAULTS)`, which returns a STORED value
+  // over the default when one exists — so a user who had explicitly set
+  // `dnrEnabled: false` before the control's removal would otherwise stay
+  // stranded on the DNR-off path forever, with no control left to flip it
+  // back. "Control removed" must mean "value no longer matters", not
+  // "value still applies, just unreachable". migrateDropDnrEnabledPref()
+  // (storage-migrations.js) separately deletes the stale stored key so it
+  // stops taking up space; this override is what makes correctness NOT
+  // depend on that migration having run yet.
+  return { ...sync, ...overlay, ...overrides, dnrEnabled: PREF_DEFAULTS.dnrEnabled };
 }
 
 /**

@@ -46,7 +46,8 @@ test.describe("Export / Import", () => {
     expect(data.muga).toBe(true);
     expect(data.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(typeof data.enabled).toBe("boolean");
-    expect(typeof data.dnrEnabled).toBe("boolean");
+    // #1355: dnrEnabled lost its Settings control, so it no longer exports.
+    expect(data.dnrEnabled).toBeUndefined();
     expect(typeof data.blockPings).toBe("boolean");
     expect(typeof data.ampRedirect).toBe("boolean");
     expect(typeof data.unwrapRedirects).toBe("boolean");

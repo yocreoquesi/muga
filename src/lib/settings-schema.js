@@ -137,7 +137,16 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "enabled", kind: "boolean", label: "toggle_enabled" },
   { key: "notifyForeignAffiliate", kind: "boolean", label: "row_notify_label" },
   { key: "stripAllAffiliates", kind: "boolean", label: "row_strip_affiliates_label" },
-  { key: "dnrEnabled", kind: "boolean", label: "row_dnr_label" },
+  // dnrEnabled (#1355, ADR-0011 internal-with-a-default): its Settings
+  // control was removed — it only ever selected which of two matchers (the
+  // declarative network layer vs the runtime cleaner) strips a request, and
+  // both implement the same predicate (kept honest by
+  // tests/unit/dnr-runtime-parity.test.mjs). A user has no basis to prefer
+  // one. The pref stays a real internal default in PREF_DEFAULTS; it is
+  // simply no longer user-settable, so — same precedent as
+  // hoverPreviewDelayMs above — it is not described here and does not
+  // round-trip through export/import. A legacy export still carrying the key
+  // imports cleanly with the key ignored.
   { key: "activeDefenseEnabled", kind: "boolean", label: "row_active_defense_label" },
   { key: "blockPings", kind: "boolean", label: "row_pings_label" },
   // referer-beacon-privacy (PR 1): opt-in, default false. Labels are placeholder
@@ -184,12 +193,11 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "experimentalParamClassesEnabled", kind: "boolean", label: "exp_param_classes_label" },
   { key: "honorCreatorMode", kind: "boolean", label: "honor_creator_mode_label" },
   { key: "creatorAllowlist", kind: "creatorAllowlist", label: "creator_allowlist_label" },
-  // #1028: hoverPreviewDelayMs is deliberately NOT in SETTINGS_FIELDS — it
-  // isn't a discrete-option control like toastDuration, so round-tripping it
-  // through export/import would need its own clamp/validation branch. Out of
-  // scope for now; the pref keeps its PREF_DEFAULTS value (2500ms) on import.
-  // hoverPreviewEnabled is a plain boolean and round-trips normally via
-  // BOOLEAN_KEYS.
+  // hoverPreviewDelayMs was retired entirely (#1355, ADR-0011) — see
+  // src/lib/prefs.js. It was already excluded from SETTINGS_FIELDS before
+  // retirement (no control, so nothing to round-trip); there is now no pref
+  // to describe at all. hoverPreviewEnabled is a plain boolean and round-trips
+  // normally via BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
 ]);
 

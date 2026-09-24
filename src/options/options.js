@@ -334,7 +334,8 @@ async function init() {
   // checked. Never auto-enables suppressReferer/blockBeacons (nudge only).
   await initAffiliateNudge(prefs);
 
-  bindToggle("dnr-enabled", "dnrEnabled", prefs);
+  // #1355: dnrEnabled's Settings control was removed — see prefs.js and
+  // settings-schema.js. No bindToggle call; the pref stays internal.
   bindToggle("active-defense-enabled", "activeDefenseEnabled", prefs);
   bindToggle("context-menu-toggle", "contextMenuEnabled", prefs);
   bindToggle("block-pings", "blockPings", prefs);
@@ -1534,7 +1535,6 @@ function initExportImport() {
       const newPrefs = await chrome.storage.sync.get(PREF_DEFAULTS);
       document.getElementById("notify").checked = newPrefs.notifyForeignAffiliate;
       document.getElementById("strip-affiliates").checked = newPrefs.stripAllAffiliates;
-      document.getElementById("dnr-enabled").checked = newPrefs.dnrEnabled;
       document.getElementById("active-defense-enabled").checked = newPrefs.activeDefenseEnabled;
       document.getElementById("context-menu-toggle").checked = newPrefs.contextMenuEnabled;
       document.getElementById("block-pings").checked = newPrefs.blockPings;

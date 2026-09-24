@@ -2,7 +2,7 @@
  * MUGA: Hover destination preview (#1028)
  *
  * Desktop-only content script. When the user hovers AND holds the mouse
- * still over a link for ~hoverPreviewDelayMs (default 2.5s), shows a small
+ * still over a link for ~2.5s (HOVER_PREVIEW_DELAY_MS), shows a small
  * text-only tooltip with the link's REAL, cleaned destination — never page
  * content, never a screenshot.
  *
@@ -76,6 +76,11 @@
   const SUPPORTED_LANGS = { en: 1, es: 1, pt: 1, de: 1, fr: 1, it: 1, ja: 1 };
   const _navLang = (navigator.language || "en").slice(0, 2);
   let _label = LABELS[_navLang in SUPPORTED_LANGS ? _navLang : "en"];
+
+  // Hold duration (ms) before the tooltip appears (#1355: retired as a pref —
+  // it had no Settings control, was excluded from export, and both readers
+  // hardcoded this exact fallback anyway. Now a plain constant.)
+  const HOVER_PREVIEW_DELAY_MS = 2500;
 
   // ── Prefs cache — fetched once via getPrefs, refreshed on storage change ─
   let _prefs = null;
@@ -436,7 +441,7 @@
       _currentAnchor = null;
       return;
     }
-    const delay = (_prefs && _prefs.hoverPreviewDelayMs) || 2500;
+    const delay = HOVER_PREVIEW_DELAY_MS;
     _timer = setTimeout(() => {
       _timer = null;
       fireHover(anchor, href);
@@ -478,7 +483,7 @@
       _currentAnchor = null;
       return;
     }
-    const delay = (_prefs && _prefs.hoverPreviewDelayMs) || 2500;
+    const delay = HOVER_PREVIEW_DELAY_MS;
     _timer = setTimeout(() => {
       _timer = null;
       fireHover(anchor, href);

@@ -61,7 +61,6 @@ describe("export settings (buildExportPayload behavior)", () => {
       "enabled",
       "notifyForeignAffiliate",
       "stripAllAffiliates",
-      "dnrEnabled",
       "activeDefenseEnabled",
       "blockPings",
       "ampRedirect",
@@ -180,11 +179,19 @@ describe("import settings (planImport behavior)", () => {
   });
 
   test("7. import validates boolean keys by typeof", () => {
-    const plan = planImport(validImportData({ enabled: "true", notifyForeignAffiliate: true, dnrEnabled: 1 }));
+    const plan = planImport(validImportData({ enabled: "true", notifyForeignAffiliate: true, blockPings: 1 }));
     assert.equal(plan.ok, true);
     assert.strictEqual(plan.toSave.enabled, undefined, "non-boolean typed value must not be imported");
     assert.strictEqual(plan.toSave.notifyForeignAffiliate, true);
-    assert.strictEqual(plan.toSave.dnrEnabled, undefined, "non-boolean typed value must not be imported");
+    assert.strictEqual(plan.toSave.blockPings, undefined, "non-boolean typed value must not be imported");
+  });
+
+  // #1355: dnrEnabled's Settings control was removed (ADR-0011
+  // internal-with-a-default); it is no longer in SETTINGS_FIELDS at all, so
+  // an imported value — boolean or not — is simply ignored, never written.
+  test("7b. dnrEnabled is ignored on import regardless of type (#1355 — control removed)", () => {
+    assert.strictEqual(planImport(validImportData({ dnrEnabled: true })).toSave.dnrEnabled, undefined);
+    assert.strictEqual(planImport(validImportData({ dnrEnabled: 1 })).toSave.dnrEnabled, undefined);
   });
 
   test("8. import snaps toastDuration to the nearest offered <option> (#968)", () => {
