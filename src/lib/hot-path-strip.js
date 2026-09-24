@@ -54,6 +54,13 @@
  * #1228 step 4: `sxsrf` removed — it is now host-anchored to google.com in
  * domain-rules.json rather than stripped everywhere, and this table has no
  * way to express a host scope either.
+ *
+ * #1338's decision named `_pos`/`_fid` for removal from TRACKING_PARAMS, but
+ * both are pinned below (HOT_PATH_REQUIRED in strip-table-parity.test.mjs)
+ * as the exact Shopify storefront family a real field report showed being
+ * re-injected client-side via history.replaceState. Left global pending a
+ * maintainer decision on this conflict (see affiliates-data.js's #1338 note
+ * on the Shopify block).
  */
 
 /** @type {ReadonlyArray<ReadonlyArray<string>>} */

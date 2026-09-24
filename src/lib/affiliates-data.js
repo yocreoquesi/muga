@@ -50,20 +50,33 @@ export const TRACKING_PARAMS = [
   // the universal strip.)
 
   // Amazon: internal / referral noise (not the affiliate tag)
-  "psc", "spla",
+  // psc / spla removed (#1338): host-anchored only (neither AdGuard nor
+  // ClearURLs anchors them anywhere else); already in every amazon.*
+  // profile's stripParams.
 
   "linkcode", "creativeasin",
   // ascsubtag removed: Amazon Associates SubTag — invite-only sub-publisher
   // attribution ID; stripping it kills creator attribution (#794).
-  "asc_contentid", "asc_contenttype",
+  // asc_contentid / asc_contenttype removed (#1338): host-anchored only;
+  // added to every amazon.* profile's stripParams.
   // spia / _encoding / content-id / social_share / skiptwisterog / starsleft
   // removed (#1228): host-anchored only (ClearURLs "amazon"/"amazon search"
   // providers; AdGuard has retracted its own content-id line). All six are
   // already in every amazon.* profile's stripParams.
   // Amazon: store page / brand referral noise
-  "lp_asin", "store_ref", "bl_grd_status", "ingress",
+  // bl_grd_status removed (#1338): host-anchored only; added to every
+  // amazon.* profile's stripParams.
+  // lp_asin / store_ref: #1338's decision named these for amazon.*
+  // anchoring, but the existing PATH_ANCHORED_STAY_GLOBAL test (#1229 /
+  // ADR-0008) already established upstream anchors both to a PATH, not a
+  // host — domain-rules.json can only express host scope, so anchoring them
+  // there would claim more than the evidence supports. Left global pending
+  // a maintainer decision on this conflict.
+  "lp_asin", "store_ref", "ingress",
   // Amazon: search/browse noise
-  "sprefix", "sbo", "cv_ct_cx",
+  // sbo removed (#1338): host-anchored only; added to every amazon.*
+  // profile's stripParams.
+  "sprefix", "cv_ct_cx",
   // Amazon: locale/keyboard layout selector (appears in ES, DE, FR, IT, US, UK, BR, JP storefronts).
   // Stored lowercase. cleaner.js compares param.toLowerCase() against this list.
   "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
@@ -79,6 +92,14 @@ export const TRACKING_PARAMS = [
   // eBay: tracking/click params (not the affiliate param itself)
   // "campid" removed from here: it is the eBay Partner Network affiliate param in
   // AFFILIATE_PATTERNS. Stripping it globally would break affiliate attribution. (#160)
+  // #1338 decision named mkevt/mkcid/mkrid/toolid/customid for eBay-host
+  // anchoring, but all five are AFFILIATE_PARAM_GUARD members: generate-rules.mjs
+  // filters guard members out of a host's extraStrips (the same reason #1228
+  // excluded linkcode/creativeasin/click_id), so a stripParams-only anchor
+  // would never reach the compiled DNR ruleset — the params would silently
+  // downgrade from pre-request network stripping to post-load runtime
+  // stripping. Left global pending a maintainer decision on this conflict
+  // (reported, not resolved unilaterally).
   "mkevt", "mkcid", "mkrid", "toolid", "customid",
 
   // AliExpress: non-attribution noise only. The aff_trace_key / algo_* / btsid /
@@ -86,10 +107,12 @@ export const TRACKING_PARAMS = [
   // declared in REDIRECT_NETWORK_PATTERNS.landingParams.
   // mall_affr removed (#1228): host-anchored only (ClearURLs "aliexpress"
   // provider); already in aliexpress.com's stripParams.
-  "afsmartredirect", "gatewayadapt",
+  // afsmartredirect / gatewayadapt removed (#1338): host-anchored only;
+  // already in aliexpress.com's stripParams.
 
   // Pinterest
-  "e_t", "epik",
+  // e_t removed (#1338): generic, collision-prone name, no vendor evidence.
+  "epik",
 
   // Snapchat
   "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
@@ -101,8 +124,10 @@ export const TRACKING_PARAMS = [
   // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
 
   // Naver (Korean search/ads)
-  "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
-  "n_keyword", "n_keyword_id", "n_campaign_type", "n_match",
+  // n_ad / n_query / n_rank / n_match removed (#1338): generic, collision-
+  // prone names, no vendor evidence (the #1212/#1217 class).
+  "n_media", "n_ad_group",
+  "n_keyword", "n_keyword_id", "n_campaign_type",
   "ssc_referrer",
 
   // Kakao (Korean messaging/ads)
@@ -149,7 +174,7 @@ export const TRACKING_PARAMS = [
   "sfdcimpactsrc",  // Salesforce Impact Source
 
   // Drip
-  "dm_i",       // Drip campaign identifier
+  "dm_i",       // Drip campaign identifier — #1338: unverified, needs a real sample
 
   // Omnisend
   "omnisendcontactid", // Omnisend contact
@@ -176,8 +201,8 @@ export const TRACKING_PARAMS = [
   "gad_source", // Google Ads source
 
   // Facebook / Meta (additional)
-  "fbc",        // Facebook Click (cookie param form)
-  "fbp",        // Facebook Pixel
+  "fbc",        // Facebook Click (cookie param form) — #1338: unverified, needs a real sample
+  "fbp",        // Facebook Pixel — #1338: unverified, needs a real sample
 
   // Snapchat (additional)
   "sccid",      // Snapchat Click ID
@@ -203,10 +228,8 @@ export const TRACKING_PARAMS = [
   // TikTok (additional)
   "tt_medium",       // TikTok campaign medium
   "tt_content",      // TikTok campaign content
-   // TikTok referral tracking
-    // TikTok device tracking
-  "sender_web_id",   // TikTok web ID tracking
-  "is_copy_url",     // TikTok share method tracking
+  // sender_web_id / is_copy_url removed (#1338): host-anchored only;
+  // already in tiktok.com's stripParams.
 
   // Google search tracking
   // ved / sca_esv / gs_lcp moved to a path-scoped strip on google.com
@@ -228,10 +251,14 @@ export const TRACKING_PARAMS = [
   // Salesforce Marketing Cloud
   "sfmc_id",         // SFMC contact ID
 
-  // Shopify
+  // Shopify. #1338's decision named _pos/_fid for removal ("no vendor
+  // evidence"), but strip-table-parity.test.mjs pins both as the exact
+  // Shopify storefront family re-injected client-side via history.replaceState
+  // — the guard added after a real Shopify field report. Left global pending
+  // a maintainer decision on this conflict.
   "_pos",   // Product position in collection
   "_ss",    // Shopify search session
-  "_psq",   // Shopify predictive search query
+  "_psq",   // Shopify predictive search query — #1338: unverified, needs a real sample
   "_sid",   // Shopify session ID
   "_fid",   // Shopify filter ID
 
@@ -279,14 +306,16 @@ export const TRACKING_PARAMS = [
   "spjobid", "spmailingid", "spreportid", "spuserid",
 
   // Listrak (Registry)
-  "trk_contact", "trk_msg", "trk_module", "trk_sid",
+  // trk_contact / trk_msg / trk_module removed (#1338): generic,
+  // collision-prone names, no vendor evidence (the #1212/#1217 class).
+  "trk_sid",
 
   // MailerLite (Brave + AdGuard)
   "ml_subscriber", "ml_subscriber_hash",
 
   // Drip / Klaviyo / ExactTarget / Brevo extended (Firefox + Brave + Registry)
   "__s",         // Drip email tracking
-  "_ke",         // Klaviyo email
+  "_ke",         // Klaviyo email — #1338: unverified, needs a real sample
   "et_rid",      // ExactTarget recipient ID
   "ss_email_id", // SendinBlue/Brevo email ID
   "vero_id",     // Vero email tracking
@@ -328,8 +357,8 @@ export const TRACKING_PARAMS = [
 
   // Generic / multi-platform
   "click_id",   // generic click ID
-  "ab_channel", // A/B test channel
-  "ab_version", // A/B test version
+  // ab_channel / ab_version removed (#1338): no vendor evidence or a known
+  // collision (see the #1338 decision).
 
   // ── AdGuard filter 17 import (151 params, verified at scale by millions of users) ──
 
@@ -390,7 +419,10 @@ export const TRACKING_PARAMS = [
 
   // Matomo / mt_ tracking
   "mt_adset", "mt_campaign", "mt_click_id", "mt_creative",
-  "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
+  "mt_link_id", "mt_medium", "mt_network",
+  // mnv_sid #1338: unverified, needs a real sample (bundled with the mt_
+  // group above but its own vendor is not corroborated)
+  "mnv_sid",
   "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
 
   // Mindbox
@@ -406,25 +438,82 @@ export const TRACKING_PARAMS = [
   "guccounter", "guce_referrer", "guce_referrer_sig", "gfr_xid",
   "yj_r", "ymid",
 
-  // Various ad/analytics platforms
-  "__io_lv", "_bdadid", "_bhlid", "_clde", "_cldee", "_io_session_id",
-  "_ly_c", "_ly_r", "_ope",
-  "_sgm_action", "_sgm_campaign", "_sgm_pinned", "_sgm_source", "_sgm_term",
+  // Various ad/analytics platforms (bulk-imported v1.13.0 / PRD #529, mostly
+  // without a recorded vendor). #1338 re-audited this block: named a vendor
+  // where real-world evidence supports one, marked the rest "vendor
+  // unverified" rather than invent one, and moved the three named UNSURE
+  // candidates in this block to their own marker per the #1338 decision.
+  // sb_referer_host removed (#1338): generic name, no vendor evidence,
+  // collision-prone (the #1212/#1217 class).
+  "__io_lv",                    // vendor unverified (#1338)
+  "_bdadid",                    // vendor unverified (#1338)
+  "_bhlid",                     // vendor unverified (#1338)
+  "_clde",                      // vendor unverified (#1338)
+  "_cldee",                     // vendor unverified (#1338)
+  "_io_session_id",             // vendor unverified (#1338)
+  "_ly_c",                      // vendor unverified (#1338)
+  "_ly_r",                      // vendor unverified (#1338)
+  "_ope",                       // vendor unverified (#1338)
+  "_sgm_action",                // Segmentify (on-site personalization/recommendation)
+  "_sgm_campaign",               // Segmentify (on-site personalization/recommendation)
+  "_sgm_pinned",                 // Segmentify (on-site personalization/recommendation)
+  "_sgm_source",                 // Segmentify (on-site personalization/recommendation)
+  "_sgm_term",                   // Segmentify (on-site personalization/recommendation)
   // A8.net `a8` is declared in REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
-  "_zucks_suid",
-  "analytics_context", "analytics_trace_id", "axr_tref", "asgtbndr",
-  "bance_xuid", "bemobdata", "beyond_uzcvid", "beyond_uzmcvid", "ucx_ref",
-  "btag", "cm_cr", "cm_me", "cmpid", "cstrackid", "cuid",
-  "emcs_t", "ems_dl", "erid", "external_click_id", "famad_xuid",
-  "ftag", "janet", "jmtyclid", "ldtag_cl", "loclid", "lt_r",
-  "maf", "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
-  "personaclick_input_query", "personaclick_search_query",
-  "recommended_by", "recommended_code", "rtkcid",
-  "sb_referer_host", "spot_im_redirect_source", "sprtype",
-  "srclt", "sscid", "tcsack",
-  "user_email_address", "uzcid", "vc_lpp", "vero_conv",
-  "vs_campaign_id", "vsm_cid", "vsm_pid", "vsm_type",
-  "winflncrtag",
+  "_zucks_suid",                 // Zucks (Japanese mobile ad network)
+  "analytics_context",           // vendor unverified (#1338)
+  "analytics_trace_id",          // vendor unverified (#1338)
+  // axr_tref #1338: unverified, needs a real sample
+  "axr_tref",
+  "asgtbndr",                    // vendor unverified (#1338)
+  "bance_xuid",                  // vendor unverified (#1338)
+  "bemobdata",                   // BeMob (ad-tracking/redirect platform)
+  "beyond_uzcvid",                // vendor unverified (#1338)
+  "beyond_uzmcvid",               // vendor unverified (#1338)
+  // ucx_ref #1338: unverified, needs a real sample
+  "ucx_ref",
+  "btag",                         // vendor unverified (#1338)
+  "cm_cr",                        // vendor unverified (#1338)
+  "cm_me",                        // vendor unverified (#1338)
+  "cmpid",                        // vendor unverified (#1338)
+  "cstrackid",                    // vendor unverified (#1338)
+  "cuid",                         // vendor unverified (#1338)
+  "emcs_t",                       // vendor unverified (#1338)
+  "ems_dl",                       // vendor unverified (#1338)
+  "erid",                         // Russian online-advertising legal labeling ID (ERIR/erid mandate)
+  "external_click_id",            // vendor unverified (#1338)
+  "famad_xuid",                   // famAD (Japanese affiliate ASP, operated by Ordia)
+  "ftag",                         // vendor unverified (#1338)
+  "janet",                        // vendor unverified (#1338)
+  "jmtyclid",                     // Jmty (Japanese classifieds platform)
+  "ldtag_cl",                     // vendor unverified (#1338)
+  "loclid",                       // vendor unverified (#1338)
+  "lt_r",                         // vendor unverified (#1338)
+  "maf",                          // vendor unverified (#1338)
+  "nb_expid_meta",                // vendor unverified (#1338)
+  "nb_placement",                 // vendor unverified (#1338)
+  "nx_source",                    // vendor unverified (#1338)
+  "oprtrack",                     // vendor unverified (#1338)
+  "personaclick_input_query",     // PersonaClick (e-commerce personalization platform)
+  "personaclick_search_query",    // PersonaClick (e-commerce personalization platform)
+  "recommended_by",               // vendor unverified (#1338)
+  "recommended_code",             // vendor unverified (#1338)
+  "rtkcid",                       // vendor unverified (#1338)
+  "spot_im_redirect_source",      // Spot.IM (commenting/engagement widget)
+  // sprtype #1338: unverified, needs a real sample
+  "sprtype",
+  "srclt",                        // vendor unverified (#1338)
+  "sscid",                        // ShareASale (Safari/ITP click-id fallback cookie param)
+  "tcsack",                       // vendor unverified (#1338)
+  "user_email_address",           // vendor unverified (#1338)
+  "uzcid",                        // vendor unverified (#1338)
+  "vc_lpp",                       // vendor unverified (#1338)
+  "vero_conv",                    // Vero (email marketing; see vero_id above)
+  "vs_campaign_id",               // vendor unverified (#1338)
+  "vsm_cid",                      // vendor unverified (#1338)
+  "vsm_pid",                      // vendor unverified (#1338)
+  "vsm_type",                     // vendor unverified (#1338)
+  "winflncrtag",                  // vendor unverified (#1338)
   // Added via npm run add-rule (#335): AdGuard filter 17 generic — Telegram Ads click tracking
   "link_source",
 
@@ -559,8 +648,10 @@ export const TRACKING_PARAM_CATEGORIES = {
       // AppsFlyer extended
       "af_xp", "af_ad", "af_adset",
       // Naver Ads (Korean)
-      "n_media", "n_query", "n_rank", "n_ad_group", "n_ad",
-      "n_keyword", "n_keyword_id", "n_campaign_type", "n_match",
+      // n_ad / n_query / n_rank / n_match removed (#1338): generic,
+      // collision-prone names, no vendor evidence.
+      "n_media", "n_ad_group",
+      "n_keyword", "n_keyword_id", "n_campaign_type",
       "ssc_referrer",
       // Kakao Ads (Korean)
       "kclid", "kakao_agent", "kakaotrack",
@@ -629,7 +720,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       // IBM Acoustic / Silverpop (Neat URL)
       "spjobid", "spmailingid", "spreportid", "spuserid",
       // Listrak (Registry)
-      "trk_contact", "trk_msg", "trk_module", "trk_sid",
+      // trk_contact / trk_msg / trk_module removed (#1338): generic,
+      // collision-prone names, no vendor evidence.
+      "trk_sid",
       // MailerLite (Brave + AdGuard)
       "ml_subscriber", "ml_subscriber_hash",
       // Drip / Klaviyo / ExactTarget / Brevo extended
@@ -666,7 +759,8 @@ export const TRACKING_PARAM_CATEGORIES = {
     descriptionDe: "Tracking von Instagram, Pinterest, Snapchat, etc.",
     params: [
       // Pinterest
-      "e_t", "epik", "pin_unauth",
+      // e_t removed (#1338): generic, collision-prone name, no vendor evidence.
+      "epik", "pin_unauth",
       // Snapchat
       "sc_channel", "sc_country", "sc_funnel", "sc_segment", "sc_icid",
     ],
@@ -688,32 +782,40 @@ export const TRACKING_PARAM_CATEGORIES = {
       // Generic
       "source", "clickid",
       // Amazon
-      "psc", "spla",
+      // psc / spla / asc_contentid / asc_contenttype / bl_grd_status / sbo
+      // removed (#1338): host-anchored only, already in every amazon.*
+      // profile's stripParams. lp_asin / store_ref stay global: the existing
+      // PATH_ANCHORED_STAY_GLOBAL test (#1229 / ADR-0008) established
+      // upstream anchors both to a path, not a host.
 
       "linkcode", "creativeasin",
       // ascsubtag removed: affiliate attribution (#794)
-      "asc_contentid", "asc_contenttype",
       // spia / _encoding / content-id / social_share / skiptwisterog /
       // starsleft removed (#1228): host-anchored only, already in every
       // amazon.* profile's stripParams.
-      "lp_asin", "store_ref", "bl_grd_status", "ingress",
-      "sprefix", "sbo", "cv_ct_cx",
+      "lp_asin", "store_ref", "ingress",
+      "sprefix", "cv_ct_cx",
       "__mk_es_es", "__mk_de_de", "__mk_fr_fr", "__mk_it_it",
       "__mk_en_us", "__mk_en_gb", "__mk_pt_br", "__mk_ja_jp",
-      // eBay
+      // eBay. #1338 named these five for eBay-host anchoring, but all five
+      // are AFFILIATE_PARAM_GUARD members — generate-rules.mjs filters guard
+      // members out of a host's extraStrips, so anchoring would never reach
+      // the compiled DNR rule. Left global pending a maintainer decision.
       "mkevt", "mkcid", "mkrid", "toolid", "customid",
       // AliExpress: non-attribution noise only. The aff_trace_key / algo_* /
       // btsid / ws_ab_test / aff_request_id family is declared in
       // REDIRECT_NETWORK_PATTERNS.landingParams per matrix v1.0.
-      "afsmartredirect", "gatewayadapt",
+      // afsmartredirect / gatewayadapt removed (#1338): host-anchored only,
+      // already in aliexpress.com's stripParams.
       // Google search tracking (ved/sca_esv/gs_lcp are now path-scoped on
       // google.com /search, /webhp — #1326 slice 2 — not global; sxsrf
       // removed #1228, host-anchored only, already in google.com's
       // stripParams)
       // GA4 cross-domain
       "_gl", "_ga", "_gac",
-      // TikTok share tracking
-      "tt_medium", "tt_content", "sender_web_id", "is_copy_url",
+      // TikTok share tracking. sender_web_id / is_copy_url removed (#1338):
+      // host-anchored only, already in tiktok.com's stripParams.
+      "tt_medium", "tt_content",
       // Meta mobile
       "fb_action_ids", "fb_action_types", "fb_ref", "fb_source",
       // Branch.io
@@ -722,14 +824,16 @@ export const TRACKING_PARAM_CATEGORIES = {
       "_bta_tid", "_bta_c",
       // Salesforce MC
       "sfmc_id",
-      // Shopify
+      // Shopify. _pos/_fid stay global: strip-table-parity.test.mjs pins
+      // both as the Shopify storefront family re-injected client-side (see
+      // main TRACKING_PARAMS comment for the #1338 conflict).
       "_pos", "_ss", "_psq", "_sid", "_fid",
       // AppsFlyer
       "af_dp", "af_web_dp", "af_sub2", "af_sub3", "af_sub4", "af_sub5",
       // Adjust
       "adjust_campaign", "adjust_adgroup", "adjust_creative",
-      // A/B test
-      "ab_channel", "ab_version",
+      // A/B test. ab_channel / ab_version removed (#1338): no vendor
+      // evidence or a known collision.
 
     ],
   },
@@ -760,7 +864,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       "mt_link_id", "mt_medium", "mt_network", "mnv_sid",
       "mt_sub1", "mt_sub2", "mt_sub3", "mt_sub4", "mt_sub5",
       "nb_expid_meta", "nb_placement", "nx_source", "oprtrack",
-      "pk_vid", "sb_referer_host", "spot_im_redirect_source", "sprtype", "tcsack",
+      // sb_referer_host removed (#1338): generic name, no vendor evidence,
+      // collision-prone.
+      "pk_vid", "spot_im_redirect_source", "sprtype", "tcsack",
       "uzcid", "vc_lpp", "vero_conv",
       "vsm_cid", "vsm_pid", "vsm_type",
       "winflncrtag", "yj_r", "ymid",

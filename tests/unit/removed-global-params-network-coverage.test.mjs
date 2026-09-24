@@ -738,3 +738,160 @@ describe("#1326 — ved/sca_esv/gs_lcp are path-scoped to google.com /search and
     }
   });
 });
+
+/**
+ * #1338 — 10 of the maintainer's 17 named ANCHOR params were actually moved
+ * out of TRACKING_PARAMS (measured against the same AFFILIATE_PARAM_GUARD and
+ * PATH_ANCHORED_STAY_GLOBAL constraints #1228/#1229 already established).
+ *
+ * The other 7 stay global — this is a DEVIATION from the #1338 decision text,
+ * reported rather than silently resolved:
+ *   - `mkevt`, `mkcid`, `mkrid`, `toolid`, `customid` — all five are
+ *     AFFILIATE_PARAM_GUARD members. extraStrips filters guard members out of
+ *     a host's stripParams (the exact mechanism that excluded
+ *     linkcode/creativeasin/click_id in #1228), so anchoring them would never
+ *     reach the compiled DNR rule. Already pinned in PATH_ANCHORED_STAY_GLOBAL
+ *     above, independently of this deviation.
+ *   - `lp_asin`, `store_ref` — also already pinned in
+ *     PATH_ANCHORED_STAY_GLOBAL: upstream anchors both to a PATH, not a host
+ *     (#1229 / ADR-0008), so host-anchoring them would claim more than the
+ *     evidence supports.
+ *
+ * TRACKING_PARAMS: 387 -> 366 (10 anchored + 11 removed entirely; the 13th
+ * REMOVE candidate pair, `_pos`/`_fid`, is a second deviation covered by its
+ * own describe block below).
+ */
+describe("#1338 — 10 params stay stripped at the network layer, host-anchored", () => {
+  const PARAM_ANCHORED_HOSTS_1338 = {
+    psc: AMAZON_HOSTS,
+    spla: AMAZON_HOSTS,
+    asc_contentid: AMAZON_HOSTS,
+    asc_contenttype: AMAZON_HOSTS,
+    bl_grd_status: AMAZON_HOSTS,
+    sbo: AMAZON_HOSTS,
+    afsmartredirect: ["aliexpress.com"],
+    gatewayadapt: ["aliexpress.com"],
+    sender_web_id: ["tiktok.com"],
+    is_copy_url: ["tiktok.com"],
+  };
+
+  test("10 params are covered (sanity on the fixture itself)", () => {
+    assert.equal(Object.keys(PARAM_ANCHORED_HOSTS_1338).length, 10);
+  });
+
+  for (const [param, hosts] of Object.entries(PARAM_ANCHORED_HOSTS_1338)) {
+    describe(param, () => {
+      test(`"${param}" is absent from TRACKING_PARAMS`, () => {
+        assert.ok(
+          !trackingLc.has(param.toLowerCase()),
+          `"${param}" is back in TRACKING_PARAMS — it was removed by #1338 because its ` +
+            "coverage is host-anchored; either it belongs in the global list again (revert " +
+            "the removal) or it must come back out.",
+        );
+      });
+
+      for (const host of hosts) {
+        test(`"${param}" is stripped by a DNR profile rule scoped to "${host}"`, () => {
+          const rule = PROFILE_RULES.find((r) =>
+            (r.condition?.requestDomains ?? []).includes(host),
+          );
+          assert.ok(
+            rule,
+            `no DNR profile rule covers "${host}" — "${param}" would stop being stripped ` +
+              "before the request leaves the browser. Run `npm run build:rules`.",
+          );
+
+          const excluded = new Set(rule.condition?.excludedRequestDomains ?? []);
+          assert.ok(
+            !excluded.has(host),
+            `the DNR profile rule covering "${param}" on "${host}" (id ${rule.id}) excludes ` +
+              `"${host}" from itself — "${param}" would stop being stripped before the ` +
+              "request leaves the browser.",
+          );
+
+          const removeParamsLc = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+          assert.ok(
+            removeParamsLc.has(param.toLowerCase()),
+            `"${param}" is not in the removeParams of the DNR profile rule covering "${host}" ` +
+              `(id ${rule.id}) — "${param}" would stop being stripped before the request ` +
+              "leaves the browser. Run `npm run build:rules`.",
+          );
+        });
+      }
+    });
+  }
+
+  describe("deliberately kept global — deviation from the #1338 decision text", () => {
+    for (const param of ["mkevt", "mkcid", "mkrid", "toolid", "customid"]) {
+      test(`"${param}" remains in TRACKING_PARAMS (AFFILIATE_PARAM_GUARD member; host-anchoring would be inert)`, () => {
+        assert.ok(
+          trackingLc.has(param),
+          `"${param}" left TRACKING_PARAMS — it must stay global. It is an ` +
+            "AFFILIATE_PARAM_GUARD member; generate-rules.mjs's extraStrips filter drops " +
+            "guard members from a host's stripParams, so anchoring it would never reach the " +
+            "compiled DNR rule (already covered by PATH_ANCHORED_STAY_GLOBAL above too).",
+        );
+      });
+    }
+
+    for (const param of ["lp_asin", "store_ref"]) {
+      test(`"${param}" remains in TRACKING_PARAMS (upstream anchors it to a path, not a host — PATH_ANCHORED_STAY_GLOBAL)`, () => {
+        assert.ok(
+          trackingLc.has(param),
+          `"${param}" left TRACKING_PARAMS — it must stay global. Upstream anchors it to a ` +
+            "path (#1229 / ADR-0008), and domain-rules.json can only express host scope, so " +
+            "host-anchoring it would claim more than the evidence supports.",
+        );
+      });
+    }
+  });
+});
+
+/**
+ * #1338 — 11 of the maintainer's 13 named REMOVE params were actually
+ * dropped from TRACKING_PARAMS entirely: no vendor evidence, or a known
+ * collision (the #1212/#1217 class). Unlike the ANCHOR batch above, these are
+ * not re-anchored anywhere — they are simply no longer stripped.
+ *
+ * `_pos`/`_fid` are the deviation: strip-table-parity.test.mjs's
+ * HOT_PATH_REQUIRED already pins both as the exact Shopify storefront family
+ * a real field report showed being re-injected client-side via
+ * history.replaceState, directly contradicting "no vendor evidence". Left
+ * global pending a maintainer decision on this conflict.
+ */
+describe("#1338 — 11 params removed entirely (no vendor evidence or a known collision)", () => {
+  const REMOVED_1338 = [
+    "ab_channel", "ab_version", "sb_referer_host", "e_t",
+    "n_ad", "n_query", "n_rank", "n_match",
+    "trk_contact", "trk_msg", "trk_module",
+  ];
+
+  test("11 params are covered (sanity on the fixture itself)", () => {
+    assert.equal(REMOVED_1338.length, 11);
+  });
+
+  for (const param of REMOVED_1338) {
+    test(`"${param}" is absent from TRACKING_PARAMS`, () => {
+      assert.ok(
+        !trackingLc.has(param.toLowerCase()),
+        `"${param}" is back in TRACKING_PARAMS — #1338 removed it (no vendor evidence or a ` +
+          "known collision) and it is not anchored anywhere, so it must stay out entirely.",
+      );
+    });
+  }
+
+  describe("deliberately kept global — deviation from the #1338 decision text", () => {
+    for (const param of ["_pos", "_fid"]) {
+      test(`"${param}" remains in TRACKING_PARAMS (pinned by strip-table-parity.test.mjs as the Shopify field-report family)`, () => {
+        assert.ok(
+          trackingLc.has(param),
+          `"${param}" left TRACKING_PARAMS — it must stay global. ` +
+            "strip-table-parity.test.mjs's HOT_PATH_REQUIRED already documents it as part of " +
+            "the Shopify storefront family re-injected client-side via history.replaceState " +
+            "(a real past field report), contradicting the #1338 REMOVE rationale of " +
+            '"no vendor evidence".',
+        );
+      });
+    }
+  });
+});
