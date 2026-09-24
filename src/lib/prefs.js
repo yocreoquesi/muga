@@ -123,7 +123,8 @@ export const PREF_DEFAULTS = {
   canonicalExtractorEnabled: true,
   // Cross-Site Frequency Tracker toggle (#446, B16). Default ON: a local-
   // only correlation map of (paramName, hashedValue) per first-party
-  // domain, used to surface likely cross-site identifiers in the popup.
+  // domain, used to surface likely cross-site identifiers in Settings >
+  // Activity (suspicious params).
   // Privacy-sensitive enough to deserve its own toggle even though the
   // data never leaves the device — turning it off makes observe() a
   // no-op and hides the freq subgroup in the suspicious-params section.
@@ -146,8 +147,9 @@ export const PREF_DEFAULTS = {
   // strip even when all four signals fire. With the flag OFF, behaviour is
   // byte-identical to the #530 baseline (the benchmark stays 117/117).
   experimentalParamClassesEnabled: false,
-  // User-promoted custom strip rules (#536). Populated by the popup's
-  // "Strip locally" button on flagged Suspicious-params rows. Each entry
+  // User-promoted custom strip rules (#536). Populated by the "Strip
+  // everywhere" button on flagged Suspicious-params rows in Settings >
+  // Activity. Each entry
   // is a bare param name (lowercased on read by the cleaner) that
   // processUrl strips on EVERY host — the user has explicitly trusted
   // the rule. Affiliate-preservation still wins (the affiliateParamSet

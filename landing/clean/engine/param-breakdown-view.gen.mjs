@@ -1,8 +1,9 @@
 /**
  * MUGA — Param breakdown view-model (#986).
  *
- * Pure view-model for the popup's "why was this cleaned?" tracking-param
- * breakdown. Groups the removed tracking-param names by category and resolves
+ * Pure view-model for the "why was this cleaned?" tracking-param breakdown.
+ * Consumers: the popup, Settings > Activity (the ledger rows, #1352) and
+ * the web cleaner tool. Groups the removed tracking-param names by category and resolves
  * each category's localized label + description, reusing the description*
  * fields TRACKING_PARAM_CATEGORIES already carries (src/lib/affiliates-data.js)
  * but that the popup left unused until now.

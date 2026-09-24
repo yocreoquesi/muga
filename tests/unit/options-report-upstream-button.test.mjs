@@ -4,7 +4,8 @@
  *
  * History:
  *   #537 — initial slice. Deep-link to GitHub with ONLY paramName +
- *          firstPartyDomainCount (privacy-locked via csft-upstream.js).
+ *          firstPartyDomainCount (via a privacy-funnel module, deleted in #1446
+ *          once it had no caller).
  *   #521 — evolved to use the structured `tracker-flag.yml` form
  *          template with richer prefill (domains list, entropy, count
  *          breakdown). The privacy contract is preserved by the

@@ -1,8 +1,8 @@
 /**
  * MUGA: Test fixtures (#407)
  *
- * Reads runtime overrides for the consent-version manifest, the
- * migration spec, and i18n keys from `chrome.storage.local` — but ONLY
+ * Reads runtime overrides for the migration spec, the current version
+ * and i18n keys from `chrome.storage.local` — but ONLY
  * when the test-mode sentinel is set (see #398).
  *
  * Production builds never set the sentinel, so every accessor in this
@@ -16,11 +16,9 @@
  * Storage shape (set via the `withFixtureManifest` e2e helper):
  *
  *   chrome.storage.local["__muga_test_fixtures"] = {
- *     consentManifest:        Array<{version, additive}> | null,
- *     requiredConsentVersion: string                     | null,
- *     consentClausesByVersion: Record<string, string[]>  | null,
  *     migrations:             Array<MigrationSpec>       | null,
  *     i18nOverrides:          Record<string, string>     | null,
+ *     currentVersion:         string                     | null,
  *   }
  */
 

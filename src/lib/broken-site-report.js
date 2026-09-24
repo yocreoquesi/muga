@@ -13,8 +13,7 @@
  *   2. The user has confirmed (via the same checkbox / the GitHub form's
  *      own privacy-ack) that the URL carries no personal/sensitive data.
  *
- * This module is the single funnel both surfaces go through, mirroring the
- * defensive style of csft-upstream.js: every function is pure (no DOM, no
+ * This module is the single funnel both surfaces go through: every function is pure (no DOM, no
  * chrome.*, no network), never throws, and the "full URL" field is added
  * to the output ONLY when every gate passes. If ANY gate fails — opt-in is
  * false, the URL fails to parse, the scheme isn't http(s), or the URL

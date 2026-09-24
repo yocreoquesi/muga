@@ -53,8 +53,8 @@
   <p>MUGA's design point is narrower and more opinionated:</p>
 
   <ol>
-    <li><strong>Remove the same noise parameters those tools remove</strong>, <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>).</li>
-    <li><strong>Preserve affiliate parameters that belong to a creator</strong>, even on programs MUGA itself has no commercial relationship with (Booking, Vercel, DigitalOcean, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>).</li>
+    <li><strong>Remove the same noise parameters those tools remove</strong>, <code>utm_*</code>, <code>fbclid</code>, <code>gclid</code>, <code>msclkid</code>, <code>mc_cid</code>, <code>igshid</code>, the rest of the usual set (<code>TRACKING_PARAMS</code> in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js"><code>src/lib/affiliates-data.js</code></a>).</li>
+    <li><strong>Preserve affiliate parameters that belong to a creator</strong>, even on programs MUGA itself has no commercial relationship with (Vercel, DigitalOcean, Apple Performance Partners, etc.). The preservation table is sourced from MUGA's documented affiliate-program rules (<code>AFFILIATE_PATTERNS</code> in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</li>
     <li><strong>Never monetize through an affiliate tag of its own.</strong> MUGA does not add any affiliate tag; it only recognizes and, by default, preserves the tags creators and third-party networks already placed on the link (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</li>
   </ol>
 
@@ -64,7 +64,7 @@
 
   <p>No, and the distinction matters. An affiliate tag like <code>?tag=somecreator-21</code> identifies <strong>the recommender</strong>, not you. A tracking parameter like <code>?fbclid=IwAR3...</code> identifies <strong>you</strong>, across sessions, across sites. MUGA strips the second and preserves the first.</p>
 
-  <p>You can verify the distinction in the code: the <code>TRACKING_PARAMS</code> list (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js#L18"><code>src/lib/affiliates-data.js:18</code></a>) and the <code>AFFILIATE_PATTERNS</code> table (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js#L136"><code>src/lib/affiliates.js:136</code></a>) are separate sources and are joined by the cleaner only at strip time.</p>
+  <p>You can verify the distinction in the code: the <code>TRACKING_PARAMS</code> list (in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates-data.js"><code>src/lib/affiliates-data.js</code></a>) and the <code>AFFILIATE_PATTERNS</code> table (in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>) are separate sources and are joined by the cleaner only at strip time.</p>
 
   <h3>Q: What about parameters that are technically "noise" but live inside a redirect wrapper?</h3>
 
@@ -75,7 +75,7 @@
   <ul>
     <li>The full ruleset is in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>.</li>
     <li>The cleaning pipeline is in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js"><code>src/lib/cleaner.js</code></a>.</li>
-    <li>The content-script bundle that runs in the page is committed at <code>src/content/cleaner-bundle.js</code> so reviewers can diff it against the ES module source it is generated from (noted explicitly in the privacy page at <a href="https://github.com/yocreoquesi/muga/blob/main/docs/privacy-page.html#L73"><code>docs/privacy-page.html:73</code></a>).</li>
+    <li>The content-script bundle that runs in the page is committed at <code>src/content/cleaner-bundle.js</code> so reviewers can diff it against the ES module source it is generated from (noted explicitly in the privacy page's "What data does MUGA handle?" section, <a href="privacy-page.html"><code>docs/privacy-page.html</code></a>).</li>
     <li>The unit tests under <code>tests/unit/</code> cover the cleaner's behaviour exhaustively. Run them locally with <code>npm test</code>.</li>
   </ul>
 
@@ -93,7 +93,7 @@
 
   <h3>Q: What happens if a creator's tag is on a program MUGA has no account on?</h3>
 
-  <p>It is preserved anyway, the same as on any other supported program. MUGA does not hold an affiliate account on any store, so this question has the same answer everywhere: the tag stays unless you explicitly enable stripping. The detection loop in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js"><code>src/lib/cleaner.js</code></a> iterates every pattern that matches the host, regardless of MUGA's commercial relationship with that program. Programs like Booking, Vercel, DigitalOcean, Humble Bundle, and Lemon Squeezy ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</p>
+  <p>It is preserved anyway, the same as on any other supported program. MUGA does not hold an affiliate account on any store, so this question has the same answer everywhere: the tag stays unless you explicitly enable stripping. The detection loop in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/cleaner.js"><code>src/lib/cleaner.js</code></a> iterates every pattern that matches the host, regardless of MUGA's commercial relationship with that program. Programs like Vercel, DigitalOcean, Lemon Squeezy and Apple Performance Partners ride this path (the <code>AFFILIATE_PATTERNS</code> table, <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/affiliates.js"><code>src/lib/affiliates.js</code></a>).</p>
 
   <h3>Q: Does my price change if I strip third-party affiliate tags?</h3>
 
@@ -121,10 +121,10 @@
   <p>Remote Rules is a feature that lets MUGA periodically refresh its noise-parameter list from a signed public endpoint, so users get protection against new noise sources without waiting for an extension release.</p>
 
   <ul>
-    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready, see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js#L65"><code>src/lib/prefs.js:65</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
-    <li>Every fetched payload is verified with an <strong>Ed25519 signature</strong> against a hardcoded list of trusted public keys before any rule is applied. The verification is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L214-L248"><code>src/lib/remote-rules.js:214-248</code></a>; the orchestrator that calls it is at <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L629-L636"><code>src/lib/remote-rules.js:629-636</code></a>.</li>
-    <li>On verification failure the previous ruleset is left untouched (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L632-L635"><code>src/lib/remote-rules.js:632-635</code></a>).</li>
-    <li>The fetch is size-capped and timeout-capped before the signature check even runs (<a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js#L594-L606"><code>src/lib/remote-rules.js:594-606</code></a>).</li>
+    <li>Default: <strong>on</strong> (#888, once the signing infrastructure and defense-in-depth verification were ratified as production-ready, see the <a href="https://github.com/yocreoquesi/muga/blob/main/CHANGELOG.md">CHANGELOG</a>). See <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/prefs.js"><code>src/lib/prefs.js</code></a>: <code>remoteRulesEnabled: true</code>. Disable it any time in Settings.</li>
+    <li>Every fetched payload is verified with an <strong>Ed25519 signature</strong> against a hardcoded list of trusted public keys before any rule is applied. The verification is <code>verifySignature</code> in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js"><code>src/lib/remote-rules.js</code></a>; the orchestrator that calls it is <code>runRemoteRulesFetch</code> in the same file.</li>
+    <li>On verification failure the previous ruleset is left untouched (<code>runRemoteRulesFetch</code> in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js"><code>src/lib/remote-rules.js</code></a>).</li>
+    <li>The fetch is size-capped and timeout-capped before the signature check even runs (<code>fetchWithCap</code> in <a href="https://github.com/yocreoquesi/muga/blob/main/src/lib/remote-rules.js"><code>src/lib/remote-rules.js</code></a>).</li>
   </ul>
 
   <h3>Q: Does any of this leak my browsing history?</h3>

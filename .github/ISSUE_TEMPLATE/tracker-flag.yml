@@ -1,9 +1,9 @@
-name: Tracker flag (from popup)
+name: Tracker flag (from Settings)
 description: |
   Submit a tracker candidate that MUGA's local heuristics flagged on your
-  device. Intended to be opened from the popup's "Report upstream" button —
-  most fields auto-prefill from the entropy + cross-site-frequency signals
-  the extension already computed locally.
+  device. Intended to be opened from the "Report upstream" button in
+  Settings > Activity; most fields prefill from the cross-site-frequency
+  signals the extension already computed locally.
 title: "[tracker-flag] <param-name>"
 labels:
   - tracker-candidate
@@ -17,9 +17,11 @@ body:
         > MUGA observed a query parameter on your browsing that matched the
         > tracker-shape heuristics ([B15 entropy](https://github.com/yocreoquesi/muga/blob/main/src/lib/entropy-heuristic.js) +
         > [B16 cross-site frequency](https://github.com/yocreoquesi/muga/blob/main/src/lib/cross-site-frequency.js)).
-        > You are forwarding only the *shape* of what was observed — **never the raw URL,
-        > the raw parameter value, or any user-identifying data**. The privacy
-        > contract is enforced structurally by [`csft-upstream.js`](https://github.com/yocreoquesi/muga/blob/main/src/lib/csft-upstream.js).
+        > The prefill carries the parameter name, the first-party domains where it was
+        > seen (up to 50) and the entropy/frequency figures. It **never carries the raw URL,
+        > the raw parameter value or its hash**. Review the domain list before you submit:
+        > nothing is sent until you do. The prefill is built by
+        > [`tracker-flag-deeplink.js`](https://github.com/yocreoquesi/muga/blob/main/src/lib/tracker-flag-deeplink.js).
         >
         > Wires Channel 1 of CAPS (see [yocreoquesi/caps-spec#3](https://github.com/yocreoquesi/caps-spec/issues/3))
         > and consolidates the tracker-side of #333. Sibling popup submit button

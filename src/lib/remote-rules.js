@@ -1533,21 +1533,3 @@ async function _writeError(code, storage) {
     // Best-effort — do not throw from error handler
   }
 }
-
-/**
- * Factory that creates an orchestrator object for testing.
- * Returns { run, clear, status } bound to the provided deps.
- *
- * @param {object} deps - Same shape as runRemoteRulesFetch deps.
- * @returns {{ run: Function, clear: Function, status: Function }}
- */
-export function createRemoteRulesOrchestrator(deps) {
-  return {
-    run: () => runRemoteRulesFetch(deps),
-    clear: () => clearRemoteCache(deps),
-    status: async () => {
-      const stored = await deps.storage.get({ remoteRulesMeta: { ...DEFAULT_META } });
-      return stored.remoteRulesMeta ?? { ...DEFAULT_META };
-    },
-  };
-}
