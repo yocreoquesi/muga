@@ -251,7 +251,7 @@ const BASELINE = {
   "onboarding-tab-dedup-967.test.mjs": 1,
   "onboarding.test.mjs": 40,
   "options-aria-i18n.test.mjs": 5,
-  "options-dev-tools-gate.test.mjs": 26,
+  "options-dev-tools-gate.test.mjs": 28,
   "options-display-prefs.test.mjs": 3,
   "options-import-param-validation.test.mjs": 23,
   "options-patterns.test.mjs": 101,
@@ -268,7 +268,7 @@ const BASELINE = {
   "popup-length-bar-guard.test.mjs": 7,
   "popup-preserved-creator.test.mjs": 9,
   "popup-rerender-leaks.test.mjs": 2,
-  "popup-suspicious-section.test.mjs": 10,
+  "popup-suspicious-section.test.mjs": 21,
   "prev-version-persistence-1100.test.mjs": 5,
   "redirect-unwrap.test.mjs": 26,
   "referer-beacon-privacy-foundation.test.mjs": 1,
@@ -285,6 +285,18 @@ const BASELINE = {
   "tos-version-sync.test.mjs": 1,
   "validation.test.mjs": 5,
   "web-engine-purity.test.mjs": 4,
+  // Audit 2026-09 copy/a11y guards on static HTML and locale files
+  // (browser-only pages; nothing to exercise behaviourally in node).
+  "onboarding-cta-copy.test.mjs": 1,
+  // Audit 2026-09 copy/a11y guards on static HTML and locale files
+  // (browser-only pages; nothing to exercise behaviourally in node).
+  "options-toggle-accessible-names.test.mjs": 4,
+  // Audit 2026-09 copy/a11y guards on static HTML and locale files
+  // (browser-only pages; nothing to exercise behaviourally in node).
+  "settings-hint-copy-drift.test.mjs": 4,
+  // Audit 2026-09 copy/a11y guards on static HTML and locale files
+  // (browser-only pages; nothing to exercise behaviourally in node).
+  "settings-report-copy.test.mjs": 3,
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
