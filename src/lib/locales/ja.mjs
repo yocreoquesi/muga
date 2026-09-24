@@ -233,8 +233,6 @@ export default Object.freeze({
   preview_count_clean: "このページはクリーンです。MUGA は閲覧中に自動でリンクを整理します。",
   preview_shorter: "このリンクは{n}%短くなりました",
   preview_unwrapped: "本当のリンク先: {host}",
-  preview_preserved_creator: "クリエイターのリファラルのようです。保持しました。",
-  preview_preserved_creator_hint: "これが間違っていると思われる場合は、設定から報告してください。",
   rate_muga_short: "MUGAを評価",
   ob_save_error: "エラー。もう一度お試しください",
   ob_success_title: "準備完了。ノイズは消えました。",

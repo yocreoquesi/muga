@@ -54,9 +54,9 @@ describe("(B) README uses the names the UI uses", () => {
     assert.ok(README.includes("Blocked domains"));
     assert.ok(README.includes("Protected tags & domains"));
   });
-  test("the popup line is quoted verbatim", () => {
+  test("README does not claim the popup shows a preserved-referral line (removed, 2026-09-24)", () => {
     assert.ok(!/popup shows a "Creator referral preserved" badge/.test(README));
-    assert.ok(README.includes(en.preview_preserved_creator));
+    assert.ok(!/the popup says "Looks like a creator referral/i.test(README));
   });
   test("stripAllAffiliates is listed once", () => {
     assert.ok(!/Strip all affiliate parameters \(opt-in\)/.test(README));

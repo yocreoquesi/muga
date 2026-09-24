@@ -233,8 +233,6 @@ export default Object.freeze({
   preview_count_clean: "Esta página está limpia. MUGA limpia los enlaces automáticamente mientras navegas.",
   preview_shorter: "Este enlace es un {n}% más corto",
   preview_unwrapped: "Destino real revelado: {host}",
-  preview_preserved_creator: "Parece una referencia de creador. Conservada.",
-  preview_preserved_creator_hint: "Si crees que en esta web no lo hemos hecho bien, puedes reportarlo desde Ajustes.",
   rate_muga_short: "Valorar MUGA",
   ob_save_error: "Error. Por favor, inténtalo de nuevo",
   ob_success_title: "Listo. El ruido está apagado.",

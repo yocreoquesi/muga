@@ -429,12 +429,6 @@ function _resetPreviewDom() {
   if (previewLengthKept) previewLengthKept.style.width = "";
   const previewLengthRemoved = el("preview-length-removed");
   if (previewLengthRemoved) previewLengthRemoved.style.width = "";
-  const previewPreserved = el("preview-preserved");
-  if (previewPreserved) {
-    previewPreserved.hidden = true;
-    const tag = document.getElementById("preview-preserved-tag");
-    if (tag) tag.textContent = "";
-  }
   // B14 (#452): honored-creator badge slot. Reset every render so a previous
   // navigation's badge never bleeds into the next.
   const previewHonored = el("preview-honored");
@@ -580,20 +574,6 @@ async function showUrlPreview(prefs, lang) {
       const template = t("autoinject_badge", lang);
       autoinjectEl.textContent = template.replace("{platform}", String(result.autoInjected.platform ?? ""));
       autoinjectEl.hidden = false;
-    }
-  }
-
-  // Wedge feedback: when MUGA preserved a third-party creator's affiliate tag,
-  // surface it visibly. This is the core "fair to creators" promise made
-  // tangible — fires regardless of whether the URL was otherwise modified.
-  if (result.preservedAffiliate) {
-    const preservedEl = document.getElementById("preview-preserved");
-    if (preservedEl) {
-      const tagEl = document.getElementById("preview-preserved-tag");
-      if (tagEl) {
-        tagEl.textContent = `${result.preservedAffiliate.param}=${result.preservedAffiliate.value}`;
-      }
-      preservedEl.hidden = false;
     }
   }
 

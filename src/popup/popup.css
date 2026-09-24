@@ -365,44 +365,8 @@ header {
   text-overflow: ellipsis;
 }
 
-.preview-preserved {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  background: var(--success-soft);
-  border-left: 2px solid var(--success);
-  font-size: 11px;
-  line-height: 1.35;
-}
-.preview-preserved-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-.preview-preserved-label { color: var(--success); font-weight: 600; }
-.preview-preserved-tag {
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.preview-preserved-hint {
-  color: var(--text-2);
-  font-size: 10.5px;
-  line-height: 1.45;
-}
-
-/* #932: honored-creator badge (B14). Mirrors .preview-preserved's shape —
-   same padding/border-left/font-size — with the info accent instead of
-   success, since "honored" (wrapper passed through untouched) is a distinct
-   outcome from "preserved" (an affiliate tag was kept on a cleaned URL). */
+/* #932: honored-creator badge (B14). Same padding/border-left/font-size
+   shape as other preview badges, with the info accent instead of success. */
 .preview-honored {
   margin-top: 8px;
   padding: 6px 8px;

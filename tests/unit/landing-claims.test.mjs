@@ -57,11 +57,17 @@ describe("(B) landing describes the default preserved-referral feedback", () => 
       .filter(Boolean);
     assert.deepStrictEqual(bad, [], "the toast is opt-in; say so wherever it is mentioned");
   });
-  test("the popup line it shows by default is quoted verbatim", async () => {
-    const { default: en } = await import("../../src/lib/locales/en.mjs");
+  test("the landing does not claim the popup surfaces a preserved-referral line (removed, #1462-adjacent)", () => {
+    // The popup's "Looks like a creator referral. Kept." box was removed
+    // entirely (maintainer request 2026-09-24): the popup says nothing about
+    // whether a referral was kept. The landing must not claim otherwise.
     assert.ok(
-      LANDING.includes(en.preview_preserved_creator),
-      `landing should quote the default popup line "${en.preview_preserved_creator}"`
+      !/tells you in the popup/i.test(LANDING),
+      "landing must not claim the popup surfaces a preserved-referral line"
+    );
+    assert.ok(
+      !LANDING.includes("Looks like a creator referral. Kept."),
+      "landing must not quote the removed popup line"
     );
   });
 });

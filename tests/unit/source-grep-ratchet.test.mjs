@@ -275,7 +275,6 @@ const BASELINE = {
   "popup-count-celebration.test.mjs": 15,
   "popup-honored-creator-badge.test.mjs": 7,
   "popup-length-bar-guard.test.mjs": 7,
-  "popup-preserved-creator.test.mjs": 9,
   "popup-rerender-leaks.test.mjs": 2,
   "popup-suspicious-section.test.mjs": 21,
   "prev-version-persistence-1100.test.mjs": 5,
