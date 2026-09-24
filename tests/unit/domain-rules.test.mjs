@@ -222,7 +222,10 @@ describe("YouTube", () => {
   });
 
   test("ab_channel is preserved on YouTube (functional — channel context)", () => {
-    // ab_channel is in global TRACKING_PARAMS but YouTube domain rule preserves it
+    // ab_channel was removed from TRACKING_PARAMS entirely (#1338: no vendor
+    // evidence or a known collision), so it now survives everywhere by
+    // default; YouTube's preserveParams entry is still correct but no longer
+    // load-bearing for this specific assertion.
     const { cleanUrl } = clean(
       "https://www.youtube.com/watch?v=abc&ab_channel=Fireship&si=trackme"
     );
@@ -232,12 +235,12 @@ describe("YouTube", () => {
     assert.ok(!u.searchParams.has("si"));
   });
 
-  test("ab_channel is stripped on non-YouTube domain (global tracking param)", () => {
+  test("ab_channel survives on a non-YouTube domain (#1338: removed from TRACKING_PARAMS)", () => {
     const { cleanUrl } = clean(
       "https://example.com/page?ab_channel=test&utm_source=email"
     );
     const u = new URL(cleanUrl);
-    assert.ok(!u.searchParams.has("ab_channel"));
+    assert.ok(u.searchParams.has("ab_channel"));
     assert.ok(!u.searchParams.has("utm_source"));
   });
 });

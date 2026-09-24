@@ -71,10 +71,14 @@ export const PRESERVE_CANARIES = Object.freeze([
   },
   {
     name: "amazon.es: tag preserved, internal noise stripped",
-    url: "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&psc=1&pd_rd_r=abc&linkCode=ll1",
+    // psc removed from this fixture (#1338): it is now host-anchored to
+    // amazon.* in domain-rules.json rather than global, and this canary
+    // deliberately calls processUrl WITHOUT domainRules (see evaluate.mjs),
+    // so a host-anchored-only param can no longer be asserted here.
+    url: "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&pd_rd_r=abc&linkCode=ll1",
     prefs: PRESERVE_PREFS,
     mustSurvive: { tag: "someaffiliate-21" },
-    mustStrip: ["psc", "pd_rd_r", "linkCode"],
+    mustStrip: ["pd_rd_r", "linkCode"],
   },
   {
     name: "ebay.es: campid preserved, mkevt + UTM stripped",

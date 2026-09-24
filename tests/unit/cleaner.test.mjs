@@ -351,12 +351,14 @@ describe("edge cases", () => {
 // ---------------------------------------------------------------------------
 describe("Scenario A (extended) — new tracking params (#17)", () => {
 
-  test("strips Pinterest e_t and epik", () => {
+  test("strips Pinterest epik", () => {
+    // e_t removed from TRACKING_PARAMS (#1338): generic, collision-prone name,
+    // no vendor evidence. Only epik is still asserted here.
     const { removedTracking } = processUrl(
       "https://pinterest.com/pin/123/?e_t=abc&epik=dQw4w9",
       PREFS
     );
-    assert.ok(removedTracking.includes("e_t"));
+    assert.ok(!removedTracking.includes("e_t"));
     assert.ok(removedTracking.includes("epik"));
   });
 
@@ -466,9 +468,12 @@ describe("Amazon — affiliate param preserved", () => {
   });
 
   test("amazon internal noise params are stripped", () => {
+    // domainRules passed on purpose (#1338): psc is no longer in the global
+    // list, so amazon.es's own profile is what strips it.
     const { removedTracking, junkRemoved } = processUrl(
       "https://www.amazon.es/dp/B08N5WRWNW?tag=someaffiliate-21&psc=1&pd_rd_r=abc&linkCode=ll1",
-      PREFS
+      PREFS,
+      domainRules
     );
     assert.ok(removedTracking.includes("psc"));
     assert.ok(removedTracking.includes("pd_rd_r"));
