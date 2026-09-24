@@ -20,7 +20,8 @@ import {
 } from "../lib/cross-site-frequency.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildTrackerFlagDeepLinkUrl } from "../lib/tracker-flag-deeplink.js";
-import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
+import { hasCommands } from "../lib/browser-detect.js";
+import { getRateUrl } from "../lib/store-links.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
@@ -517,12 +518,26 @@ async function init() {
   // further below, alongside the devToolsMode wiring (#1355: both controls
   // moved into the Developer tools panel).
 
-  // #925: surface the seven previously UI-less prefs as Advanced controls
-  // (all default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
+  // #925: surface the seven previously UI-less prefs as controls (all
+  // default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
   // userCustomRules list uses the shared renderList/removeEntry path below.
-  // Privacy group:
+  // #1398 (maintainer decision, 2026-09-24): cross-site-frequency and
+  // attribution-ledger moved out of Advanced > Privacy into Settings >
+  // Activity, next to the panel each one controls — the ids and pref keys
+  // are unchanged, only their location in options.html moved.
   bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
   bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
+  // #1390: turning recording off must not keep showing already-stored
+  // recent-activity URLs with no way to clear them. Clear the ledger the
+  // moment the switch flips off, then re-render so the panel immediately
+  // reflects the disabled empty state instead of stale entries.
+  document.getElementById("attribution-ledger")?.addEventListener("change", () => {
+    const enabled = document.getElementById("attribution-ledger").checked;
+    prefs.attributionLedgerEnabled = enabled;
+    (enabled ? Promise.resolve() : chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } }))
+      .then(() => renderActivityLedgerPanel(_currentLang, enabled))
+      .catch((err) => console.error("[MUGA] attribution-ledger toggle:", err));
+  });
   // Aggressive privacy (referer-beacon-privacy PR 4): opt-in, off by default.
   // Both toggles are plain booleans — no per-device override reconciliation.
   bindToggle("suppress-referer", "suppressReferer", prefs);
@@ -583,8 +598,21 @@ async function init() {
   // their own; this .catch() is defense in depth for anything that still
   // escapes (e.g. a throw before either try/catch, such as in
   // _applyActivityScopeView or updateActivitySectionVisibility).
-  await renderActivityLedgerPanel(_currentLang).catch((err) => {
+  await renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled).catch((err) => {
     console.error("[MUGA] renderActivityLedgerPanel failed:", err);
+  });
+  // #1390: explicit "Clear" button next to the Recent-activity panel, so
+  // clearing its stored URLs never requires flipping the recording switch
+  // off first. Same confirm-before-destructive-write pattern as "Reset
+  // stats" / "Forget reported params" (#1260).
+  document.getElementById("activity-ledger-clear-btn")?.addEventListener("click", async () => {
+    const ok = await showConfirm(t("activity_ledger_clear_confirm", _currentLang));
+    if (!ok) return;
+    try {
+      await chrome.storage.local.set({ attributionLedger: { events: [], capacity: DEFAULT_LEDGER_CAPACITY } });
+      showToast(t("activity_ledger_clear_done", _currentLang));
+      await renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled);
+    } catch (err) { console.error("[MUGA] clear recent activity:", err); }
   });
   // Toolbar badge toggle (#910). Default ON; controls the native
   // setBadgeText running-count overlay on the toolbar icon.
@@ -666,10 +694,7 @@ async function init() {
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
-    const isFirefox = detectFirefox();
-    rateLink.href = isFirefox
-      ? "https://addons.mozilla.org/firefox/addon/muga/"
-      : "https://chromewebstore.google.com/detail/muga/";
+    rateLink.href = getRateUrl();
   }
 
   // Signal init completion for e2e tests that need to avoid races with
@@ -1241,7 +1266,7 @@ function _buildRecentActivityRow(row, lang) {
  * exactly as it did before this move; "This session" has no recording gate
  * at all).
  */
-async function renderActivityLedgerPanel(lang) {
+async function renderActivityLedgerPanel(lang, attributionLedgerEnabledOverride) {
   const panel = document.getElementById("activity-ledger-panel");
   if (!panel) return;
 
@@ -1251,6 +1276,34 @@ async function renderActivityLedgerPanel(lang) {
   _applyActivityScopeView();
   panel.hidden = false;
   updateActivitySectionVisibility();
+
+  // #1390: whether recording is on decides which empty state "Recent
+  // activity" shows below (ledger_empty vs. the distinct
+  // ledger_disabled_empty).
+  //
+  // b5-3 audit fix: the attribution-ledger toggle's own change handler
+  // (below) writes the pref via bindToggle()'s setPrefs() call AND calls
+  // this render in the same tick. That underlying sync-storage write
+  // resolves asynchronously, so a getPrefs() read here could complete
+  // BEFORE the write lands and return the stale (pre-toggle) value —
+  // rendering "recording is on" copy for a moment right after the user
+  // just turned it off.
+  // Callers that already know the current value (the toggle handler has
+  // the checkbox's own `checked` state; the Clear button and init both
+  // have the freshly-loaded `prefs` object) pass it directly so this never
+  // depends on write timing. Only a caller with no better source falls
+  // back to reading storage.
+  let attributionLedgerEnabled = true;
+  if (attributionLedgerEnabledOverride !== undefined) {
+    attributionLedgerEnabled = attributionLedgerEnabledOverride !== false;
+  } else {
+    try {
+      attributionLedgerEnabled = (await getPrefs()).attributionLedgerEnabled !== false;
+    } catch (err) {
+      console.error("[MUGA] renderActivityLedgerPanel prefs read:", err);
+    }
+  }
+  if (isStale()) return;
 
   // ── "This session" ──
   let history = [];
@@ -1308,42 +1361,54 @@ async function renderActivityLedgerPanel(lang) {
   const recentList = document.getElementById("activity-recent-list");
   const recentEmpty = document.getElementById("activity-recent-empty");
   if (recentList && recentEmpty) {
-    try {
-      // R3-init-abort-on-render-throw: shape-check every event BEFORE it
-      // reaches presentLedger(). presentLedger does `ledger.events.map(...)`
-      // and its per-event mapper reads `ev.url`/`ev.type` unconditionally —
-      // a legacy/corrupt entry (null, a primitive, or an unrecognized
-      // `type`) throws there uncaught. Filtering here, rather than
-      // hardening the shared attribution-ledger.js module, keeps the fix
-      // scoped to this rendering path.
-      const safeEvents = Array.isArray(ledger.events)
-        ? ledger.events.filter((ev) => ev && typeof ev === "object" && typeof ev.url === "string" && EVENT_TYPES.includes(ev.type))
-        : [];
-      const safeLedger = {
-        events: safeEvents,
-        capacity: typeof ledger.capacity === "number" ? ledger.capacity : DEFAULT_LEDGER_CAPACITY,
-      };
-
-      const view = presentLedger(safeLedger);
-      const rows = renderLedgerEntries(view, (key, vars) => {
-        const template = t(key, lang);
-        if (!vars) return template;
-        let out = template;
-        for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
-        return out;
-      });
-      recentList.replaceChildren();
-      recentEmpty.hidden = rows.length !== 0;
-      if (rows.length === 0) {
-        recentEmpty.textContent = t("ledger_empty", lang);
-      } else {
-        for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
-      }
-    } catch (err) {
-      console.error("[MUGA] renderActivityLedgerPanel recent-activity render failed, degrading to empty state:", err);
+    // #1390: recording off must never keep showing stored URLs — the
+    // toggle handler and the Clear button both already empty the
+    // attributionLedger storage key, but this is the belt-and-suspenders
+    // check that also covers a stale render still in flight when the
+    // toggle flips, and shows a DISTINCT empty state (never ledger_empty,
+    // which reads as "nothing happened yet" rather than "this is off").
+    if (!attributionLedgerEnabled) {
       recentList.replaceChildren();
       recentEmpty.hidden = false;
-      recentEmpty.textContent = t("ledger_empty", lang);
+      recentEmpty.textContent = t("ledger_disabled_empty", lang);
+    } else {
+      try {
+        // R3-init-abort-on-render-throw: shape-check every event BEFORE it
+        // reaches presentLedger(). presentLedger does `ledger.events.map(...)`
+        // and its per-event mapper reads `ev.url`/`ev.type` unconditionally —
+        // a legacy/corrupt entry (null, a primitive, or an unrecognized
+        // `type`) throws there uncaught. Filtering here, rather than
+        // hardening the shared attribution-ledger.js module, keeps the fix
+        // scoped to this rendering path.
+        const safeEvents = Array.isArray(ledger.events)
+          ? ledger.events.filter((ev) => ev && typeof ev === "object" && typeof ev.url === "string" && EVENT_TYPES.includes(ev.type))
+          : [];
+        const safeLedger = {
+          events: safeEvents,
+          capacity: typeof ledger.capacity === "number" ? ledger.capacity : DEFAULT_LEDGER_CAPACITY,
+        };
+
+        const view = presentLedger(safeLedger);
+        const rows = renderLedgerEntries(view, (key, vars) => {
+          const template = t(key, lang);
+          if (!vars) return template;
+          let out = template;
+          for (const [k, v] of Object.entries(vars)) out = out.replace(`{${k}}`, String(v));
+          return out;
+        });
+        recentList.replaceChildren();
+        recentEmpty.hidden = rows.length !== 0;
+        if (rows.length === 0) {
+          recentEmpty.textContent = t("ledger_empty", lang);
+        } else {
+          for (const row of rows) recentList.appendChild(_buildRecentActivityRow(row, lang));
+        }
+      } catch (err) {
+        console.error("[MUGA] renderActivityLedgerPanel recent-activity render failed, degrading to empty state:", err);
+        recentList.replaceChildren();
+        recentEmpty.hidden = false;
+        recentEmpty.textContent = t("ledger_empty", lang);
+      }
     }
   }
 }
@@ -1848,20 +1913,44 @@ function addEntry(listKey, inputId, containerId) {
     showToast(t("add_entry_invalid", _currentLang));
     return;
   }
+  // Tracks whether mutateFn itself aborted (duplicate/cap — each already
+  // shows its own toast below), so the .then() can tell that apart from
+  // withSyncMutation resolving to undefined because the read or write
+  // failed (#1430) — a case that otherwise looked identical to a silent,
+  // already-explained no-op.
+  let aborted = false;
   return withSyncMutation(withListLock, listKey, [], (list) => {
-    if (list.includes(value)) return undefined; // already present — no-op
+    if (list.includes(value)) { aborted = true; return undefined; } // already present — no-op
     // Enforce the same per-list caps the import path applies (#728 item 28).
     // IMPORT_LIST_CAPS is the single source of truth shared with capImportedLists,
     // so the UI add path can never grow a list past what the importer accepts.
     const cap = IMPORT_LIST_CAPS[listKey];
     if (list.length >= cap) {
       showToast(t("list_full", _currentLang));
+      aborted = true;
       return undefined;
     }
     return [...list, value];
   }).then((next) => {
-    input.value = "";
-    if (next !== undefined) renderList(containerId, next, listKey);
+    if (next !== undefined) {
+      // Success: the value is now in the list, safe to clear the input.
+      input.value = "";
+      renderList(containerId, next, listKey);
+    } else if (!aborted) {
+      // mutateFn returned a real value, so this undefined can only mean the
+      // read or write inside withSyncMutation failed — a genuine save
+      // failure, not a duplicate/cap no-op. b5-3 audit fix #3: keep the
+      // typed value in the input so the user can just click Add again
+      // ("try again") instead of retyping it from scratch after a toast
+      // they may not have even seen fire.
+      showToast(t("sync_save_failed", _currentLang));
+    } else {
+      // Aborted by mutateFn's own logic (duplicate already in the list, or
+      // the list is full) — already explained by its own toast, or a silent
+      // no-op for an exact duplicate. The value doesn't need to be retried,
+      // so clearing the input here is safe and expected.
+      input.value = "";
+    }
   });
 }
 
@@ -1869,12 +1958,26 @@ function addEntry(listKey, inputId, containerId) {
 function removeEntry(listKey, index) {
   const containerMap = { blacklist: "blacklist-items", whitelist: "whitelist-items", customParams: "custom-params-items", userCustomRules: "user-custom-rules-items" };
   const containerId = containerMap[listKey] ?? `${listKey}-items`;
+  // b5-3 audit fix #3: mirror addEntry's `aborted` distinction. A stale index
+  // (e.g. a fast double-click on the same "x" removing the last item: the
+  // first click's write already shortens the list before the second click's
+  // pre-captured index is looked up) has nothing left to remove — that is a
+  // deliberate no-op, not a save failure, and must not show sync_save_failed
+  // even if withSyncMutation happens to resolve to undefined for it.
+  let aborted = false;
   return withSyncMutation(withListLock, listKey, [], (list) => {
+    if (index < 0 || index >= list.length) { aborted = true; return undefined; }
     const next = [...list];
     next.splice(index, 1);
     return next;
   }).then((next) => {
-    if (next !== undefined) renderList(containerId, next, listKey);
+    if (next !== undefined) {
+      renderList(containerId, next, listKey);
+    } else if (!aborted) {
+      // A failed delete must not leave the user thinking it worked while the
+      // stale entry silently stays in storage (#1430).
+      showToast(t("sync_save_failed", _currentLang));
+    }
   });
 }
 
@@ -1897,6 +2000,12 @@ function initStatsSection() {
         // resetting stats must not re-trigger the review nudge.
       });
       showToast(t("stats_reset_done", _currentLang));
+      // #1392 (triage, reduced scope, 2026-09-24): the write above cleared
+      // domainStats, but nothing told the Activity panel to re-render it —
+      // the table kept showing the pre-reset rows until the next full
+      // page load. Re-render with the just-written (empty) data.
+      await renderDomainStatsActivity(document.getElementById("domain-stats")?.checked ?? true)
+        .catch((err) => console.error("[MUGA] render domain stats after reset:", err));
     } catch (err) { console.error("[MUGA] reset stats:", err); }
   });
 
@@ -1914,6 +2023,13 @@ function initStatsSection() {
       try {
         await chrome.storage.local.set({ submittedParams: {} });
         showToast(t("forget_reported_params_done", _currentLang));
+        // #1392 (triage, reduced scope, 2026-09-24): the write above cleared
+        // submittedParams, but nothing told the Activity panel to
+        // re-render — "already reported on {date}" labels stayed stale and
+        // the report action stayed disabled until the next full page load.
+        try {
+          await renderSuspiciousParamsActivity(await getPrefs());
+        } catch (err) { console.error("[MUGA] render suspicious params after forget:", err); }
       } catch (err) { console.error("[MUGA] forget reported params:", err); }
     });
   }
@@ -2315,10 +2431,7 @@ function initDevTools() {
 
       rateBtn.addEventListener("click", () => {
         clearTimeout(timer);
-        const isFirefox = detectFirefox();
-        const storeUrl = isFirefox
-          ? "https://addons.mozilla.org/firefox/addon/muga/"
-          : "https://chromewebstore.google.com/detail/muga/";
+        const storeUrl = getRateUrl();
         chrome.tabs.create({ url: storeUrl });
         notice.remove();
       });

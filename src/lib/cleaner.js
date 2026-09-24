@@ -11,6 +11,7 @@ import {
   getAffiliateParamSetForHost,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForHost,
+  getAllLandingParams,
   detectAutoInjectedTag,
   stripAutoInjectedTag,
 } from "./affiliates.js";
@@ -912,8 +913,18 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
     classifyAndStripTracking(url, prefs, domainRules, landingPolicy);
 
   // Step 6 — Affiliate pipeline (Scenario C detection + blacklist-value strip)
-  const { action: pipeAction, detectedAffiliate, blacklistStripped } =
+  const { action: pipeAction, detectedAffiliate, blacklistStripped, landingParamsRemoved, landingParamsRemovedValues } =
     handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname);
+  // b5-3 audit fix #2: Step 4c's landing-param strips (stripAllAffiliates)
+  // used to be invisible outside the URL mutation itself — merged into the
+  // SAME arrays Step 5 populates so a landing-only strip (a) counts toward
+  // junkRemoved below exactly like any other removed param, and (b) is
+  // visible to recordFrequency and the returned payload's removedTracking,
+  // instead of only ever changing `action`.
+  if (landingParamsRemoved.length > 0) {
+    removedTracking.push(...landingParamsRemoved);
+    removedTrackingValues.push(...landingParamsRemovedValues);
+  }
 
   // Step 7 — Action resolution + recordFrequency + final payload.
   // drop-affiliate-injection (PR 1a): the former "6b" Bookshop path-based
@@ -1222,7 +1233,7 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
  * @param {Array} parsedBlacklist
  * @param {Array} parsedWhitelist
  * @param {string} hostname
- * @returns {{ action: "untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
+ * @returns {{ action: "untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number, landingParamsRemoved: string[], landingParamsRemovedValues: string[] }}
  */
 function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
   // Build isWhitelisted closure for this host
@@ -1239,6 +1250,13 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
   let detectedAffiliate = null;
   /** @type {"untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator"} */
   let action = "untouched";
+  // b5-3 audit fix #2: Step 4c's strips changed `action` but never surfaced
+  // WHICH params it removed, so a landing-only strip (no Step 5 tracking
+  // param, no Step 4b direct-injection match) was invisible to anything
+  // downstream that reads removedTracking (badge counts, report flow,
+  // stats). Collected here and merged into processUrl's removedTracking.
+  const landingParamsRemoved = [];
+  const landingParamsRemovedValues = [];
 
   // Step 3: Detect a foreign affiliate tag (skipped when stripAllAffiliates is on)
   // #523 phase 3: detection no longer gates on ourTag.
@@ -1298,6 +1316,39 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
         if (action === "untouched") action = "cleaned";
       }
     }
+
+    // Step 4c (#1443 maintainer decision 2026-09-24): under stripAllAffiliates,
+    // also strip the REDIRECT_NETWORK_PATTERNS landingParams of ALL 11
+    // networks (awc, irclickid, cjevent, sscid, ...). By default (this block
+    // never runs) they stay preserved exactly as before, via getLandingPolicy
+    // in stripTrackingParams and via AFFILIATE_PARAM_GUARD refusing them from
+    // remote payloads. Deliberately NOT referrer-gated — same as the
+    // AFFILIATE_PATTERNS strip above, this fires regardless of
+    // document.referrer / getLandingPolicy().
+    for (const landingParam of getAllLandingParams()) {
+      const actualKey = findParamKeyCI(url, landingParam);
+      if (!actualKey) continue;
+      const values = url.searchParams.getAll(actualKey);
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        if (isWhitelisted(landingParam, val)) {
+          kept.push(val);
+        } else {
+          strippedAny = true;
+        }
+      }
+      if (strippedAny) {
+        // Capture BEFORE delete, same convention as classifyAndStripTracking's
+        // stripTrackingParams: one recorded value per removed param name (the
+        // first occurrence), not one per repeated key.
+        landingParamsRemoved.push(actualKey);
+        landingParamsRemovedValues.push(url.searchParams.get(actualKey) ?? "");
+        url.searchParams.delete(actualKey);
+        for (const val of kept) url.searchParams.append(actualKey, val);
+        if (action === "untouched") action = "cleaned";
+      }
+    }
   }
 
   // Step 5: Strip specific blacklisted affiliate values
@@ -1346,7 +1397,7 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
     }
   }
 
-  return { action, detectedAffiliate, blacklistStripped };
+  return { action, detectedAffiliate, blacklistStripped, landingParamsRemoved, landingParamsRemovedValues };
 }
 
 // ── handleWhitelistedDomain ───────────────────────────────────────────────────

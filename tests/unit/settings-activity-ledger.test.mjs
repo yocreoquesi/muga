@@ -111,14 +111,18 @@ describe("options.js — renders and wires the unified Activity ledger panel", (
 
   test("declares renderActivityLedgerPanel and calls it during init", () => {
     assert.match(optionsJs, /async function\s+renderActivityLedgerPanel\s*\(/);
-    assert.match(optionsJs, /await renderActivityLedgerPanel\(_currentLang\)/);
+    // b5-3 audit fix: init() passes the freshly-loaded prefs' current
+    // attributionLedgerEnabled value explicitly, instead of letting the
+    // function re-read chrome.storage.sync itself — see the toggle-race
+    // fix note on renderActivityLedgerPanel's own definition.
+    assert.match(optionsJs, /await renderActivityLedgerPanel\(_currentLang,\s*prefs\.attributionLedgerEnabled\)/);
   });
 
   // R3-init-abort-on-render-throw
   test("the init() call site never lets renderActivityLedgerPanel's rejection escape uncaught", () => {
     assert.match(
       optionsJs,
-      /await renderActivityLedgerPanel\(_currentLang\)\s*\.catch\(\s*\(err\)\s*=>\s*\{/,
+      /await renderActivityLedgerPanel\(_currentLang,\s*prefs\.attributionLedgerEnabled\)\s*\.catch\(\s*\(err\)\s*=>\s*\{/,
       "init() must .catch() renderActivityLedgerPanel so a throw there cannot abort the rest of init()",
     );
   });
@@ -236,7 +240,7 @@ describe("options.js / options.html — the scope radio's checked DOM state is t
     assert.match(fnBody, /isValidActivityScope\(/);
 
     const setIdx = optionsJs.indexOf("_activityLedgerScope = _readCheckedActivityScope();");
-    const renderIdx = optionsJs.indexOf("await renderActivityLedgerPanel(_currentLang)");
+    const renderIdx = optionsJs.indexOf("await renderActivityLedgerPanel(_currentLang, prefs.attributionLedgerEnabled)");
     assert.ok(setIdx !== -1, "init() must set _activityLedgerScope from _readCheckedActivityScope()");
     assert.ok(setIdx < renderIdx, "the resync must happen before the panel first renders");
   });

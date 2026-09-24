@@ -200,12 +200,28 @@ describe("#1355 — canonicalExtractorEnabled / experimentalParamClassesEnabled 
   });
 });
 
-describe("#925 — surfaced controls live inside the dev-mode-gated Advanced card", () => {
+// #1398 (maintainer decision, 2026-09-24): the three recording switches
+// moved OUT of the dev-mode-gated Advanced card and INTO Settings > Activity,
+// each next to the panel it controls, with no duplicate left in Advanced.
+describe("#1398 — surfaced recording switches live inside #section-activity, not #dev-tools-card", () => {
+  const PANEL_BY_ID = {
+    "cross-site-frequency": "suspicious-params-panel",
+    "attribution-ledger": "activity-recent-panel",
+    "domain-stats": "domain-stats-panel",
+  };
+
   for (const { id } of BOOLEAN_CONTROLS) {
-    test(`#${id} is a real DOM descendant of #dev-tools-card`, () => {
+    test(`#${id} is a real DOM descendant of #section-activity's ${PANEL_BY_ID[id]}`, () => {
       assert.ok(
-        isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
-        `#${id} must be an actual descendant of <div id="dev-tools-card">, not merely later in the file`,
+        isNestedInsideDiv(optionsHtml, PANEL_BY_ID[id], id),
+        `#${id} must be an actual descendant of <div id="${PANEL_BY_ID[id]}">, not merely later in the file`,
+      );
+    });
+
+    test(`#${id} is NOT a descendant of #dev-tools-card (no duplicate left in Advanced)`, () => {
+      assert.ok(
+        !isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
+        `#${id} must not remain a descendant of <div id="dev-tools-card">`,
       );
     });
   }
@@ -344,7 +360,7 @@ describe("#1355/#1354 — showReportButton is retired", () => {
 
 describe("#925/#936 — new i18n keys are complete across all locales", () => {
   const newKeys = [
-    "section_general", "section_rules_lists", "section_privacy_controls",
+    "section_general", "section_rules_lists",
     "section_display", "section_user_custom_rules", "user_custom_rules_hint",
     "row_canonical_extractor_label", "row_canonical_extractor_hint",
     "row_cross_site_frequency_label", "row_cross_site_frequency_hint",

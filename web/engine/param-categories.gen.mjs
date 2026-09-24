@@ -151,7 +151,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "jmtyclid",
       "maf",
       "rtkcid",
-      "sscid",
       "usqp",
       "vs_campaign_id",
       "link_source",

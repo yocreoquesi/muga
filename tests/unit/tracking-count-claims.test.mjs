@@ -106,4 +106,27 @@ describe("#1259 — no surface claims more tracking patterns than exist", () => 
       `fallen ${actual - stated} behind and should be raised.`,
     );
   });
+
+  // b5-3 audit fix #2: landing/index.html's tracking-patterns stat card names
+  // five examples (utm_*, fbclid, gclid, mc_cid, msclkid) then says "and N
+  // more". That N was never tied to TRACKING_PARAMS.length, so it drifted by
+  // one when #1443 removed sscid from the global list (362 -> 361) without
+  // anyone updating "357 more" to "356 more". This guard sums the named
+  // examples plus the stated N and requires the total to equal
+  // TRACKING_PARAMS.length exactly, so it can't silently drift again.
+  test("landing/index.html: '<named examples> and N more' sums to TRACKING_PARAMS.length", () => {
+    const text = readFileSync(join(ROOT, "landing/index.html"), "utf8");
+    const m = text.match(/<div class="desc">([^<]*?)\s+and\s+(\d+)\s+more\b[^<]*<\/div>/);
+    assert.ok(m, "landing/index.html must state a '<named examples> and N more' tracking-pattern sentence");
+    const namedExamples = m[1].split(",").map((s) => s.trim()).filter(Boolean);
+    const statedMore = Number(m[2]);
+    const total = namedExamples.length + statedMore;
+    assert.equal(
+      total,
+      actual,
+      `landing/index.html names ${namedExamples.length} examples (${namedExamples.join(", ")}) ` +
+      `and claims ${statedMore} more, totaling ${total}, but TRACKING_PARAMS holds ${actual}. ` +
+      `Update the "N more" number to ${actual - namedExamples.length}.`,
+    );
+  });
 });

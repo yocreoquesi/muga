@@ -83,9 +83,6 @@
   },
 
   "web_accessible_resources": [
-    "onboarding/onboarding.html",
-    "privacy/privacy.html",
-    "privacy/tos.html",
     "rules/domain-rules.json",
     "rules/path-strip-rules.json",
     "rules/path-affiliate-rules.json"

@@ -83,6 +83,71 @@ describe("#1046 — every locale defines debug_export_confirm", () => {
   });
 });
 
+// ── #1391: debug_export_confirm must truthfully describe what the log
+// contains — it previously only mentioned browser version + extension
+// settings, omitting that every session logs the domains visited (and, with
+// advanced settings on, full cleaned URLs). Triage (2026-09-24, REDUCED
+// scope): correct the copy, keep the "review before sharing" caution.
+
+describe("#1391 — debug_export_confirm truthfully discloses domain logging", () => {
+  test("en no longer ships the old browser-version-and-settings-only wording", () => {
+    assert.notEqual(
+      en.debug_export_confirm,
+      "This log includes your browser version and extension settings. Do not share it publicly without reviewing it first. Proceed with the export?",
+      "expected this stale string to be gone, not still present",
+    );
+  });
+
+  test("en states the log includes domains visited this session", () => {
+    assert.match(en.debug_export_confirm, /domain/i, "en must mention domains");
+  });
+
+  test("en still keeps the do-not-share-without-reviewing caution", () => {
+    assert.match(en.debug_export_confirm, /without reviewing it first/i);
+  });
+
+  test("all 7 locales have a non-empty, translated debug_export_confirm", () => {
+    for (const [code, dict] of Object.entries(LOCALES)) {
+      assert.ok(
+        typeof dict.debug_export_confirm === "string" && dict.debug_export_confirm.trim().length > 0,
+        `${code} debug_export_confirm must be non-empty`,
+      );
+    }
+  });
+
+  test("es and de spot-check: no longer the old wording, still non-empty and distinct from en", () => {
+    assert.notEqual(es.debug_export_confirm, "");
+    assert.notEqual(de.debug_export_confirm, "");
+    assert.notEqual(es.debug_export_confirm, en.debug_export_confirm);
+    assert.notEqual(de.debug_export_confirm, en.debug_export_confirm);
+  });
+});
+
+// ── #1391: whitelist_add/blacklist_add no longer log the full list entry
+// (domain::param::value) — the export dialog now accurately describes
+// domain-only logging, so the list mutation log itself must not carry more
+// than that (triage: "drop the list entries from the log for consistency").
+
+describe("#1391 — whitelist_add/blacklist_add logAction calls drop the entry detail", () => {
+  const swSource = readFileSync(join(ROOT, "src/background/service-worker.js"), "utf8");
+
+  test("logAction(\"whitelist_add\", ...) no longer passes { entry }", () => {
+    assert.ok(
+      !/logAction\(\s*"whitelist_add"\s*,\s*\{\s*entry\s*\}\s*\)/.test(swSource),
+      "whitelist_add must not log the full entry string",
+    );
+    assert.match(swSource, /logAction\(\s*"whitelist_add"/, "the whitelist_add logAction call must still exist");
+  });
+
+  test("logAction(\"blacklist_add\", ...) no longer passes { entry }", () => {
+    assert.ok(
+      !/logAction\(\s*"blacklist_add"\s*,\s*\{\s*entry\s*\}\s*\)/.test(swSource),
+      "blacklist_add must not log the full entry string",
+    );
+    assert.match(swSource, /logAction\(\s*"blacklist_add"/, "the blacklist_add logAction call must still exist");
+  });
+});
+
 // ── #1048: low-severity code cleanups ────────────────────────────────────────
 
 describe("#1048 — parseListEntry lowercases the param key, preserves value case", () => {

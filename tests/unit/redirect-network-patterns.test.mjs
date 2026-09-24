@@ -19,6 +19,7 @@ import {
   getRedirectNetworkPatterns,
   getRedirectNetworkForRedirectHost,
   getLandingParamsForReferrer,
+  getAllLandingParams,
 } from "../../src/lib/affiliates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -39,13 +40,14 @@ const EXPECTED_NETWORKS = [
   "rakuten-linkshare",
   "tradetracker",
   "tradedoubler",
+  "shareasale",
 ];
 
 describe("REDIRECT_NETWORK_PATTERNS — shape", () => {
-  test("is a frozen array with 10 entries (matrix v1.0 + #695 Tradedoubler promotion)", () => {
+  test("is a frozen array with 11 entries (matrix v1.0 + #695 Tradedoubler + #1443 ShareASale)", () => {
     assert.ok(Array.isArray(REDIRECT_NETWORK_PATTERNS));
     assert.ok(Object.isFrozen(REDIRECT_NETWORK_PATTERNS));
-    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 10);
+    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 11);
   });
 
   test("contains every expected network id, no duplicates", () => {
@@ -154,6 +156,12 @@ describe("REDIRECT_NETWORK_PATTERNS — per-network content matches matrix v1.0"
     assert.deepStrictEqual(n.redirectHosts, ["tc.tradetracker.net"]);
     assert.deepStrictEqual([...n.landingParams].sort(), ["ttaid", "ttcid", "ttrk"]);
   });
+
+  test("shareasale: shareasale.com + www.shareasale.com → sscid", () => {
+    const n = pick("shareasale");
+    assert.deepStrictEqual([...n.redirectHosts].sort(), ["shareasale.com", "www.shareasale.com"]);
+    assert.deepStrictEqual(n.landingParams, ["sscid"]);
+  });
 });
 
 describe("REDIRECT_NETWORK_PATTERNS — invariants across the table", () => {
@@ -214,6 +222,11 @@ describe("getRedirectNetworkForRedirectHost() — exact-match hosts", () => {
     assert.strictEqual(getRedirectNetworkForRedirectHost("px.a8.net")?.id, "a8net");
     assert.strictEqual(getRedirectNetworkForRedirectHost("click.linksynergy.com")?.id, "rakuten-linkshare");
     assert.strictEqual(getRedirectNetworkForRedirectHost("tc.tradetracker.net")?.id, "tradetracker");
+  });
+
+  test("matches ShareASale (both hosts)", () => {
+    assert.strictEqual(getRedirectNetworkForRedirectHost("shareasale.com")?.id, "shareasale");
+    assert.strictEqual(getRedirectNetworkForRedirectHost("www.shareasale.com")?.id, "shareasale");
   });
 });
 
@@ -285,6 +298,46 @@ describe("getLandingParamsForReferrer()", () => {
     const a = getLandingParamsForReferrer("prf.hn");
     a.add("polluted");
     const b = getLandingParamsForReferrer("prf.hn");
+    assert.ok(!b.has("polluted"));
+  });
+});
+
+describe("getAllLandingParams() — union across all 11 networks (#1443)", () => {
+  test("returns a Set", () => {
+    assert.ok(getAllLandingParams() instanceof Set);
+  });
+
+  test("contains every landingParam from every network, lowercased", () => {
+    const union = getAllLandingParams();
+    const expected = new Set(
+      REDIRECT_NETWORK_PATTERNS.flatMap((n) => n.landingParams.map((p) => p.toLowerCase())),
+    );
+    assert.deepStrictEqual([...union].sort(), [...expected].sort());
+  });
+
+  test("includes the issue's named examples: awc, cjevent, sscid", () => {
+    const union = getAllLandingParams();
+    assert.ok(union.has("awc"));
+    assert.ok(union.has("cjevent"));
+    assert.ok(union.has("sscid"));
+  });
+
+  test("includes at least one landingParam from all other 8 networks", () => {
+    const union = getAllLandingParams();
+    for (const network of REDIRECT_NETWORK_PATTERNS) {
+      for (const p of network.landingParams) {
+        assert.ok(
+          union.has(p.toLowerCase()),
+          `${network.id}'s landing param "${p}" missing from getAllLandingParams() union`,
+        );
+      }
+    }
+  });
+
+  test("returned Sets are independent across calls", () => {
+    const a = getAllLandingParams();
+    a.add("polluted");
+    const b = getAllLandingParams();
     assert.ok(!b.has("polluted"));
   });
 });

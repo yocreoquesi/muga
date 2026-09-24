@@ -441,6 +441,44 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(cleanUrl, "https://www.shein.com/dress-p-12345.html?awc=999_abc");
   });
 
+  // #1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.
+  test("preserves sscid (ShareASale click ID — maintainer decision #1443)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1");
+  });
+
+  test("preserves sscid but strips utm_* alongside (mixed URL still cleaned)", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1&utm_source=shareasale",
+      PREFS
+    );
+    assert.ok(!removedTracking.includes("sscid"), "sscid must be preserved per #1443");
+    assert.ok(removedTracking.includes("utm_source"));
+    assert.equal(cleanUrl, "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1");
+  });
+
+  // #1443 maintainer decision (2026-09-24): under stripAllAffiliates, strip
+  // the REDIRECT_NETWORK_PATTERNS landingParams of ALL 11 networks (awc,
+  // irclickid, cjevent, sscid, ...); by default they stay preserved exactly
+  // as before. This test pins the NEW behavior (sscid and awc are both
+  // stripped under stripAllAffiliates, symmetrically).
+  test("sscid and awc are both stripped under stripAllAffiliates (#1443)", () => {
+    const sscidResult = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    const awcResult = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_1234567890_abc",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(new URL(sscidResult.cleanUrl).searchParams.has("sscid"), false);
+    assert.equal(new URL(awcResult.cleanUrl).searchParams.has("awc"), false);
+  });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -1477,6 +1515,161 @@ describe("whitelist priority over stripAllAffiliates", () => {
     );
     assert.equal(new URL(cleanUrl).searchParams.get("tag"), null,
       "non-whitelisted tag must be stripped");
+  });
+
+});
+
+// ---------------------------------------------------------------------------
+// Redirect-network landingParams under stripAllAffiliates (#1443 maintainer
+// decision 2026-09-24): under stripAllAffiliates, strip the
+// REDIRECT_NETWORK_PATTERNS landingParams of ALL 11 networks (awc, irclickid,
+// cjevent, sscid, ...); by default they stay preserved exactly as before.
+// ---------------------------------------------------------------------------
+describe("redirect-network landingParams under stripAllAffiliates (#1443)", () => {
+
+  // (a) DEFAULT prefs: regression pin — first-touch referrer still preserves
+  // the landing param end to end through processUrl. Awin/CJ/ShareASale are
+  // already pinned via referrer in get-landing-policy.test.mjs; this adds a
+  // few more of the remaining 8 networks for direct-injection-style coverage.
+  test("default prefs: sscid is preserved with no referrer (regression pin)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("sscid"), "a1k7_abcd1");
+  });
+
+  test("default prefs: awc is preserved with no referrer (regression pin)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_abc",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("awc"), "12345_abc");
+  });
+
+  // (b) stripAllAffiliates: true — stripped REGARDLESS of referrer (not
+  // referrer-gated, unlike the default-preserve path via getLandingPolicy).
+  test("stripAllAffiliates strips sscid with NO referrer present", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false);
+  });
+
+  // b5-3 audit fix #2: when a landing param (Step 4c) is the ONLY thing
+  // removed from the URL — no Step 5 tracking params, no Step 4b direct
+  // affiliate pattern — processUrl must still report action "cleaned" and
+  // list the param in removedTracking, exactly as any other stripped param
+  // would be. Before this fix, Step 4c mutated the URL and flipped `action`
+  // but never fed the stripped name into removedTracking, so a landing-only
+  // strip was invisible to anything downstream that reads removedTracking
+  // (badge counts, the report flow, stats).
+  test("stripAllAffiliates: a landing param stripped alone is reported as action=cleaned and appears in removedTracking (sscid)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("sscid"), `removedTracking must include "sscid", got: ${JSON.stringify(removedTracking)}`);
+    assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false);
+  });
+
+  test("stripAllAffiliates: a landing param stripped alone is reported as action=cleaned and appears in removedTracking (awc)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_abc",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("awc"), `removedTracking must include "awc", got: ${JSON.stringify(removedTracking)}`);
+    assert.equal(new URL(cleanUrl).searchParams.has("awc"), false);
+  });
+
+  test("stripAllAffiliates strips sscid even WITH the matching ShareASale referrer", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      { ...PREFS, stripAllAffiliates: true },
+      [],
+      undefined,
+      undefined,
+      "https://www.shareasale.com/r.cfm?b=1&u=2&m=3",
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false,
+      "stripAllAffiliates strip is not referrer-gated");
+  });
+
+  test("stripAllAffiliates strips awc even WITH the matching Awin referrer", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.zalando.es/product.html?awc=12345_abc",
+      { ...PREFS, stripAllAffiliates: true },
+      [],
+      undefined,
+      undefined,
+      "https://www.awin1.com/cread.php?id=1",
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("awc"), false);
+  });
+
+  test("stripAllAffiliates strips cjevent/cjdata (CJ Affiliate) alongside utm_* noise", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.walmart.com/ip/1?cjevent=abc&cjdata=enc&utm_medium=email",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.has("cjevent"), false);
+    assert.equal(u.searchParams.has("cjdata"), false);
+    assert.ok(removedTracking.includes("utm_medium"));
+  });
+
+  test("stripAllAffiliates strips a landing param from every other network in the table", () => {
+    const samples = [
+      ["irclickid", "https://target.pxf.io.merchant.example/p?irclickid=abc"],
+      ["clickref", "https://merchant.example/p?clickref=abc"],
+      ["admitad_uid", "https://merchant.example/p?admitad_uid=abc"],
+      ["a8", "https://merchant.example/p?a8=abc"],
+      ["ranmid", "https://merchant.example/p?ranmid=abc"],
+      ["ttaid", "https://merchant.example/p?ttaid=abc"],
+      ["tduid", "https://merchant.example/p?tduid=abc"],
+      ["aff_trace_key", "https://merchant.example/p?aff_trace_key=abc"],
+    ];
+    for (const [param, url] of samples) {
+      const { cleanUrl } = processUrl(url, { ...PREFS, stripAllAffiliates: true });
+      assert.equal(
+        new URL(cleanUrl).searchParams.has(param),
+        false,
+        `${param} must be stripped under stripAllAffiliates`,
+      );
+    }
+  });
+
+  // (c) whitelist wins over stripAllAffiliates for a landingParam, mirroring
+  // the existing AFFILIATE_PATTERNS whitelist-wins-under-stripAll invariant.
+  test("whitelist entry protects a landingParam value even under stripAllAffiliates", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        whitelist: ["merchant-shop.com::sscid::a1k7_abcd1"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("sscid"), "a1k7_abcd1",
+      "whitelisted landingParam value must survive stripAllAffiliates");
+  });
+
+  test("non-whitelisted landingParam value is still stripped under stripAllAffiliates", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=other-value",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        whitelist: ["merchant-shop.com::sscid::a1k7_abcd1"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("sscid"), false,
+      "a different value on the same param must still be stripped");
   });
 
 });

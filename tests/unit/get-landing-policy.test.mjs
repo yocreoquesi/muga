@@ -143,6 +143,20 @@ describe("processUrl integration — matrix params preserved on first-touch", ()
     assert.equal(u.searchParams.get("utm_medium"), null);
   });
 
+  test("ShareASale referrer preserves sscid; co-strips utm_* (#1443)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1&utm_source=shareasale",
+      PREFS,
+      [],
+      undefined,
+      undefined,
+      "https://www.shareasale.com/r.cfm?b=1&u=2&m=3",
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("sscid"), "a1k7_abcd1", "sscid must survive on first-touch");
+    assert.equal(u.searchParams.get("utm_source"), null, "utm_source still strippable");
+  });
+
   test("unknown referrer → no preservation; utm_* still stripped", () => {
     const { cleanUrl } = processUrl(
       "https://merchant.com/p?utm_source=email",

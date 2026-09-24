@@ -510,7 +510,11 @@ export const TRACKING_PARAMS = [
   // sprtype removed (maintainer decision 2026-09-24, #1338): no vendor
   // evidence after a real search.
   "srclt",                        // vendor unverified (#1338)
-  "sscid",                        // ShareASale (Safari/ITP click-id fallback cookie param)
+  // sscid removed (maintainer decision 2026-09-24, #1443): ShareASale click ID,
+  // now declared in REDIRECT_NETWORK_PATTERNS.shareasale.landingParams like
+  // awc/irclickid/cjevent — preserved by default, stripped under
+  // stripAllAffiliates; universal-strip would kill creator attribution for
+  // every user regardless of that choice.
   "tcsack",                       // vendor unverified (#1338)
   "user_email_address",           // vendor unverified (#1338)
   "uzcid",                        // vendor unverified (#1338)
@@ -671,7 +675,8 @@ export const TRACKING_PARAM_CATEGORIES = {
       "tw_medium", "tw_profile_id",
       // A8.net `a8` excluded per matrix v1.0.
       "btag", "erid", "external_click_id", "ftag",
-      "jmtyclid", "maf", "rtkcid", "sscid",
+      // sscid excluded per REDIRECT_NETWORK_PATTERNS.shareasale (#1443).
+      "jmtyclid", "maf", "rtkcid",
       "usqp", "vs_campaign_id",
       "link_source",
       "tgclid",

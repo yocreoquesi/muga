@@ -111,6 +111,33 @@ test.describe("Options — blacklist", () => {
     await addBtn.click();
     await expect(items).toHaveCount(initialCount);
   });
+
+  test("audit b5-3, part 3: on a genuine save failure, the input keeps its value so the user can just retry", async ({ optionsPage: page }) => {
+    const input = page.locator("#bl-input");
+    const addBtn = page.locator("#bl-add-btn");
+    const list = page.locator("#blacklist-items");
+
+    // Force every chrome.storage.sync.set() to fail from here on, simulating
+    // a genuine sync write error (setPrefs resolves false, never throws).
+    await page.evaluate(() => {
+      const real = chrome.storage.sync.set.bind(chrome.storage.sync);
+      chrome.storage.sync.set = (items, cb) => {
+        chrome.runtime.lastError = { message: "simulated sync failure" };
+        try { cb && cb(); } finally { delete chrome.runtime.lastError; }
+      };
+      window.__mugaRealSyncSet = real; // unused, kept for clarity in traces
+    });
+
+    await input.fill("still-here.example");
+    await addBtn.click();
+
+    // The failure toast appears...
+    await expect(page.locator(".toast.visible")).toHaveText(/couldn't save|try again/i);
+    // ...the entry was NOT added...
+    await expect(list).not.toContainText("still-here.example");
+    // ...and, unlike a successful add, the input keeps what the user typed.
+    await expect(input).toHaveValue("still-here.example");
+  });
 });
 
 test.describe("Options — whitelist", () => {
@@ -475,6 +502,40 @@ test.describe("Options — unified Activity ledger panel (#1352)", () => {
 
     await page.locator("#activity-scope-recent").check();
     await expect(page.locator("#activity-recent-empty")).toBeVisible();
+    await expect(page.locator("#activity-recent-list")).toBeEmpty();
+  });
+});
+
+test.describe("Options — attribution-ledger toggle race (audit b5-3, part 1)", () => {
+  test("turning Recent activity off renders the disabled empty state immediately, without waiting for the pref write to land", async ({ optionsPage: page, context, extensionId }) => {
+    // Seed one Recent-activity entry so the panel starts with real rows —
+    // if the fix regresses, the list would still show these instead of the
+    // disabled empty state.
+    await seedStorage(context, extensionId, {
+      local: { attributionLedger: { events: [{ type: "clean", url: "https://example.com/?utm_source=x" }], capacity: 50 } },
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.mugaReady === "1");
+
+    await page.locator("#activity-scope-recent").check();
+    await expect(page.locator("#activity-recent-list .recent-activity-row")).toHaveCount(1);
+
+    // The bug: renderActivityLedgerPanel decided enabled/disabled by
+    // re-reading getPrefs() from chrome.storage.sync, racing the toggle's
+    // own bindToggle() write to that same storage. Delay the underlying
+    // sync write so the read-back is provably still stale at the moment
+    // the panel re-renders — the fix must use the in-memory toggle value
+    // instead of depending on the write's timing.
+    await page.evaluate(() => {
+      const real = chrome.storage.sync.set.bind(chrome.storage.sync);
+      chrome.storage.sync.set = (items, cb) => setTimeout(() => real(items, cb), 300);
+    });
+
+    await setCheckbox(page, "attribution-ledger", false);
+
+    // Assert well before the delayed write (300ms) could possibly land.
+    await expect(page.locator("#activity-recent-empty")).toBeVisible({ timeout: 150 });
+    await expect(page.locator("#activity-recent-empty")).toHaveText(/turned off/i);
     await expect(page.locator("#activity-recent-list")).toBeEmpty();
   });
 });

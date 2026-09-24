@@ -223,7 +223,7 @@ const BASELINE = {
   "a11y-contrast.test.mjs": 1,
   "a11y-structure.test.mjs": 9,
   "amp-redirect.test.mjs": 15,
-  "audit-2.5.0-copy-cleanups.test.mjs": 2,
+  "audit-2.5.0-copy-cleanups.test.mjs": 4, // 2 -> 4 (b5-3 audit fix #4, correcting a prior mischaracterization): this is NOT a pure heuristic re-count. #1391's "whitelist_add/blacklist_add logAction calls drop the entry detail" describe block genuinely ADDED 2 new source-grep assertions against service-worker.js (readFileSync'd, then two `!/logAction(.../.test(swSource)` checks). service-worker.js touches chrome.* at module scope and is not importable in Node (see this file's own doc comment on the repo's behavioral-where-importable / source-guard-otherwise convention), so a behavioral rewrite would need extracting the logAction call sites or a message-handler test harness — out of scope for this fix. These are genuine new wiring guards on browser-only SW source, not free slack from a wider counting heuristic (#824)
   "bounce-state-affiliate-redirect.test.mjs": 2,
   "bounce-state-wrappers-parity.test.mjs": 4,
   "cleaner.test.mjs": 3,
@@ -269,6 +269,7 @@ const BASELINE = {
   "options-show-badge-toggle.test.mjs": 7,
   "options-strip-globally-button.test.mjs": 23,
   "options-surfaced-prefs.test.mjs": 13,
+  "options-sync-save-failed.test.mjs": 3, // new file, audit behaviour branch (#1430): sync-mutation.js is importable in Node and covered behaviorally in sync-mutation.test.mjs; these 3 pin that addEntry/removeEntry actually wire the sync_save_failed toast + skip re-render on a failed write, read from options.js source (#824)
   "popup-aria-i18n.test.mjs": 9,
   "popup-autoinject-badge.test.mjs": 16,
   "popup-count-celebration.test.mjs": 15,
@@ -285,10 +286,12 @@ const BASELINE = {
   "sanitize-import.test.mjs": 43,
   "service-worker-autoinject-passthrough.test.mjs": 1,
   "session-storage-race-1097.test.mjs": 2,
+  "settings-activity-controls-relocation.test.mjs": 39, // 38 -> 39 (b5-3 audit fix #1): +1 source-grep assertion pinning that renderActivityLedgerPanel now accepts an explicit attributionLedgerEnabledOverride parameter, so the toggle-race fix (call sites pass the in-memory enabled state instead of the function re-reading storage) cannot regress silently (#824)
   "settings-activity-domain-stats.test.mjs": 21,
   "settings-activity-ledger-copy.test.mjs": 36,
   "settings-activity-ledger.test.mjs": 62,
   "settings-activity-suspicious-params.test.mjs": 52,
+  "store-links.test.mjs": 4, // new file, audit behaviour branch (#1387): store-links.js's own URL/getRateUrl() behavior is covered behaviorally above; these 4 pin that it imports isFirefox() rather than reimplementing it, and that both call sites import getRateUrl from the shared module, read from source (#824)
   "strip-test-seams.test.mjs": 4,
   "tos-version-sync.test.mjs": 1,
   "validation.test.mjs": 5,
