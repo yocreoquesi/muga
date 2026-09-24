@@ -133,3 +133,102 @@ describe("Firefox webRequest stripper — injection is suppressed (network layer
     assert.equal(withInject.result.action !== "injected", true, "network strip must not be an injection");
   });
 });
+
+// #1439: an unwrap-only result (the wrapper was removed, the destination had
+// nothing else to strip) must surface as "cleaned". Otherwise the `untouched`
+// guard drops it: Firefox leaves the navigation on the wrapper, and the SW
+// stats/Activity gate never records it.
+describe("Firefox webRequest stripper — redirect wrappers with a clean destination (#1439)", () => {
+  const GOOGLE_URL = "https://www.google.com/url?sa=t&url=https%3A%2F%2Fexample.com%2F%3Fa%3D1&ved=2ah&usg=AOv";
+  const FB_CLEAN_DEST = "https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2F%3Fx%3D1&h=AT0";
+
+  test("google.com/url?url= with a clean destination is redirected to the destination", () => {
+    const decision = strip(GOOGLE_URL);
+    assert.ok(decision, "the wrapper must be redirected, not passed through");
+    assert.equal(decision.cleanUrl, "https://example.com/?a=1");
+    assert.equal(decision.result.action, "cleaned");
+  });
+
+  test("l.facebook.com/l.php?u= with a clean destination is redirected to the destination", () => {
+    const decision = strip(FB_CLEAN_DEST);
+    assert.ok(decision, "the wrapper must be redirected, not passed through");
+    assert.equal(decision.cleanUrl, "https://example.com/?x=1");
+  });
+
+  test("processUrl reports an unwrap-only result as cleaned (stats + Activity parity)", () => {
+    const r = processUrl(GOOGLE_URL, makePrefs(), DOMAIN_RULES, undefined, undefined, "", [], []);
+    assert.equal(r.cleanUrl, "https://example.com/?a=1");
+    assert.equal(r.action, "cleaned");
+  });
+
+  test("the cached-whitelist branch (handleWhitelistedDomain) also reports an unwrap-only result as cleaned", () => {
+    const prefs = makePrefs();
+    // The SW cache carries pre-parsed lists; a param-less entry for the
+    // destination routes processUrl through handleWhitelistedDomain.
+    prefs._parsedWhitelist = [parseListEntry("example.com")];
+    const r = processUrl(GOOGLE_URL, prefs, DOMAIN_RULES, undefined, undefined, "", [], []);
+    assert.equal(r.cleanUrl, "https://example.com/?a=1");
+    assert.equal(r.action, "cleaned");
+  });
+
+  test("a direct, already-clean URL stays untouched (no false promotion)", () => {
+    const r = processUrl("https://example.com/?a=1", makePrefs(), DOMAIN_RULES, undefined, undefined, "", [], []);
+    assert.equal(r.action, "untouched");
+    assert.equal(strip("https://example.com/?a=1"), null);
+  });
+});
+
+// #1437: the "Unwrap redirect wrappers" toggle (unwrapRedirects) must govern
+// every processUrl-based path (link click, copy-clean, context menu, Firefox
+// navigation stripper), not only the DNR ruleset and the content script's
+// redirect unwrap.
+describe("unwrapRedirects:false leaves redirect wrappers wrapped on every processUrl path (#1437)", () => {
+  const off = () => makePrefs({ unwrapRedirects: false });
+  const FB = "https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com%2F%3Ffbclid%3Dabc%26x%3D1&h=AT0";
+  const GOOGLE_URL = "https://www.google.com/url?sa=t&url=https%3A%2F%2Fexample.com%2F%3Fa%3D1";
+
+  test("processUrl keeps l.facebook.com/l.php?u= wrapped", () => {
+    const r = processUrl(FB, off(), DOMAIN_RULES, undefined, undefined, "", [], []);
+    const out = new URL(r.cleanUrl);
+    assert.equal(out.hostname, "l.facebook.com");
+    assert.ok(out.searchParams.get("u"), "the wrapped destination must still be there");
+  });
+
+  test("processUrl keeps google.com/url?url= wrapped", () => {
+    const r = processUrl(GOOGLE_URL, off(), DOMAIN_RULES, undefined, undefined, "", [], []);
+    const out = new URL(r.cleanUrl);
+    assert.equal(out.hostname, "www.google.com");
+    assert.equal(out.pathname, "/url");
+  });
+
+  test("computeNavigationStrip does not redirect the navigation off the wrapper", () => {
+    for (const url of [FB, GOOGLE_URL]) {
+      const d = strip(url, off());
+      if (d) assert.notEqual(new URL(d.cleanUrl).hostname, "example.com", `must not unwrap ${url} with the toggle off`);
+    }
+  });
+
+  test("tracking params on the wrapper URL itself are still stripped", () => {
+    const url = "https://www.google.com/url?url=https%3A%2F%2Fexample.com%2F&utm_source=x";
+    const r = processUrl(url, off(), DOMAIN_RULES, undefined, undefined, "", [], []);
+    const out = new URL(r.cleanUrl);
+    assert.equal(out.hostname, "www.google.com");
+    assert.equal(out.searchParams.has("utm_source"), false);
+    assert.equal(out.searchParams.get("url"), "https://example.com/");
+  });
+
+  test("the canonical-extractor tier (which depends on wrapper detection) is off too", () => {
+    const url = "https://www.google.com/url?url=opaque-token";
+    const bundle = { linkCanonical: "https://example.com/article", jsonLdId: null };
+    // Sanity: with the toggle on, this opaque wrapper resolves via the canonical tier.
+    const on = processUrl(url, makePrefs(), DOMAIN_RULES, bundle, undefined, "", [], []);
+    assert.equal(on.cleanUrl, "https://example.com/article");
+    const r = processUrl(url, off(), DOMAIN_RULES, bundle, undefined, "", [], []);
+    assert.equal(new URL(r.cleanUrl).hostname, "www.google.com");
+  });
+
+  test("default (pref true) still unwraps", () => {
+    const r = processUrl(GOOGLE_URL, makePrefs({ unwrapRedirects: true }), DOMAIN_RULES, undefined, undefined, "", [], []);
+    assert.equal(r.cleanUrl, "https://example.com/?a=1");
+  });
+});
