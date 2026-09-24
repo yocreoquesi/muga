@@ -14,8 +14,8 @@
  * Real-world wrapper traffic almost always carries the destination
  * percent-encoded:
  *
- *   https://www.awin1.com/cread.php?awinmid=1&awinaffid=2&p=
- *     https%3A%2F%2Fwww.merchant.com%2Fproduct%2F123
+ *   https://l.facebook.com/l.php?u=
+ *     https%3A%2F%2Fwww.merchant.com%2Fproduct%2F123&h=AT0
  *
  * The DNR rule's capture `[^&]+` grabs the encoded form, and `\\1`
  * substitutes the literal string `https%3A%2F%2F...` as the redirect
@@ -29,9 +29,12 @@
  * is the load-bearing path for these networks today.
  *
  * Per-wrapper coverage of the encoded path is therefore SKIPPED here
- * with the empirical reason inline. The negative-case test (regex must
- * not over-match awin1.com paths without `p=`) stays active — that
- * remains a meaningful invariant of the rule shape.
+ * with the empirical reason inline. What stays ACTIVE (#1410) targets the
+ * two rules the ruleset actually holds, l.facebook.com and lm.facebook.com:
+ * the unencoded shape Chromium does honour must redirect without the
+ * wrapper host ever being requested, and an `l.php` URL without `u=` must
+ * not be redirected at all. The Awin case that used to sit here asserted a
+ * negative against a rule that had been retired, so it could not fail.
  *
  * Follow-up tracked in #510: decide whether to (a) drop the DNR
  * wrapper rules and rely on the content-script unwrap path, or
@@ -56,11 +59,8 @@ const DEST_URL = `https://${DEST_HOST}/path`;
 const DEST_ENC = encodeURIComponent(DEST_URL);
 
 const WRAPPERS = [
-  {
-    name: "Awin",
-    wrapperHost: "www.awin1.com",
-    url: `https://www.awin1.com/cread.php?awinmid=1234&awinaffid=5678&p=${DEST_ENC}`,
-  },
+  // Awin's DNR rule was retired too (awin1.com is a pass-through network in
+  // src/lib/opaque-networks.js), so it is not listed here (#1410).
   {
     name: "Facebook l.facebook.com",
     wrapperHost: "l.facebook.com",
@@ -99,18 +99,72 @@ test.describe("DNR wrapper-redirect rules (#510)", () => {
     });
   }
 
-  test("non-wrapper URL on a wrapper-adjacent host is NOT redirected", async ({ context }) => {
-    // Awin's wrapper rule is anchored to `awin1.com.*[?&]p=([^&]+)`. A
-    // request to a different awin1.com path without `p=` must pass
-    // through unmodified — we don't want to over-match the regex and
-    // break legitimate wrapper-host pages.
-    const page = await context.newPage();
-    await stubHost(page, "www.awin1.com");
+  /**
+   * Stubs a wrapper host and records every request that reached it. A DNR
+   * redirect happens before the request is sent, so a rule that fires leaves
+   * the record empty; the content-script unwrap path, which also knows
+   * l.facebook.com, can only act after the wrapper page has loaded.
+   */
+  async function recordingStub(page, hostname) {
+    const hits = [];
+    await page.route(`**://${hostname}/**`, (route) => {
+      hits.push(route.request().url());
+      return route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: `<!doctype html><html><body>${hostname} stub</body></html>`,
+      });
+    });
+    return hits;
+  }
 
-    await page.goto("https://www.awin1.com/about/");
+  // `u=` is the LAST param on purpose. `regexSubstitution` replaces only the
+  // part of the URL the regex matched, and the live regexes stop right after
+  // the `([^&]+)` capture, so anything after it is appended to the
+  // destination. Measured here: `l.php?u=<dest>&h=AT0` redirects to
+  // `<dest>&h=AT0`. That is recorded by the fixme test below rather than
+  // hidden by this one.
+  for (const host of ["l.facebook.com", "lm.facebook.com"]) {
+    test(`${host}: an unencoded u= destination is redirected by DNR before the wrapper is hit`, async ({ context }) => {
+      const page = await context.newPage();
+      await stubHost(page, DEST_HOST);
+      const wrapperHits = await recordingStub(page, host);
+
+      await page.goto(`https://${host}/l.php?h=AT0&u=${DEST_URL}`);
+      await page.waitForLoadState("domcontentloaded");
+
+      expect(page.url()).toBe(DEST_URL);
+      expect(wrapperHits, "the wrapper host must never be requested").toEqual([]);
+      await page.close();
+    });
+  }
+
+  test.fixme("l.facebook.com: params after u= are not appended to the destination", async ({ context }) => {
+    // Found while repointing this spec (#1410). The rule regex ends at the
+    // capture, so the unmatched tail `&h=AT0` survives the substitution and
+    // lands on the destination path. Fixing it means reshaping the rule
+    // (#510's open decision), not this test.
+    const page = await context.newPage();
+    await stubHost(page, DEST_HOST);
+    await recordingStub(page, "l.facebook.com");
+    await page.goto(`https://l.facebook.com/l.php?u=${DEST_URL}&h=AT0`);
+    await page.waitForLoadState("domcontentloaded");
+    expect(page.url()).toBe(DEST_URL);
+    await page.close();
+  });
+
+  test("an l.facebook.com/l.php URL without u= is NOT redirected", async ({ context }) => {
+    // The live rule is anchored to `l.facebook.com/l.php.*[?&]u=([^&]+)`. The
+    // same endpoint without `u=` must pass through unmodified: over-matching
+    // would break legitimate wrapper-host pages.
+    const page = await context.newPage();
+    const wrapperHits = await recordingStub(page, "l.facebook.com");
+
+    await page.goto("https://l.facebook.com/l.php?h=AT0");
     await page.waitForLoadState("domcontentloaded");
 
-    expect(page.url()).toBe("https://www.awin1.com/about/");
+    expect(page.url()).toBe("https://l.facebook.com/l.php?h=AT0");
+    expect(wrapperHits).toEqual(["https://l.facebook.com/l.php?h=AT0"]);
     await page.close();
   });
 });
