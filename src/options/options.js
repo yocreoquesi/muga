@@ -348,18 +348,16 @@ async function init() {
   // downstream slices (B13/B14) can read it. No behaviour change here.
   bindToggle("honor-creator-mode", "honorCreatorMode", prefs);
   // ADR-0004 phase 5 (#701): mode-label display removed along with Privacy Proxy section.
-  // Experimental shape-based param heuristic (#544). Default OFF. Plumbed
-  // here as a plain bindToggle — cleaner.js reads the flag through the same
-  // prefs object and routes the heuristic accordingly.
-  bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
   // ADR-0004 phase 5 (#701): useNativeShortenerResolution flag removed — native
   // resolution is now the only path, the toggle is vestigial and has been deleted.
+  // experimentalParamClassesEnabled and canonicalExtractorEnabled are bound
+  // further below, alongside the devToolsMode wiring (#1355: both controls
+  // moved into the Developer tools panel).
 
   // #925: surface the seven previously UI-less prefs as Advanced controls
   // (all default ON, matching PREF_DEFAULTS). Booleans use bindToggle; the
   // userCustomRules list uses the shared renderList/removeEntry path below.
   // Privacy group:
-  bindToggle("canonical-extractor", "canonicalExtractorEnabled", prefs);
   bindToggle("cross-site-frequency", "crossSiteFrequencyEnabled", prefs);
   bindToggle("attribution-ledger", "attributionLedgerEnabled", prefs);
   // Aggressive privacy (referer-beacon-privacy PR 4): opt-in, off by default.
@@ -370,7 +368,7 @@ async function init() {
   // gains this header-layer behavior. Gated to fire exactly once.
   await initBlocklistMigrationNotice(prefs);
   // Display group:
-  bindToggle("param-breakdown", "paramBreakdown", prefs);
+  // #1355/#1354: paramBreakdown retired — no control (see prefs.js).
   bindToggle("show-report-button", "showReportButton", prefs);
   bindToggle("domain-stats", "domainStats", prefs);
   // #1350: the Activity section's domain-stats table is gated on the same
@@ -448,6 +446,16 @@ async function init() {
   }
   syncDevToolsPanel();
   if (devToolsModeEl) devToolsModeEl.addEventListener("change", syncDevToolsPanel);
+
+  // #1355 (ADR-0011 internal-with-a-default): both moved out of the
+  // dev-mode-gated Advanced card and into the devToolsMode-gated Developer
+  // tools panel. Neither is QA-only — canonicalExtractorEnabled stays ON by
+  // default and experimentalParamClassesEnabled stays a real, exported,
+  // opt-in flag — but a user has no product reason to reach for either
+  // outside of debugging, so Developer tools is now their only home.
+  bindToggle("canonical-extractor", "canonicalExtractorEnabled", prefs);
+  bindToggle("experimental-param-classes", "experimentalParamClassesEnabled", prefs);
+
   initDevTools();
 
   // Remote rule updates section — feature-detect then wire (REQ-UI-5)
@@ -1548,7 +1556,6 @@ function initExportImport() {
       // referer-beacon-privacy PR 4: reflect the imported Aggressive privacy toggles.
       document.getElementById("suppress-referer").checked = newPrefs.suppressReferer;
       document.getElementById("block-beacons").checked = newPrefs.blockBeacons;
-      document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
       await renderDomainStatsActivity(newPrefs.domainStats);

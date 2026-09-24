@@ -30,17 +30,93 @@ const ROOT = join(__dir, "../..");
 const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
 
+// ── Real DOM-nesting check (#1355 R3-003/R3-004) ────────────────────────────
+//
+// A previous version of the containment tests below only compared string
+// offsets ("this id's index is greater than that id's index and less than
+// this other one") — that proves an id appears somewhere in a stretch of
+// TEXT, never that it is an actual DESCENDANT of a given container element.
+// Two sibling <div>s at the same nesting depth, or an id placed AFTER a
+// container's closing tag but still before some unrelated later marker,
+// would satisfy the old check just as well as real nesting would.
+//
+// options.html is our own controlled, well-formed template — no <div> tags
+// inside HTML comments (verified), every <div> explicitly closed — so a
+// plain balanced-tag walk is sufficient here without pulling in a full HTML
+// parser (none of jsdom/linkedom/happy-dom is a project devDependency, and
+// adding one is out of scope for a test-only fix). Comments are stripped
+// first anyway, defensively, so a future edit that mentions "<div" in a
+// comment can't silently corrupt the depth count.
+
+/** Strips HTML comments so they can never be mistaken for real tags. */
+function stripHtmlComments(html) {
+  return html.replace(/<!--[\s\S]*?-->/g, "");
+}
+
+/**
+ * True when `id="childId"` appears strictly inside the matching, balanced
+ * closing tag of `<div id="containerId">` — real DOM nesting, not merely
+ * "later in the text". Throws (fails loudly, not silently false) if the
+ * container id or its balanced close can't be found, so a typo'd id or a
+ * genuinely unbalanced template is a visible test error, not a false pass.
+ *
+ * @param {string} html
+ * @param {string} containerId
+ * @param {string} childId
+ * @returns {boolean}
+ */
+function isNestedInsideDiv(html, containerId, childId) {
+  const clean = stripHtmlComments(html);
+  const markerIdx = clean.indexOf(`id="${containerId}"`);
+  if (markerIdx === -1) throw new Error(`isNestedInsideDiv: container id="${containerId}" not found`);
+  const openTagEnd = clean.indexOf(">", markerIdx);
+  if (openTagEnd === -1) throw new Error(`isNestedInsideDiv: unterminated opening tag for id="${containerId}"`);
+
+  const tagRe = /<div\b|<\/div>/g;
+  tagRe.lastIndex = openTagEnd + 1;
+  let depth = 1; // already inside the container's own <div>
+  let closeIdx = -1;
+  let m;
+  while ((m = tagRe.exec(clean)) !== null) {
+    if (m[0] === "</div>") {
+      depth--;
+      if (depth === 0) { closeIdx = m.index; break; }
+    } else {
+      depth++;
+    }
+  }
+  if (closeIdx === -1) throw new Error(`isNestedInsideDiv: no balanced closing </div> found for id="${containerId}"`);
+
+  const childIdx = clean.indexOf(`id="${childId}"`);
+  if (childIdx === -1) return false;
+  return childIdx > openTagEnd && childIdx < closeIdx;
+}
+
 // Each surfaced boolean pref → { id, prefKey, ariaKey }
+// #1355: canonicalExtractorEnabled moved into the devToolsMode-gated
+// Developer tools panel — see the dedicated describe block below — so it is
+// no longer part of the dev-mode-gated-Advanced-card group tested here.
+// paramBreakdown was retired entirely (#1355/#1354: the popup glance shows
+// the breakdown unconditionally now) — see the retirement describe block
+// below instead of listing it here.
 const BOOLEAN_CONTROLS = [
-  { id: "canonical-extractor",  prefKey: "canonicalExtractorEnabled", ariaKey: "aria_canonical_extractor" },
   { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled", ariaKey: "aria_cross_site_frequency" },
   { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled",  ariaKey: "aria_attribution_ledger" },
-  { id: "param-breakdown",      prefKey: "paramBreakdown",            ariaKey: "aria_param_breakdown" },
   { id: "show-report-button",   prefKey: "showReportButton",          ariaKey: "aria_show_report_button" },
   { id: "domain-stats",         prefKey: "domainStats",               ariaKey: "aria_domain_stats" },
 ];
 
-describe("#925 — the six surfaced boolean prefs are all ON by default", () => {
+// #1355 (ADR-0011 internal-with-a-default): canonicalExtractorEnabled's
+// control moved into Developer tools; experimentalParamClassesEnabled's
+// control moved there too (previously in the dev-mode-gated Advanced card,
+// same as the ones above). Both stay real, user-settable, exported prefs —
+// only their Settings location changed.
+const DEV_TOOLS_CONTROLS = [
+  { id: "canonical-extractor",      prefKey: "canonicalExtractorEnabled",       ariaKey: "aria_canonical_extractor" },
+  { id: "experimental-param-classes", prefKey: "experimentalParamClassesEnabled", ariaKey: "aria_experimental_params" },
+];
+
+describe("#925 — the remaining surfaced boolean prefs are all ON by default", () => {
   for (const { prefKey } of BOOLEAN_CONTROLS) {
     test(`PREF_DEFAULTS.${prefKey} is true`, () => {
       assert.strictEqual(
@@ -73,14 +149,62 @@ describe("#925 — each surfaced toggle has an HTML row and a bindToggle wiring"
   }
 });
 
-describe("#925 — surfaced controls live inside the dev-mode-gated Advanced card", () => {
-  const cardIdx = optionsHtml.indexOf('id="dev-tools-card"');
-  const verIdx = optionsHtml.indexOf("version-info");
+describe("#1355 — canonical-extractor / experimental-param-classes have an HTML row and bindToggle wiring", () => {
+  for (const { id, prefKey, ariaKey } of DEV_TOOLS_CONTROLS) {
+    test(`#${id} checkbox exists with data-i18n-aria-label="${ariaKey}"`, () => {
+      assert.ok(optionsHtml.includes(`id="${id}"`), `options.html must contain a checkbox with id="${id}"`);
+      assert.ok(
+        optionsHtml.includes(`data-i18n-aria-label="${ariaKey}"`),
+        `the #${id} row must carry data-i18n-aria-label="${ariaKey}"`
+      );
+    });
 
+    test(`options.js binds #${id} to "${prefKey}"`, () => {
+      assert.ok(
+        optionsJs.includes(`bindToggle("${id}", "${prefKey}", prefs)`),
+        `options.js must call bindToggle("${id}", "${prefKey}", prefs)`
+      );
+    });
+  }
+});
+
+// #1355: these two controls moved OUT of the dev-mode-gated Advanced card
+// and INTO the devToolsMode-gated Developer tools panel (#dev-tools-panel).
+// Moved, not retired: both stay real, default-preserving, exported prefs.
+describe("#1355 — canonical-extractor / experimental-param-classes live inside #dev-tools-panel, not #dev-tools-card", () => {
+  for (const { id } of DEV_TOOLS_CONTROLS) {
+    test(`#${id} is a real DOM descendant of #dev-tools-panel`, () => {
+      assert.ok(
+        isNestedInsideDiv(optionsHtml, "dev-tools-panel", id),
+        `#${id} must be an actual descendant of <div id="dev-tools-panel">, not merely later in the file`,
+      );
+    });
+
+    test(`#${id} is NOT a descendant of #dev-tools-card`, () => {
+      assert.ok(
+        !isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
+        `#${id} must not remain a descendant of <div id="dev-tools-card">`,
+      );
+    });
+  }
+});
+
+describe("#1355 — canonicalExtractorEnabled / experimentalParamClassesEnabled defaults are unchanged by the move", () => {
+  test("canonicalExtractorEnabled still defaults to true", () => {
+    assert.strictEqual(PREF_DEFAULTS.canonicalExtractorEnabled, true);
+  });
+  test("experimentalParamClassesEnabled still defaults to false (unpromoted experimental flag)", () => {
+    assert.strictEqual(PREF_DEFAULTS.experimentalParamClassesEnabled, false);
+  });
+});
+
+describe("#925 — surfaced controls live inside the dev-mode-gated Advanced card", () => {
   for (const { id } of BOOLEAN_CONTROLS) {
-    test(`#${id} appears inside #dev-tools-card`, () => {
-      const idx = optionsHtml.indexOf(`id="${id}"`);
-      assert.ok(idx > cardIdx && idx < verIdx, `#${id} must be inside the gated Advanced card`);
+    test(`#${id} is a real DOM descendant of #dev-tools-card`, () => {
+      assert.ok(
+        isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
+        `#${id} must be an actual descendant of <div id="dev-tools-card">, not merely later in the file`,
+      );
     });
   }
 });
@@ -137,6 +261,49 @@ describe("#925 — export/import round-trips the newly-surfaced prefs", () => {
   });
 });
 
+// #1355/#1354 (ADR-0011 internal-with-a-default): paramBreakdown is retired
+// entirely. It was a display sub-toggle whose label said "in the popup"
+// (#1354); under ADR-0011 the removed-parameter breakdown IS the popup
+// glance, so it now always renders when there is something to show, with no
+// toggle. A settings export made before this change may still carry the
+// key — it must import cleanly, ignored, never thrown on.
+describe("#1355/#1354 — paramBreakdown is retired", () => {
+  const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
+
+  test("PREF_DEFAULTS no longer has paramBreakdown", () => {
+    assert.ok(!Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, "paramBreakdown"));
+  });
+
+  test("options.html has no #param-breakdown control", () => {
+    assert.ok(!optionsHtml.includes('id="param-breakdown"'));
+  });
+
+  test("options.js no longer binds #param-breakdown", () => {
+    assert.ok(!optionsJs.includes('"param-breakdown"'));
+  });
+
+  test("popup.js no longer gates the breakdown on prefs.paramBreakdown", () => {
+    assert.ok(!popupJs.includes("prefs.paramBreakdown"));
+  });
+
+  test("popup.js still renders the breakdown unconditionally when there are removed params", () => {
+    assert.ok(
+      /if\s*\(\s*result\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
+      "the per-page breakdown must render whenever there is something to show, no pref gate",
+    );
+    assert.ok(
+      /if\s*\(\s*entry\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
+      "the per-history-entry breakdown must render whenever there is something to show, no pref gate",
+    );
+  });
+
+  test("a legacy export carrying paramBreakdown imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport({ muga: true, blacklist: [], whitelist: [], customParams: [], paramBreakdown: true });
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.paramBreakdown, undefined);
+  });
+});
+
 describe("#925/#936 — new i18n keys are complete across all locales", () => {
   const newKeys = [
     "section_general", "section_rules_lists", "section_privacy_controls",
@@ -145,7 +312,6 @@ describe("#925/#936 — new i18n keys are complete across all locales", () => {
     "row_canonical_extractor_label", "row_canonical_extractor_hint",
     "row_cross_site_frequency_label", "row_cross_site_frequency_hint",
     "row_attribution_ledger_label", "row_attribution_ledger_hint",
-    "row_param_breakdown_label", "row_param_breakdown_hint",
     "row_show_report_button_label", "row_show_report_button_hint",
     "row_domain_stats_label", "row_domain_stats_hint",
   ];

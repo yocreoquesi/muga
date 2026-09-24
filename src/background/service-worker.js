@@ -6,7 +6,7 @@
 
 import { computeNavigationStrip, parseListEntry, isSiteFullyExempt, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, migrateDropDnrEnabledPref, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, migrateDropDnrEnabledPref, migrateExperimentalParamClassesOff, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -214,6 +214,11 @@ runOneTimeMigrations({
   // no longer honours a stored value (internal default governs) — this
   // deletes the now-meaningless stale key so it stops taking up space.
   migrateDropDnrEnabledPref,
+  // #1355 R3-002: experimentalParamClassesEnabled's control moved to
+  // Developer tools; turn it OFF once for anyone who had it ON before the
+  // move (re-enable available in Developer tools). One-time only — see the
+  // migration's own doc comment for why it needs a persistent done marker.
+  migrateExperimentalParamClassesOff,
 });
 
 // --- Session log (actions + errors, exported via debug log) ---

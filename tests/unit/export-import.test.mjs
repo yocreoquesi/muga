@@ -66,7 +66,6 @@ describe("export settings (buildExportPayload behavior)", () => {
       "ampRedirect",
       "unwrapRedirects",
       "contextMenuEnabled",
-      "paramBreakdown",
       "showReportButton",
       "domainStats",
       // #925: privacy booleans, now user-controllable and round-tripped

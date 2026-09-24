@@ -60,7 +60,11 @@ export const PREF_DEFAULTS = {
   consentDate: null,      // Unix timestamp (ms) of when the user accepted
   disabledCategories: [],  // e.g. ["utm", "ads"]. Params in these categories are not stripped.
   toastDuration: 15,  // seconds: how long the affiliate notification stays visible
-  paramBreakdown: true,
+  // paramBreakdown was retired (#1355/#1354, ADR-0011 internal-with-a-default):
+  // it was a display sub-toggle whose label said "in the popup", but under
+  // ADR-0011 Decision 1 the removed-parameter breakdown IS the popup glance —
+  // it now always renders when there is something to show. Do NOT add it
+  // back to PREF_DEFAULTS.
   showReportButton: true,
   domainStats: true,
   // Toolbar badge toggle (#910). Default ON: shows the tab's running count
