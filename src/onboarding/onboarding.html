@@ -18,14 +18,16 @@
       </span>
       <span>MUGA</span>
     </div>
-    <p class="tagline">
-      <span data-i18n="ob_tagline">Your links, with the tracking taken out.</span><br>
-      <span data-i18n="ob_tagline_sub">Strip tracking from your URLs · keep creator referrals · zero telemetry.</span>
-    </p>
+    <!-- #1402: the tagline is the page's one heading, so screen-reader users
+         can navigate the page by heading before they reach the CTA. -->
+    <div class="tagline">
+      <h1 data-i18n="ob_tagline">Your links, with the tracking taken out.</h1>
+      <p class="tagline-sub" data-i18n="ob_tagline_sub">Strip tracking from your URLs · keep creator referrals · zero telemetry.</p>
+    </div>
 
     <!-- What MUGA does -->
     <div class="section" id="features-section">
-      <div class="section-title" data-i18n="ob_step1_title">How MUGA quiets your URLs</div>
+      <h2 class="section-title" data-i18n="ob_step1_title">How MUGA quiets your URLs</h2>
       <div class="section-body">
         <div class="feature-row">
           <div class="feature-icon" aria-hidden="true">
@@ -83,7 +85,7 @@
 
     <!-- Following shortener redirects natively (ADR-0004 #699) -->
     <div class="section">
-      <div class="section-title" data-i18n="ob_shorteners_title">Short links, resolved locally</div>
+      <h2 class="section-title" data-i18n="ob_shorteners_title">Short links, resolved locally</h2>
       <div class="affiliate-body">
         <p data-i18n-html="ob_shorteners_desc">
           <strong>Short links hide where they go.</strong> Links like bit.ly or t.co don't show their real destination.

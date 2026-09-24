@@ -94,6 +94,28 @@ describe("Decorative feature icons in onboarding.html are aria-hidden", () => {
   });
 });
 
+// ── Onboarding headings (#1402) ─────────────────────────────────────────────
+//
+// The first page every new user sees had no heading until the CTA was
+// clicked, so screen-reader users could not jump between its sections.
+
+describe("#1402 — onboarding.html is navigable by heading", () => {
+  const markup = onboardHtml.replace(/<!--[\s\S]*?-->/g, "");
+
+  test("has exactly one <h1>, the tagline", () => {
+    const h1s = markup.match(/<h1\b[^>]*>/g) || [];
+    assert.equal(h1s.length, 1, `expected one <h1>, found ${h1s.length}`);
+    assert.match(markup, /<h1\b[^>]*data-i18n="ob_tagline"/);
+  });
+
+  test("each section title is an <h2>", () => {
+    for (const key of ["ob_step1_title", "ob_shorteners_title"]) {
+      assert.match(markup, new RegExp(`<h2 class="section-title" data-i18n="${key}">`), key);
+    }
+    assert.doesNotMatch(markup, /<div class="section-title"/);
+  });
+});
+
 // The #740 re-onboard banner assertions lived here. Both banners were deleted
 // along with the versioned-consent engine when MUGA adopted the uBlock Origin
 // model — the onboarding page has a single informational mode now, so there is
