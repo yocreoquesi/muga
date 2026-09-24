@@ -138,8 +138,12 @@ export const PREF_DEFAULTS = {
   // activates on touch-only devices), and unobtrusive (appears only after a
   // ~2.5s hold). Opt-out any time in Settings > Advanced.
   hoverPreviewEnabled: true,
-  // Hold duration (ms) before the hover preview tooltip appears.
-  hoverPreviewDelayMs: 2500,
+  // hoverPreviewDelayMs was retired (#1355, ADR-0011): it had no Settings
+  // control anywhere, was deliberately excluded from export, and its only
+  // two readers hardcoded a `|| 2500` fallback anyway — a constant paying
+  // sync/migration/import cost as if it were a preference. It is now a
+  // plain HOVER_PREVIEW_DELAY_MS = 2500 constant in
+  // src/content/hover-preview.js. Do NOT add it back here.
   // Shortener resolution split (browsewrap Phase 2, follow-up to ADR-0004).
   // The single `followShortenersEnabled` pref used to gate BOTH click-time
   // resolution (content/cleaner.js) and hover/proactive resolution

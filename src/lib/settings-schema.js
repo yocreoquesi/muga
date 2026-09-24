@@ -184,12 +184,11 @@ export const SETTINGS_FIELDS = Object.freeze([
   { key: "experimentalParamClassesEnabled", kind: "boolean", label: "exp_param_classes_label" },
   { key: "honorCreatorMode", kind: "boolean", label: "honor_creator_mode_label" },
   { key: "creatorAllowlist", kind: "creatorAllowlist", label: "creator_allowlist_label" },
-  // #1028: hoverPreviewDelayMs is deliberately NOT in SETTINGS_FIELDS — it
-  // isn't a discrete-option control like toastDuration, so round-tripping it
-  // through export/import would need its own clamp/validation branch. Out of
-  // scope for now; the pref keeps its PREF_DEFAULTS value (2500ms) on import.
-  // hoverPreviewEnabled is a plain boolean and round-trips normally via
-  // BOOLEAN_KEYS.
+  // hoverPreviewDelayMs was retired entirely (#1355, ADR-0011) — see
+  // src/lib/prefs.js. It was already excluded from SETTINGS_FIELDS before
+  // retirement (no control, so nothing to round-trip); there is now no pref
+  // to describe at all. hoverPreviewEnabled is a plain boolean and round-trips
+  // normally via BOOLEAN_KEYS.
   { key: "hoverPreviewEnabled", kind: "boolean", label: "row_hover_preview_label" },
 ]);
 
