@@ -449,6 +449,13 @@ function onBeforeNavigateStrip(details) {
 function onBeforeSendHeadersSuppressReferer(details) {
   if (!cachedPrefs) { getPrefsWithCache(); return; }
 
+  // #1422: this listener sees EVERY request on Firefox, and with the default
+  // settings (suppressReferer off, empty blocklist) it can never act. Answer
+  // that case before parsing the URL or walking the allowlist. Same verdict
+  // as the full check below, which it only short-circuits.
+  const blacklist = cachedPrefs.blacklist;
+  if (cachedPrefs.suppressReferer !== true && !(Array.isArray(blacklist) && blacklist.length > 0)) return;
+
   let host;
   try {
     host = new URL(details.url).hostname;
@@ -457,8 +464,10 @@ function onBeforeSendHeadersSuppressReferer(details) {
   }
 
   try {
-    if (isSiteFullyExempt(host, cachedPrefs)) return; // allowlist always wins
+    // Cheap "can this act at all?" first, then the allowlist, which still
+    // always wins over both the global pref and a blocklist entry.
     if (cachedPrefs.suppressReferer !== true && !isSiteFullyBlacklisted(host, cachedPrefs)) return;
+    if (isSiteFullyExempt(host, cachedPrefs)) return; // allowlist always wins
   } catch {
     return; // exempt/blacklist check threw -> pass through unchanged
   }
