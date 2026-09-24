@@ -1248,10 +1248,6 @@
       "category": "ads"
     },
     {
-      "param": "sscid",
-      "category": "ads"
-    },
-    {
       "param": "store_ref",
       "category": "platform_noise"
     },
