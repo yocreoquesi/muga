@@ -382,7 +382,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -964,7 +977,20 @@
               "trsrc",
               "trtyp",
               "xfrom",
-              "xzone"
+              "xzone",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -1350,7 +1376,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "asc_campaign"
+              "asc_campaign",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -1735,7 +1774,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -2122,7 +2174,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "cid"
+              "cid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -2551,7 +2616,20 @@
               "spm",
               "terminal_id",
               "tt",
-              "utparam-url"
+              "utparam-url",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -2997,7 +3075,20 @@
               "sr",
               "starsleft",
               "storetype",
-              "visitid"
+              "visitid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -3398,7 +3489,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "operationhash"
+              "operationhash",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -3784,7 +3888,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "campaign"
+              "campaign",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -4178,7 +4295,20 @@
               "afid",
               "cid",
               "ct",
-              "pt"
+              "pt",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -4568,7 +4698,20 @@
               "campaign",
               "enc",
               "jaession",
-              "srccode"
+              "srccode",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -4955,7 +5098,20 @@
               "utm_email",
               "utm_newsletterid",
               "sc_customer",
-              "sc_uid"
+              "sc_uid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -5341,7 +5497,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "linkid"
+              "linkid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -5729,7 +5898,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "trk"
+              "trk",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -6122,7 +6304,20 @@
               "utm_newsletterid",
               "at_bbc_team",
               "facebook_page",
-              "ocid"
+              "ocid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -6510,7 +6705,20 @@
               "utm_email",
               "utm_newsletterid",
               "loc",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -6912,7 +7120,20 @@
               "spm_id_from",
               "unique_k",
               "vd_source",
-              "visit_id"
+              "visit_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -7298,7 +7519,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "cvid"
+              "cvid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -7687,7 +7921,21 @@
               "in_source",
               "leadsource",
               "sref",
-              "srnd"
+              "srnd",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "leadSource",
+              "omnisendContactID"
             ]
           }
         }
@@ -8085,7 +8333,20 @@
               "opua_gps_adid",
               "traceid",
               "vcks",
-              "vid"
+              "vid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -8472,7 +8733,20 @@
               "utm_email",
               "utm_newsletterid",
               "keep_landing",
-              "label"
+              "label",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -8856,7 +9130,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -9241,7 +9528,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -9628,7 +9928,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "share_id"
+              "share_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -10018,7 +10331,20 @@
               "utm_email",
               "utm_newsletterid",
               "__source",
-              "par"
+              "par",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -10404,7 +10730,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "tw_adid"
+              "tw_adid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -10792,7 +11131,20 @@
               "utm_newsletterid",
               "cmt",
               "phgref",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -11207,7 +11559,20 @@
               "vendoritemid",
               "wpcid",
               "wref",
-              "wtime"
+              "wtime",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -11595,7 +11960,20 @@
               "utm_newsletterid",
               "ito",
               "ns_campaign",
-              "ns_mchannel"
+              "ns_mchannel",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -11994,7 +12372,20 @@
               "logger_kw",
               "prdinfolink",
               "previouscheckedprodcount",
-              "volumetype"
+              "volumetype",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -12385,7 +12776,20 @@
               "nil_suggest",
               "re_svc",
               "ref",
-              "trkid"
+              "trkid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -12773,7 +13177,20 @@
               "utm_newsletterid",
               "exception_mode",
               "s_key",
-              "s_url"
+              "s_url",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -13160,7 +13577,20 @@
               "utm_email",
               "utm_newsletterid",
               "cta",
-              "share"
+              "share",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -13546,7 +13976,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "lazyids"
+              "lazyids",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -13933,7 +14376,20 @@
               "utm_email",
               "utm_newsletterid",
               "clid",
-              "issue_tld"
+              "issue_tld",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -14323,7 +14779,20 @@
               "_trkparms",
               "_trksid",
               "amdata",
-              "norover"
+              "norover",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -14715,7 +15184,20 @@
               "utm_email",
               "utm_newsletterid",
               "lgw_code",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -15099,7 +15581,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -15488,7 +15983,20 @@
               "utm_email",
               "utm_newsletterid",
               "epic_affiliate",
-              "epic_gameid"
+              "epic_gameid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -15880,7 +16388,20 @@
               "organic_search_click",
               "rec_type",
               "ref",
-              "sts"
+              "sts",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -16293,7 +16814,20 @@
               "sfnsn",
               "tracking",
               "video_source",
-              "wtsid"
+              "wtsid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -16681,7 +17215,20 @@
               "utm_email",
               "utm_newsletterid",
               "channel",
-              "contextid"
+              "contextid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -17070,7 +17617,20 @@
               "utm_newsletterid",
               "cb",
               "ref_",
-              "so"
+              "so",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -17461,7 +18021,20 @@
               "funnel",
               "imp_id",
               "pos",
-              "ref_ctx_id"
+              "ref_ctx_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -17856,7 +18429,20 @@
               "ppn",
               "ppt",
               "srno",
-              "ssid"
+              "ssid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -18243,7 +18829,20 @@
               "utm_email",
               "utm_newsletterid",
               "ctrlbtw498",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -18628,7 +19227,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -19014,7 +19626,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -19403,7 +20028,20 @@
               "utm_newsletterid",
               "email_source",
               "email_token",
-              "notification_referrer_id"
+              "notification_referrer_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -19791,7 +20429,20 @@
               "utm_newsletterid",
               "glm_content",
               "glm_source",
-              "referrer_action"
+              "referrer_action",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -20171,7 +20822,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -20563,7 +21227,20 @@
               "enc",
               "eventcode",
               "jaession",
-              "srccode"
+              "srccode",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -20968,7 +21645,20 @@
               "sxsrf",
               "uact",
               "usg",
-              "vet"
+              "vet",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -21352,7 +22042,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -21742,7 +22445,20 @@
               "hmb_medium",
               "hmb_source",
               "linkid",
-              "mcid"
+              "mcid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -22133,7 +22849,20 @@
               "pf_rd_p",
               "pf_rd_r",
               "pf_rd_s",
-              "pf_rd_t"
+              "pf_rd_t",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -22523,7 +23252,20 @@
               "navigationserviceurl",
               "referrer",
               "searchgeopath",
-              "searchid"
+              "searchid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -22920,7 +23662,20 @@
               "vjs",
               "xfps",
               "xkcb",
-              "xpse"
+              "xpse",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -23309,7 +24064,20 @@
               "entry_point",
               "igsh",
               "igshid",
-              "img_index"
+              "img_index",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -23697,7 +24465,20 @@
               "utm_newsletterid",
               "ed",
               "eid",
-              "ets"
+              "ets",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -24085,7 +24866,20 @@
               "utm_newsletterid",
               "event",
               "ref",
-              "total_hits"
+              "total_hits",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -24471,7 +25265,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "ad_id"
+              "ad_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -24861,7 +25668,20 @@
               "utm_newsletterid",
               "obem",
               "rrid",
-              "run_key"
+              "run_key",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -25258,7 +26078,20 @@
               "refid",
               "trackingid",
               "trk",
-              "trkemail"
+              "trkemail",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -25644,7 +26477,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -26035,7 +26881,20 @@
               "eventorigin",
               "recid",
               "recsource",
-              "searchid"
+              "searchid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -26419,7 +27278,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -26806,7 +27678,20 @@
               "utm_email",
               "utm_newsletterid",
               "nclid",
-              "ocid"
+              "ocid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -27194,7 +28079,20 @@
               "utm_newsletterid",
               "ei",
               "ocid",
-              "pc"
+              "pc",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -27584,7 +28482,20 @@
               "mkt_campaign",
               "mkt_medium",
               "mkt_source",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -27979,7 +28890,20 @@
               "napm",
               "nclid",
               "sca_esv",
-              "sm"
+              "sm",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -28368,7 +29292,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "adjust_t"
+              "adjust_t",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -28757,7 +29694,20 @@
               "jbd",
               "jbr",
               "tctx",
-              "trackid"
+              "trackid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -29143,7 +30093,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "visitid"
+              "visitid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -29529,7 +30492,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "n_cid"
+              "n_cid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -29918,7 +30894,21 @@
               "impression_id",
               "referringsource",
               "sgrp",
-              "smid"
+              "smid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID",
+              "referringSource"
             ]
           }
         }
@@ -30304,7 +31294,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "ocid"
+              "ocid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -30693,7 +31696,20 @@
               "adid",
               "campaign",
               "chid",
-              "src"
+              "src",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -31079,7 +32095,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "af_sub1"
+              "af_sub1",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -31469,7 +32498,20 @@
               "dlsi",
               "pi",
               "referral",
-              "sp_cid"
+              "sp_cid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -31860,7 +32902,20 @@
               "psr",
               "rule",
               "targetcontextpsr",
-              "timelineentryid"
+              "timelineentryid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -32253,7 +33308,20 @@
               "rsta",
               "unp_tpcid",
               "unptid",
-              "utm_unptid"
+              "utm_unptid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -32640,7 +33708,20 @@
               "utm_email",
               "utm_newsletterid",
               "publicidadid",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -33027,7 +34108,20 @@
               "utm_email",
               "utm_newsletterid",
               "sc_eh",
-              "sc_uid"
+              "sc_uid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -33410,7 +34504,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -33805,7 +34912,20 @@
               "ref_campaign",
               "ref_source",
               "share_id",
-              "target_user"
+              "target_user",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -34188,7 +35308,20 @@
               "utm_compaign",
               "utm_emailid",
               "utm_email",
-              "utm_newsletterid"
+              "utm_newsletterid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -34581,7 +35714,20 @@
               "referrer",
               "referrerscenario",
               "sdata",
-              "xsdata"
+              "xsdata",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -34969,7 +36115,20 @@
               "utm_newsletterid",
               "onelink",
               "ref",
-              "url_from"
+              "url_from",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -35359,7 +36518,20 @@
               "pr_rec_id",
               "pr_rec_pid",
               "pr_ref_pid",
-              "pr_seq"
+              "pr_seq",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -35747,7 +36919,20 @@
               "utm_newsletterid",
               "af_sub_siteid",
               "sp_atk",
-              "xptdk"
+              "xptdk",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -36139,7 +37324,20 @@
               "napm",
               "nv_ad",
               "nv_chnl",
-              "nv_src"
+              "nv_src",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -36535,7 +37733,20 @@
               "sdtid",
               "sdtrk",
               "src",
-              "trd"
+              "trd",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -36924,7 +38135,20 @@
               "adid",
               "campaign",
               "src",
-              "ssgref"
+              "ssgref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -37321,7 +38545,20 @@
               "location",
               "network",
               "ref",
-              "targetid"
+              "targetid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -37708,7 +38945,20 @@
               "utm_email",
               "utm_newsletterid",
               "cid",
-              "crid"
+              "crid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -38094,7 +39344,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "igshid"
+              "igshid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -38506,7 +39769,20 @@
               "tt_from",
               "u_code",
               "user_id",
-              "web_id"
+              "web_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -38894,7 +40170,20 @@
               "utm_newsletterid",
               "src",
               "trkid",
-              "whid"
+              "whid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -39281,7 +40570,20 @@
               "utm_email",
               "utm_newsletterid",
               "aff_sub",
-              "exchange"
+              "exchange",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -39673,7 +40975,20 @@
               "tyutm_campaign",
               "tyutm_medium",
               "tyutm_source",
-              "utm_subaff"
+              "utm_subaff",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -40062,7 +41377,20 @@
               "cn",
               "ref_src",
               "ref_url",
-              "src"
+              "src",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -40449,7 +41777,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "sfmc_activityid"
+              "sfmc_activityid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -40841,7 +42182,20 @@
               "povid",
               "sourceid",
               "u1",
-              "wmlspartner"
+              "wmlspartner",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -41227,7 +42581,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "tblci"
+              "tblci",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -41614,7 +42981,20 @@
               "utm_email",
               "utm_newsletterid",
               "mod",
-              "reflink"
+              "reflink",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -42001,7 +43381,20 @@
               "utm_email",
               "utm_newsletterid",
               "soc_src",
-              "soc_trk"
+              "soc_trk",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -42392,7 +43785,20 @@
               "feature",
               "pp",
               "start_radio",
-              "ucbcb"
+              "ucbcb",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -42787,7 +44193,20 @@
               "rco",
               "source_ve_path",
               "start_radio",
-              "ucbcb"
+              "ucbcb",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -43173,7 +44592,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "wmc"
+              "wmc",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -43560,7 +44992,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "cid"
+              "cid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -43949,7 +45394,20 @@
               "utm_newsletterid",
               "clickorigin",
               "deeplink",
-              "pid"
+              "pid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -44336,7 +45794,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "trackingid"
+              "trackingid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -44726,7 +46197,20 @@
               "ip_address",
               "is_mobile",
               "new_session",
-              "user_agent"
+              "user_agent",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -45118,7 +46602,20 @@
               "prnd",
               "trackingid",
               "usi",
-              "widgetid"
+              "widgetid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -45505,7 +47002,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "affitest"
+              "affitest",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -45893,7 +47403,20 @@
               "utm_email",
               "utm_newsletterid",
               "c",
-              "tid"
+              "tid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -46282,7 +47805,20 @@
               "utm_newsletterid",
               "attributionid",
               "fromjk",
-              "tk"
+              "tk",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -46684,7 +48220,20 @@
               "vjs",
               "xfps",
               "xkcb",
-              "xpse"
+              "xpse",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -47077,7 +48626,20 @@
               "px",
               "py",
               "sx",
-              "sy"
+              "sy",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -47468,7 +49030,20 @@
               "px",
               "py",
               "sx",
-              "sy"
+              "sy",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -47857,7 +49432,20 @@
               "utm_newsletterid",
               "mr_download_reason",
               "mr_game_version",
-              "mr_loader"
+              "mr_loader",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -48245,7 +49833,20 @@
               "utm_email",
               "utm_newsletterid",
               "u1",
-              "u2"
+              "u2",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -48634,7 +50235,20 @@
               "utm_newsletterid",
               "d",
               "m",
-              "share_to"
+              "share_to",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -49023,7 +50637,20 @@
               "utm_newsletterid",
               "externalvisitorid",
               "r",
-              "visitorid"
+              "visitorid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -49412,7 +51039,20 @@
               "utm_newsletterid",
               "article_id",
               "ext.referrer",
-              "uid.p"
+              "uid.p",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -49804,7 +51444,20 @@
               "ad_type",
               "click_metadata",
               "iurl",
-              "vqd"
+              "vqd",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -50191,7 +51844,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "spatialtags"
+              "spatialtags",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -50580,7 +52246,20 @@
               "utm_newsletterid",
               "appid",
               "fpcuid",
-              "rid"
+              "rid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -50994,7 +52673,20 @@
               "sfnsn",
               "tracking",
               "video_source",
-              "wtsid"
+              "wtsid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -51403,7 +53095,20 @@
               "vet",
               "gs_lcp",
               "sca_esv",
-              "ved"
+              "ved",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -51812,7 +53517,20 @@
               "vet",
               "gs_lcp",
               "sca_esv",
-              "ved"
+              "ved",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -52199,7 +53917,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "pos"
+              "pos",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -52586,7 +54317,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "extra"
+              "extra",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -52975,7 +54719,20 @@
               "utm_newsletterid",
               "event",
               "ref",
-              "total_hits"
+              "total_hits",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -53380,7 +55137,20 @@
               "responseend",
               "responsestart",
               "sr",
-              "ts"
+              "ts",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -53780,7 +55550,20 @@
               "trk",
               "trkemail",
               "originalreferer",
-              "trkinfo"
+              "trkinfo",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -54182,7 +55965,20 @@
               "destredirecturl",
               "isss",
               "referenceid",
-              "upsellorderorigin"
+              "upsellorderorigin",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -54574,7 +56370,20 @@
               "position",
               "serp_position",
               "tgp",
-              "uri"
+              "uri",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -54964,7 +56773,20 @@
               "ad_params",
               "ga_account",
               "gemius_identifier",
-              "tracking_params"
+              "tracking_params",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -55351,7 +57173,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "trackid"
+              "trackid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -55739,7 +57574,20 @@
               "utm_email",
               "utm_newsletterid",
               "cid",
-              "tpsync"
+              "tpsync",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -56129,7 +57977,20 @@
               "_lc2_fpi",
               "i6",
               "li",
-              "stpe"
+              "stpe",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -56520,7 +58381,20 @@
               "sessionid",
               "slot",
               "sr",
-              "wr"
+              "wr",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -56907,7 +58781,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "pbss"
+              "pbss",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -57294,7 +59181,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "referrer"
+              "referrer",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -57681,7 +59581,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "info"
+              "info",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -58068,7 +59981,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "al_imp"
+              "al_imp",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -58459,7 +60385,20 @@
               "px",
               "py",
               "sx",
-              "sy"
+              "sy",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -58846,7 +60785,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "tqi"
+              "tqi",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -59233,7 +61185,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "cid"
+              "cid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -59620,7 +61585,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "referer"
+              "referer",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -60007,7 +61985,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "cursor"
+              "cursor",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -60394,7 +62385,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "tsid"
+              "tsid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -60781,7 +62785,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "ref_id"
+              "ref_id",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -61168,7 +63185,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "rid"
+              "rid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -61555,7 +63585,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "ref"
+              "ref",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
@@ -61942,7 +63985,20 @@
               "utm_emailid",
               "utm_email",
               "utm_newsletterid",
-              "eqid"
+              "eqid",
+              "ScCid",
+              "__mk_de_DE",
+              "__mk_en_GB",
+              "__mk_en_US",
+              "__mk_es_ES",
+              "__mk_fr_FR",
+              "__mk_it_IT",
+              "__mk_ja_JP",
+              "__mk_pt_BR",
+              "elqCampaignId",
+              "elqTrackId",
+              "hsCtaTracking",
+              "omnisendContactID"
             ]
           }
         }
