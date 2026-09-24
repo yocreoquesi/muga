@@ -148,6 +148,49 @@
         <p class="hint" data-i18n="suspicious_params_settings_hint"></p>
         <div id="suspicious-params-settings-list"></div>
       </div>
+      <!-- #1352 (maintainer decision on the issue): the popup's two
+           ledgers — "This session" (popup.js's former showHistory) and
+           "Recent activity" (former showRecentActivity) — merge into ONE
+           panel here behind a scope control, instead of staying two
+           separate panels. Always visible: neither scope has a pref that
+           hides the whole panel. attributionLedgerEnabled only gates
+           RECORDING for the "recent" scope (process-url.js), exactly as it
+           did before this move; "This session" has no recording gate at
+           all, also unchanged. A real fieldset/legend/radio group, not a
+           synthetic ARIA widget, so Tab and the arrow keys work natively. -->
+      <div class="list-section" id="activity-ledger-panel">
+        <fieldset class="activity-scope-fieldset">
+          <legend class="list-group-title" data-i18n="activity_ledger_label">Cleaned URLs</legend>
+          <p class="hint" data-i18n="activity_ledger_hint"></p>
+          <div class="activity-scope-control">
+            <!-- autocomplete="off" (R3-radio-state-desync): some browsers
+                 (notably Firefox) restore a radio's checked state from
+                 navigation/form history independently of page script, which
+                 can leave the DOM disagreeing with in-memory JS state after
+                 a reload or a back-forward/bfcache restore. This reduces
+                 how often that happens; options.js additionally reads
+                 whichever radio is ACTUALLY checked at render time and on
+                 pageshow(persisted:true), so the DOM stays the single
+                 source of truth regardless. -->
+            <label class="activity-scope-option">
+              <input type="radio" name="activity-scope" id="activity-scope-session" value="session" checked autocomplete="off">
+              <span data-i18n="history_label">This session</span>
+            </label>
+            <label class="activity-scope-option">
+              <input type="radio" name="activity-scope" id="activity-scope-recent" value="recent" autocomplete="off">
+              <span data-i18n="ledger_section_title">Recent activity</span>
+            </label>
+          </div>
+        </fieldset>
+        <div id="activity-session-panel">
+          <div id="activity-session-list"></div>
+          <p id="activity-session-empty" class="history-empty" hidden data-i18n="history_empty"></p>
+        </div>
+        <div id="activity-recent-panel" hidden>
+          <div id="activity-recent-list" class="recent-activity-list"></div>
+          <p id="activity-recent-empty" class="recent-activity-empty" hidden data-i18n="ledger_empty"></p>
+        </div>
+      </div>
     </div>
   </section>
 

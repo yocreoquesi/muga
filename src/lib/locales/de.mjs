@@ -309,6 +309,8 @@ export default Object.freeze({
   section_display: "Anzeige",
   section_user_custom_rules: "Ihre lokal entfernten Parameter",
   section_activity: "Aktivität",
+  activity_ledger_label: "Bereinigte URLs",
+  activity_ledger_hint: "Diese Sitzung wird beim Neustart des Browsers gelöscht. Die letzte Aktivität ist eine kurze lokale Liste, die MUGA auf diesem Gerät führt.",
   section_report: "Problem melden",
   user_custom_rules_hint: "Parameter, die Sie im Popup mit „Lokal entfernen“ hinzugefügt haben. MUGA entfernt sie auf jeder Website. Entfernen Sie alle, die nicht mehr entfernt werden sollen.",
   row_canonical_extractor_label: "Das echte Ziel finden, wenn ein Wrapper es verbirgt",

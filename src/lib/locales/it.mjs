@@ -309,6 +309,8 @@ export default Object.freeze({
   section_display: "Visualizzazione",
   section_user_custom_rules: "I tuoi parametri rimossi localmente",
   section_activity: "Attività",
+  activity_ledger_label: "URL ripulite",
+  activity_ledger_hint: "Questa sessione si cancella al riavvio del browser. L'attività recente è un breve elenco locale che MUGA mantiene su questo dispositivo.",
   section_report: "Segnala un problema",
   user_custom_rules_hint: "Parametri che hai aggiunto con «Rimuovi localmente» nella finestra popup. MUGA li rimuove su ogni sito. Rimuovi quelli che non vuoi più eliminare.",
   row_canonical_extractor_label: "Trova la destinazione reale quando un wrapper la nasconde",
