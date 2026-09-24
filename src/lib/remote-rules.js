@@ -650,7 +650,9 @@ export function validatePayloadShape(obj) {
  *   2. Per-param length bounds [MIN_PARAM_LEN, MAX_PARAM_LEN] (INVALID_FORMAT)
  *   3. Denylist match, case-insensitive (DENYLIST_HIT)
  *   4. Affiliate-guard match, case-insensitive (DENYLIST_HIT)
- *   5. Version monotonic: newVersion > stored.version (VERSION_REGRESSION)
+ *   5. Version monotonic: newVersion >= stored.version (VERSION_REGRESSION).
+ *      Equal is accepted: it is the same signed payload arriving again, and
+ *      the orchestrator decides whether it only refreshes or re-applies (#1404).
  *   6. Freshness: newPublished within 180 days (STALE_PAYLOAD)
  *   7. Post-filter count ≤ 500 (OVER_CAP)
  *
@@ -704,9 +706,14 @@ export function validateParams(params, stored, nowMs, opts = {}) {
     }
   }
 
-  // 5. Version monotonicity (VERSION_REGRESSION)
+  // 5. Version monotonicity (VERSION_REGRESSION). Only a strictly OLDER
+  // version is a rollback. An equal version is the same signed payload served
+  // again — every weekly check between two publishes, and the fetch that a
+  // re-enable triggers after clearRemoteCache kept the floor. Rejecting it
+  // left a permanent false error in Settings and, after a re-enable, no remote
+  // rules at all until the next publish. (#1404)
   const storedVersion = stored?.version ?? 0;
-  if (newVersion <= storedVersion) {
+  if (newVersion < storedVersion) {
     return { ok: false, code: ERR.VERSION_REGRESSION };
   }
 
@@ -1388,6 +1395,26 @@ export async function runRemoteRulesFetch(deps = {}) {
       return;
     }
 
+    // 5b. Up to date (#1404). The payload is the version this cache already
+    // holds, under the same `published` stamp, so it is byte-for-byte the
+    // signed content that was applied before. Only record that the check
+    // happened: advance fetchedAt (the wake path throttles on it) and clear
+    // any stale error. The DNR rules and the changelog are left as they are —
+    // rewriting them would turn the last real "N added / removed" diff into an
+    // empty one every week. When the cache was cleared (a disable → re-enable
+    // at the same version) storedMeta.version is 0, this does not match, and
+    // the payload falls through to a full apply below.
+    if (
+      storedMeta.version === obj.version &&
+      storedMeta.version > 0 &&
+      storedMeta.published === obj.published
+    ) {
+      await storage.set({
+        remoteRulesMeta: { ...storedMeta, fetchedAt: new Date(nowMs).toISOString(), lastError: null },
+      });
+      return;
+    }
+
     // 6. Silent dedup against built-in params (REQ-VALIDATE-9, SC-12).
     // Uses the statically-imported _BUILTIN_TRACKING_PARAMS array.
     // Note: dynamic import() is disallowed on ServiceWorkerGlobalScope per the HTML spec
@@ -1414,10 +1441,12 @@ export async function runRemoteRulesFetch(deps = {}) {
       );
     }
 
-    // 6c. Scoped section (#1221 slice 1). Verified and validated here; NOTHING
-    // consumes it yet — no DNR rule is built from it in this slice. It is
-    // persisted so the slice that does can read facts that were already
-    // signature-checked rather than re-deriving trust later.
+    // 6c. Scoped section (#1221). Verified and validated here, then persisted
+    // in remoteRulesMeta.scopedFacts AND applied: mergeIntoCache hands the
+    // accepted facts to applyScopedDnrRules, which builds live host-scoped DNR
+    // rules (ids 3100+) that strip these params on real navigations, and
+    // reconcileRemoteDnrRule (dnr-sync.js) restores them when the gate reopens. A
+    // bad fact accepted here is therefore NOT inert. (#1427)
     //
     // A missing, malformed or badly-signed scoped section is NOT a payload
     // error: it degrades to "no scoped facts" and the base payload is accepted
@@ -1464,7 +1493,7 @@ export async function runRemoteRulesFetch(deps = {}) {
       paramCount: accepted.length,
       lastError: null,
       published: obj.published,
-      scopedFacts, // #1221 slice 1 — persisted, not yet applied
+      scopedFacts, // #1221 — persisted and applied as scoped DNR rules by mergeIntoCache
     }, { storage, dnr });
 
   } finally {
