@@ -485,6 +485,66 @@ describe("G8 — import-upstream.yml keeps the global landing path closed", () =
   });
 });
 
+// ── G10 — the signing key is on disk only for the steps that sign (#1397) ────
+//
+// The rules-signing key signs what every installed extension accepts from
+// rules.muga.app, and rotating it needs an extension release. auto-ingest used
+// to write it once at the top and delete it at the very end, so ~20 steps of
+// third-party code (tsc, eslint, esbuild, web-ext, the test suites, playwright
+// install) ran with it readable. Walk the steps in order and require that every
+// step running while the key is on disk is one that uses it, or the removal.
+
+describe("G10 — the signing key never outlives the step that needs it (#1397)", () => {
+  const WRITES = /> "\$RUNNER_TEMP\/key\.pem"/;
+  const REMOVES = /rm -f "\$RUNNER_TEMP\/key\.pem"/;
+  const USES = /MUGA_SIGNING_KEY_PATH/;
+
+  function steps(text) {
+    return text.split(/\r?\n(?=      - name:)/).slice(1).map((chunk) => ({
+      name: (chunk.match(/- name:\s*(.+)/) || [])[1],
+      text: chunk,
+    }));
+  }
+
+  for (const file of ["auto-ingest-rules.yml", "publish-rules.yml"]) {
+    test(`${file}: only key-using steps run while key.pem exists, each followed by an always() removal`, () => {
+      const all = steps(readWorkflow(file));
+      let onDisk = false;
+      let writes = 0;
+      const exposed = [];
+      for (let i = 0; i < all.length; i++) {
+        const s = all[i];
+        if (WRITES.test(s.text)) {
+          onDisk = true;
+          writes++;
+          continue;
+        }
+        if (REMOVES.test(s.text)) {
+          assert.match(s.text, /if:\s*always\(\)/, `${file}: "${s.name}" must run if: always()`);
+          onDisk = false;
+          continue;
+        }
+        if (onDisk && !USES.test(s.text)) exposed.push(s.name);
+        if (onDisk && USES.test(s.text)) {
+          const next = all[i + 1];
+          assert.ok(next && REMOVES.test(next.text),
+            `${file}: "${s.name}" must be followed immediately by the key removal`);
+        }
+      }
+      assert.ok(writes > 0, `${file}: found no key-writing step; the parser is broken`);
+      assert.deepEqual(exposed, [], `${file}: steps that run with the signing key on disk: ${JSON.stringify(exposed)}`);
+      assert.equal(onDisk, false, `${file}: the key is never removed after its last write`);
+    });
+  }
+
+  test("auto-ingest keeps its end-of-job cleanup as a backstop", () => {
+    const all = steps(readWorkflow("auto-ingest-rules.yml"));
+    const last = all[all.length - 1];
+    assert.match(last.text, REMOVES);
+    assert.match(last.text, /if:\s*always\(\)/);
+  });
+});
+
 // ── G9 — alert-on-failure watches workflows by their REAL names (#1401) ──────
 //
 // `workflow_run.workflows` matches by exact workflow `name:`. Renaming the moat

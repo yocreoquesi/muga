@@ -57,6 +57,12 @@ jobs:
       # Key is written to RUNNER_TEMP (outside the workspace) and immediately
       # masked so any accidental echo is redacted from logs.
       # SECURITY: never echo $MUGA_SIGNING_KEY directly — use the file path only.
+      #
+      # #1397: the key exists ONLY around the two steps that use it (the
+      # pipeline's orchestrate step, and sign-rules below). It is deleted right
+      # after each, so the ~20 gate steps in between (tsc, eslint, esbuild,
+      # web-ext, the test suites, playwright install) never run with it
+      # readable. tests/unit/workflow-hardening.test.mjs (G10) enforces this.
       - name: Write signing key to temp file and mask it
         id: write-key
         env:
@@ -74,6 +80,10 @@ jobs:
         env:
           MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
         run: npm run pipeline:rules
+
+      - name: Remove signing key after the pipeline (#1397)
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key.pem"
 
       # ── 4b. Emit quarantine review summary ──────────────────────────────────
       # Always runs when the pipeline step succeeded (noop AND non-noop).
@@ -319,11 +329,25 @@ jobs:
       # sign-rules.mjs reads tools/rules-source/params.json (already mutated by
       # promote) and writes docs/rules/v1/params.json. Identical to publish-rules.yml.
       # Runs AFTER all gates — a gate failure never reaches this step.
+      # The key is re-written immediately before and removed immediately
+      # after (#1397), with nothing else running in between.
+      - name: Write signing key immediately before signing
+        if: steps.work.outputs.any == 'true'
+        env:
+          MUGA_SIGNING_KEY: ${{ secrets.MUGA_SIGNING_KEY }}
+        run: |
+          echo "$MUGA_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
+          while IFS= read -r line; do echo "::add-mask::$line"; done < "$RUNNER_TEMP/key.pem"
+
       - name: Sign and publish rules
         if: steps.work.outputs.any == 'true'
         env:
           MUGA_SIGNING_KEY_PATH: ${{ runner.temp }}/key.pem
         run: node tools/sign-rules.mjs
+
+      - name: Remove signing key after signing (#1397)
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key.pem"
 
       # ── 8. Branch + commit ────────────────────────────────────────────────────
       # Date comes from the shell (workflow concern), NOT from pipeline.mjs
