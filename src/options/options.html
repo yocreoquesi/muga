@@ -431,13 +431,9 @@
       <!-- Advanced: Display (#925 — newly surfaced prefs, all ON by default) -->
       <h2 class="mt-16" data-i18n="section_display">Display</h2>
       <div class="card">
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_param_breakdown_label">Show removed-parameter breakdown in the popup</strong>
-            <small data-i18n="row_param_breakdown_hint">Lists which tracking parameters were removed, grouped by category, in the popup.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="param-breakdown" data-i18n-aria-label="aria_param_breakdown"><span class="slider"></span></label>
-        </div>
+        <!-- #1355/#1354 (ADR-0011 internal-with-a-default): paramBreakdown
+             retired. The removed-parameter breakdown IS the popup glance
+             (ADR-0011 Decision 1) and always renders now; no toggle. -->
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_show_report_button_label">Show the report button in the popup</strong>

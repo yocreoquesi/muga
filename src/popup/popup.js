@@ -633,7 +633,7 @@ function _resetPreviewDom() {
   const reportIncludeUrlCheckbox = el("report-include-url");
   if (reportIncludeUrlCheckbox) reportIncludeUrlCheckbox.checked = false;
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
-  // prior render. The breakdown is dynamic (paramBreakdown pref), so the
+  // prior render. The breakdown is dynamic (per-URL), so the
   // reset path must clear it the same way it clears the static slots
   // above — otherwise repeated re-renders stack 2×, 3×, … copies.
   const preview = el("preview");
@@ -884,8 +884,10 @@ async function showUrlPreview(prefs, lang) {
       if (includeUrlRow) includeUrlRow.hidden = false;
     }
 
-    // Param breakdown: show removed params grouped by category when feature is on
-    if (prefs.paramBreakdown === true && result.removedTracking?.length > 0) {
+    // Param breakdown: show removed params grouped by category (#1355/#1354,
+    // ADR-0011 Decision 1 — this IS the popup glance, so it always renders
+    // when there is something to show; no pref gate).
+    if (result.removedTracking?.length > 0) {
       const previewSection = document.getElementById("preview");
       const details = document.createElement("details");
       details.className = "preview-breakdown";
@@ -1160,8 +1162,9 @@ async function showHistory(prefs, lang) {
     entryDiv.appendChild(beforeDiv);
     entryDiv.appendChild(afterRow);
 
-    // Param breakdown: show removed params per history entry when feature is on
-    if (prefs.paramBreakdown === true && entry.removedTracking?.length > 0) {
+    // Param breakdown: show removed params per history entry (#1355/#1354,
+    // ADR-0011 Decision 1 — always renders when there is something to show).
+    if (entry.removedTracking?.length > 0) {
       const details = document.createElement("details");
       details.className = "history-breakdown";
       const summary = document.createElement("summary");

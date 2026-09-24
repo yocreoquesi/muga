@@ -34,10 +34,12 @@ const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
 // #1355: canonicalExtractorEnabled moved into the devToolsMode-gated
 // Developer tools panel — see the dedicated describe block below — so it is
 // no longer part of the dev-mode-gated-Advanced-card group tested here.
+// paramBreakdown was retired entirely (#1355/#1354: the popup glance shows
+// the breakdown unconditionally now) — see the retirement describe block
+// below instead of listing it here.
 const BOOLEAN_CONTROLS = [
   { id: "cross-site-frequency", prefKey: "crossSiteFrequencyEnabled", ariaKey: "aria_cross_site_frequency" },
   { id: "attribution-ledger",   prefKey: "attributionLedgerEnabled",  ariaKey: "aria_attribution_ledger" },
-  { id: "param-breakdown",      prefKey: "paramBreakdown",            ariaKey: "aria_param_breakdown" },
   { id: "show-report-button",   prefKey: "showReportButton",          ariaKey: "aria_show_report_button" },
   { id: "domain-stats",         prefKey: "domainStats",               ariaKey: "aria_domain_stats" },
 ];
@@ -201,6 +203,49 @@ describe("#925 — export/import round-trips the newly-surfaced prefs", () => {
   });
 });
 
+// #1355/#1354 (ADR-0011 internal-with-a-default): paramBreakdown is retired
+// entirely. It was a display sub-toggle whose label said "in the popup"
+// (#1354); under ADR-0011 the removed-parameter breakdown IS the popup
+// glance, so it now always renders when there is something to show, with no
+// toggle. A settings export made before this change may still carry the
+// key — it must import cleanly, ignored, never thrown on.
+describe("#1355/#1354 — paramBreakdown is retired", () => {
+  const popupJs = readFileSync(join(ROOT, "src/popup/popup.js"), "utf8");
+
+  test("PREF_DEFAULTS no longer has paramBreakdown", () => {
+    assert.ok(!Object.prototype.hasOwnProperty.call(PREF_DEFAULTS, "paramBreakdown"));
+  });
+
+  test("options.html has no #param-breakdown control", () => {
+    assert.ok(!optionsHtml.includes('id="param-breakdown"'));
+  });
+
+  test("options.js no longer binds #param-breakdown", () => {
+    assert.ok(!optionsJs.includes('"param-breakdown"'));
+  });
+
+  test("popup.js no longer gates the breakdown on prefs.paramBreakdown", () => {
+    assert.ok(!popupJs.includes("prefs.paramBreakdown"));
+  });
+
+  test("popup.js still renders the breakdown unconditionally when there are removed params", () => {
+    assert.ok(
+      /if\s*\(\s*result\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
+      "the per-page breakdown must render whenever there is something to show, no pref gate",
+    );
+    assert.ok(
+      /if\s*\(\s*entry\.removedTracking\?\.length\s*>\s*0\s*\)/.test(popupJs),
+      "the per-history-entry breakdown must render whenever there is something to show, no pref gate",
+    );
+  });
+
+  test("a legacy export carrying paramBreakdown imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport({ muga: true, blacklist: [], whitelist: [], customParams: [], paramBreakdown: true });
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.paramBreakdown, undefined);
+  });
+});
+
 describe("#925/#936 — new i18n keys are complete across all locales", () => {
   const newKeys = [
     "section_general", "section_rules_lists", "section_privacy_controls",
@@ -209,7 +254,6 @@ describe("#925/#936 — new i18n keys are complete across all locales", () => {
     "row_canonical_extractor_label", "row_canonical_extractor_hint",
     "row_cross_site_frequency_label", "row_cross_site_frequency_hint",
     "row_attribution_ledger_label", "row_attribution_ledger_hint",
-    "row_param_breakdown_label", "row_param_breakdown_hint",
     "row_show_report_button_label", "row_show_report_button_hint",
     "row_domain_stats_label", "row_domain_stats_hint",
   ];

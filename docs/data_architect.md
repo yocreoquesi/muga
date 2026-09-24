@@ -30,7 +30,6 @@ Source of truth: `PREF_DEFAULTS` in `src/lib/storage.js`.
 | `consentDate` | number\|null | `null` | Unix timestamp (ms) of when the user accepted the ToS |
 | `disabledCategories` | string[] | `[]` | Param categories to skip stripping (e.g. `["utm", "ads"]`) |
 | `toastDuration` | number | `15` | How long the affiliate notification toast stays visible (seconds, 5–60) |
-| `paramBreakdown` | boolean | `true` | Show per-category param breakdown in popup cleaned-URL receipt |
 | `showReportButton` | boolean | `true` | Show "Report a problem" button in popup |
 | `domainStats` | boolean | `true` | Track and display per-domain tracker counts in popup |
 | `showBadge` | boolean | `true` | Show the tab's running count of stripped tracking params as a native toolbar badge (#910) |

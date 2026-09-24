@@ -49,7 +49,6 @@ const SAMPLE_PREFS = {
   language: "es",
   disabledCategories: ["utm"],
   toastDuration: 30,
-  paramBreakdown: true,
   showReportButton: true,
   domainStats: true,
   showBadge: true,
@@ -75,18 +74,26 @@ describe("SETTINGS_SCHEMA_VERSION", () => {
 });
 
 describe("SETTINGS_FIELDS / BOOLEAN_KEYS", () => {
-  test("BOOLEAN_KEYS has exactly the 20 documented plain-boolean prefs", () => {
+  test("BOOLEAN_KEYS has exactly the 19 documented plain-boolean prefs", () => {
     const EXPECTED = [
       "enabled", "notifyForeignAffiliate", "stripAllAffiliates",
       "activeDefenseEnabled", "blockPings", "ampRedirect", "unwrapRedirects", "contextMenuEnabled",
-      "paramBreakdown", "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
+      "showReportButton", "domainStats", "showBadge", "honorCreatorMode",
       "experimentalParamClassesEnabled", "canonicalExtractorEnabled", "crossSiteFrequencyEnabled",
       "attributionLedgerEnabled", "hoverPreviewEnabled",
       // referer-beacon-privacy (PR 1, opt-in, default false):
       "suppressReferer", "blockBeacons",
     ];
     assert.deepStrictEqual([...BOOLEAN_KEYS].sort(), [...EXPECTED].sort());
-    assert.strictEqual(BOOLEAN_KEYS.length, 20);
+    assert.strictEqual(BOOLEAN_KEYS.length, 19);
+  });
+
+  // #1355/#1354: paramBreakdown is retired entirely (not just de-controlled
+  // like dnrEnabled) — the popup glance shows the breakdown unconditionally.
+  test("paramBreakdown is retired: not in SETTINGS_FIELDS/BOOLEAN_KEYS", () => {
+    const field = SETTINGS_FIELDS.find((f) => f.key === "paramBreakdown");
+    assert.strictEqual(field, undefined);
+    assert.ok(!BOOLEAN_KEYS.includes("paramBreakdown"));
   });
 
   test("permission-gated and local keys are NOT in BOOLEAN_KEYS", () => {
@@ -420,6 +427,16 @@ describe("planImport — dnrEnabled has no control, so it is ignored on import (
     const planFalse = planImport(validImportData({ dnrEnabled: false }));
     assert.strictEqual(planFalse.ok, true);
     assert.strictEqual(planFalse.toSave.dnrEnabled, undefined);
+  });
+});
+
+// #1355/#1354: paramBreakdown is retired entirely. A settings export made
+// before this change may still carry the key — it must import cleanly.
+describe("planImport — paramBreakdown is retired, ignored on import (#1355/#1354)", () => {
+  test("a legacy export carrying paramBreakdown imports cleanly (key ignored, no throw)", () => {
+    const plan = planImport(validImportData({ paramBreakdown: true }));
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.toSave.paramBreakdown, undefined);
   });
 });
 

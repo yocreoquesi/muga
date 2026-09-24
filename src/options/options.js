@@ -368,7 +368,7 @@ async function init() {
   // gains this header-layer behavior. Gated to fire exactly once.
   await initBlocklistMigrationNotice(prefs);
   // Display group:
-  bindToggle("param-breakdown", "paramBreakdown", prefs);
+  // #1355/#1354: paramBreakdown retired — no control (see prefs.js).
   bindToggle("show-report-button", "showReportButton", prefs);
   bindToggle("domain-stats", "domainStats", prefs);
   // #1350: the Activity section's domain-stats table is gated on the same
@@ -1556,7 +1556,6 @@ function initExportImport() {
       // referer-beacon-privacy PR 4: reflect the imported Aggressive privacy toggles.
       document.getElementById("suppress-referer").checked = newPrefs.suppressReferer;
       document.getElementById("block-beacons").checked = newPrefs.blockBeacons;
-      document.getElementById("param-breakdown").checked = newPrefs.paramBreakdown;
       document.getElementById("show-report-button").checked = newPrefs.showReportButton;
       document.getElementById("domain-stats").checked = newPrefs.domainStats;
       await renderDomainStatsActivity(newPrefs.domainStats);
