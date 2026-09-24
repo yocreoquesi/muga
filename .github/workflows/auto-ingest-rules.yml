@@ -169,6 +169,19 @@ jobs:
         if: steps.pipeline.conclusion == 'success'
         run: node tools/rule-ingestion/reconcile-net-change.mjs
 
+      # ── 4c-4. Is the channel about to expire? (#1416) ──────────────────────
+      # Installed builds reject a payload whose `published` is older than 180
+      # days (STALE_DAYS). Quiet weeks publish nothing on purpose (the churn
+      # guard above), so the live date just ages, and after 180 days every
+      # fresh install, re-enable and offline user gets no remote rules while
+      # every check here stays green. Runs AFTER reconcile: a net change has
+      # already stamped a fresh `published`, so what is checked is the date
+      # the channel will serve once this run lands. Fails at 150 days, which
+      # leaves several weekly runs (and alert-on-failure) to publish a bump.
+      - name: Check the signed channel is not near expiry (#1416)
+        if: steps.pipeline.conclusion == 'success'
+        run: node tools/rules-channel-guards.mjs --max-age tools/rules-source/params.json
+
       # ── 4d. Did anything NET change, against what is already committed? ────
       # `RECONCILED` is authoritative: it is the only signal that compares the
       # run's end state to `HEAD` rather than to its own step's start state, so

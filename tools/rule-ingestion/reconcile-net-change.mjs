@@ -36,7 +36,8 @@
  *     signature is produced, no PR opens.
  *   - Different: something real changed. The version is set to EXACTLY
  *     `HEAD`'s version + 1 — a single bump, not one per step that happened to
- *     write this run — and `changed: true` is reported.
+ *     write this run — `published` is stamped with the run's clock (#1416),
+ *     and `changed: true` is reported.
  *
  * Usage:
  *   node tools/rule-ingestion/reconcile-net-change.mjs
@@ -145,6 +146,29 @@ export function withVersion(paramsText, version) {
 }
 
 /**
+ * Rewrites ONLY the top-level `"published": "..."` field of a params.json
+ * TEXT, byte-for-byte otherwise. Same line-anchored surgical replace as
+ * `withVersion`, for the same reasons: it keeps `renderParamsFile`'s compact
+ * one-fact-per-line `scoped` format intact, and a scoped fact whose own param
+ * is named `"published"` is compact JSON starting with `{`, so it never
+ * matches a line-start `"published":`.
+ *
+ * @param {string} paramsText
+ * @param {string} publishedIso
+ * @returns {string}
+ * @throws {Error} If no top-level `"published"` field is found.
+ */
+export function withPublished(paramsText, publishedIso) {
+  const re = /^(\s*"published":\s*)"[^"]*"/m;
+  if (!re.test(paramsText)) {
+    throw new Error(
+      'reconcile-net-change: could not find a top-level "published" field to rewrite'
+    );
+  }
+  return paramsText.replace(re, `$1${JSON.stringify(publishedIso)}`);
+}
+
+/**
  * Core reconciliation. All I/O is injectable for unit tests.
  *
  * @param {object} [opts]
@@ -161,6 +185,8 @@ export function withVersion(paramsText, version) {
  * @param {(relativePaths: string[]) => void} [opts.restore] Restores EXACTLY
  *   the given repo-relative paths to their HEAD content — never a wider
  *   directory checkout.
+ * @param {() => Date} [opts.now] The run's clock, stamped into `published`
+ *   on a net change (#1416).
  * @returns {{changed: boolean, version?: number}}
  */
 export function runReconcile({
@@ -178,6 +204,7 @@ export function runReconcile({
   restore = (relativePaths) => {
     execFileSync("git", ["checkout", "--", ...relativePaths], { cwd: REPO_ROOT });
   },
+  now = () => new Date(),
 } = {}) {
   const headParamsText = readHead(headParamsPath);
   const headStoreText = readHead(headStorePath);
@@ -202,11 +229,21 @@ export function runReconcile({
   // A SINGLE bump over HEAD, however many steps in this run each bumped their
   // own +1 (promote and/or --prefer-anchors) — the run published exactly one
   // net change, so it gets exactly one version.
+  //
+  // `published` moves WITH the version (#1416). promote-rules is the only
+  // other writer of that field and only when the GLOBAL list changes, so a
+  // scoped-only or prefer-anchors-only net change used to be re-signed as a
+  // new version carrying HEAD's old date. Installed builds reject a payload
+  // older than STALE_DAYS, so every new version must restart that clock.
   const headVersion = JSON.parse(headParamsText).version;
   const targetVersion = headVersion + 1;
-  const currentVersion = JSON.parse(currentParamsText).version;
-  if (currentVersion !== targetVersion) {
-    writeFile(paramsPath, withVersion(currentParamsText, targetVersion));
+  const targetPublished = now().toISOString();
+  const current = JSON.parse(currentParamsText);
+  let nextText = currentParamsText;
+  if (current.version !== targetVersion) nextText = withVersion(nextText, targetVersion);
+  if (current.published !== targetPublished) nextText = withPublished(nextText, targetPublished);
+  if (nextText !== currentParamsText) {
+    writeFile(paramsPath, nextText);
   }
   return { changed: true, version: targetVersion };
 }
