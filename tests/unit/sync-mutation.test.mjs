@@ -187,6 +187,48 @@ describe("withSyncMutation — error handling", () => {
   });
 });
 
+describe("withSyncMutation — a failed write must not be reported as success (#1430)", () => {
+  test("a `set` that resolves to false (setPrefs's own failure contract) makes the mutation resolve to undefined, not the mutated value", async () => {
+    const fake = makeFakeSync();
+    const lock = createMutex();
+
+    const result = await withSyncMutation(lock, "items", [], (current) => [...current, "new"], {
+      get: fake.get,
+      set: async () => false, // setPrefs returns false (not a throw) on a storage error
+    });
+
+    assert.equal(
+      result,
+      undefined,
+      "a false-returning set must make withSyncMutation resolve to undefined so callers don't re-render a change that was never actually saved",
+    );
+  });
+
+  test("a `set` that throws also resolves to undefined (pre-existing behavior, now also true for the false case above)", async () => {
+    const fake = makeFakeSync();
+    const lock = createMutex();
+
+    const result = await withSyncMutation(lock, "items", [], (current) => [...current, "new"], {
+      get: fake.get,
+      set: async () => { throw new Error("quota exceeded"); },
+    });
+
+    assert.equal(result, undefined);
+  });
+
+  test("a `set` that resolves to true (or undefined, like the fake double) still reports success", async () => {
+    const fake = makeFakeSync();
+    const lock = createMutex();
+
+    const result = await withSyncMutation(lock, "items", [], (current) => [...current, "new"], {
+      get: fake.get,
+      set: fake.set, // fake.set resolves to undefined, not false/true
+    });
+
+    assert.deepEqual(result, ["new"]);
+  });
+});
+
 describe("sync-mutation.js — importable without a browser/extension environment", () => {
   test("createMutex and withSyncMutation are plain exported functions", () => {
     assert.equal(typeof createMutex, "function");

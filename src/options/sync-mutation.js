@@ -51,6 +51,17 @@ export function createMutex() {
  * tell an aborted mutation (e.g. duplicate entry, cap reached, validation
  * failure) apart from a successful one.
  *
+ * `set` may resolve to `false` instead of throwing to report a failed write
+ * (this is `setPrefs`'s own contract — it already logs the underlying error
+ * and returns a boolean rather than rejecting). `withSyncMutation` treats
+ * that `false` the same way it treats an aborted mutation: it resolves to
+ * `undefined` rather than the (never-persisted) `next` value, so a caller
+ * that only checks `result !== undefined` before re-rendering never displays
+ * a change that silently failed to save (#1430). Every existing call site
+ * already treats `undefined` as "don't re-render," so this does not change
+ * their behavior on the abort path — it only stops them from treating a
+ * failed write as a success.
+ *
  * @param {(fn: () => Promise<any>) => Promise<any>} withLock - lock function from createMutex()
  * @param {string} key - the storage key to read/write
  * @param {*} defaultValue - default passed when reading the current value
@@ -58,8 +69,10 @@ export function createMutex() {
  *   `undefined` to abort without writing
  * @param {object} [deps]
  * @param {(query: object) => Promise<object>} [deps.get] - storage getter, defaults to chrome.storage.sync.get
- * @param {(values: object) => Promise<void>} [deps.set] - storage setter, defaults to setPrefs
- * @returns {Promise<*>} the new value that was persisted, or `undefined` if the mutation was aborted or the read failed
+ * @param {(values: object) => Promise<*>} [deps.set] - storage setter, defaults to setPrefs; a resolved
+ *   `false` is treated as a failed write (see above)
+ * @returns {Promise<*>} the new value that was persisted, or `undefined` if the mutation was aborted,
+ *   the read failed, or the write failed
  */
 export function withSyncMutation(withLock, key, defaultValue, mutateFn, deps = {}) {
   const get = deps.get || ((query) => chrome.storage.sync.get(query));
@@ -78,9 +91,11 @@ export function withSyncMutation(withLock, key, defaultValue, mutateFn, deps = {
     if (next === undefined) return undefined;
 
     try {
-      await set({ [key]: next });
+      const saved = await set({ [key]: next });
+      if (saved === false) return undefined; // write reported failure — do not claim success
     } catch (err) {
       console.error(`[MUGA] save ${key}:`, err);
+      return undefined; // write threw — same "not actually saved" outcome as a false return
     }
     return next;
   });

@@ -1090,7 +1090,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const fresh = await getPrefs();
       if (!fresh.whitelist.includes(entry)) {
         await setPrefs({ whitelist: [...fresh.whitelist, entry] });
-        logAction("whitelist_add", { entry });
+        logAction("whitelist_add", {});
       }
       _invalidatePrefsCache();
       sendResponse({ ok: true });
@@ -1111,7 +1111,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const fresh = await getPrefs();
       if (!fresh.blacklist.includes(entry)) {
         await setPrefs({ blacklist: [...fresh.blacklist, entry] });
-        logAction("blacklist_add", { entry });
+        logAction("blacklist_add", {});
       }
       _invalidatePrefsCache();
       sendResponse({ ok: true });

@@ -1897,20 +1897,34 @@ function addEntry(listKey, inputId, containerId) {
     showToast(t("add_entry_invalid", _currentLang));
     return;
   }
+  // Tracks whether mutateFn itself aborted (duplicate/cap — each already
+  // shows its own toast below), so the .then() can tell that apart from
+  // withSyncMutation resolving to undefined because the read or write
+  // failed (#1430) — a case that otherwise looked identical to a silent,
+  // already-explained no-op.
+  let aborted = false;
   return withSyncMutation(withListLock, listKey, [], (list) => {
-    if (list.includes(value)) return undefined; // already present — no-op
+    if (list.includes(value)) { aborted = true; return undefined; } // already present — no-op
     // Enforce the same per-list caps the import path applies (#728 item 28).
     // IMPORT_LIST_CAPS is the single source of truth shared with capImportedLists,
     // so the UI add path can never grow a list past what the importer accepts.
     const cap = IMPORT_LIST_CAPS[listKey];
     if (list.length >= cap) {
       showToast(t("list_full", _currentLang));
+      aborted = true;
       return undefined;
     }
     return [...list, value];
   }).then((next) => {
     input.value = "";
-    if (next !== undefined) renderList(containerId, next, listKey);
+    if (next !== undefined) {
+      renderList(containerId, next, listKey);
+    } else if (!aborted) {
+      // mutateFn returned a real value, so this undefined can only mean the
+      // read or write inside withSyncMutation failed — a genuine save
+      // failure, not a duplicate/cap no-op.
+      showToast(t("sync_save_failed", _currentLang));
+    }
   });
 }
 
@@ -1923,7 +1937,13 @@ function removeEntry(listKey, index) {
     next.splice(index, 1);
     return next;
   }).then((next) => {
-    if (next !== undefined) renderList(containerId, next, listKey);
+    if (next !== undefined) {
+      renderList(containerId, next, listKey);
+    } else {
+      // A failed delete must not leave the user thinking it worked while the
+      // stale entry silently stays in storage (#1430).
+      showToast(t("sync_save_failed", _currentLang));
+    }
   });
 }
 
