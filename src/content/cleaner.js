@@ -510,6 +510,20 @@
       return;
     }
 
+    if (message.type === "SHOW_TEST_AUTOINJECT_TOAST") {
+      showAutoInjectNotice(
+        {
+          platform: "SomePlatform",
+          param: "tag",
+          value: "someplatform-21",
+          merchantDomain: "amazon.es",
+          scopedBlacklistEntry: "amazon.es::tag::someplatform-21",
+        },
+        () => {}
+      );
+      return;
+    }
+
     if (message.type !== "COPY_TO_CLIPBOARD") return;
     copyToClipboard(message.text);
   });
@@ -1083,7 +1097,10 @@
     }, duration);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        // #1388: reject synthetic (non-isTrusted) clicks so a hostile page
+        // cannot script-click the toast's own buttons to force a choice.
+        if (!e.isTrusted) return;
         clearTimeout(_toastTimer);
         _toastTimer = null;
         notice.remove();
@@ -1104,7 +1121,9 @@
       });
     });
 
-    document.getElementById("muga-dismiss")?.addEventListener("click", () => {
+    document.getElementById("muga-dismiss")?.addEventListener("click", (e) => {
+      // #1388: reject synthetic (non-isTrusted) clicks.
+      if (!e.isTrusted) return;
       clearTimeout(_toastTimer);
       _toastTimer = null;
       notice.remove();
@@ -1205,7 +1224,10 @@
     }, duration);
 
     notice.querySelectorAll("button[data-choice]").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        // #1388: reject synthetic (non-isTrusted) clicks so a hostile page
+        // cannot script-click the toast's own buttons to force a choice.
+        if (!e.isTrusted) return;
         clearTimeout(_toastTimer);
         _toastTimer = null;
         notice.remove();
@@ -1224,7 +1246,9 @@
       });
     });
 
-    document.getElementById("muga-dismiss")?.addEventListener("click", () => {
+    document.getElementById("muga-dismiss")?.addEventListener("click", (e) => {
+      // #1388: reject synthetic (non-isTrusted) clicks.
+      if (!e.isTrusted) return;
       clearTimeout(_toastTimer);
       _toastTimer = null;
       notice.remove();

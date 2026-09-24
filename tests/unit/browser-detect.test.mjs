@@ -102,10 +102,16 @@ describe("isFirefox() — popup.js and options.js use isFirefox() from browser-d
   const popupSource = readFileSync(join(__dirname, "../../src/popup/popup.js"), "utf8");
   const optionsSource = readFileSync(join(__dirname, "../../src/options/options.js"), "utf8");
 
-  test("popup.js imports isFirefox from browser-detect.js", () => {
+  // #1387: popup.js's only prior use of isFirefox() was picking a "Rate MUGA"
+  // store URL, now centralized in lib/store-links.js (which itself reuses
+  // isFirefox() from browser-detect.js — see store-links.test.mjs for the
+  // behavioral proof and the import-source check). So popup.js no longer
+  // imports browser-detect.js directly; it gets the isFirefox()-backed
+  // behavior transitively through store-links.js.
+  test("popup.js gets store URLs via store-links.js, which reuses isFirefox() from browser-detect.js", () => {
     assert.ok(
-      popupSource.includes('from "../lib/browser-detect.js"'),
-      "popup.js must import from lib/browser-detect.js"
+      popupSource.includes('from "../lib/store-links.js"'),
+      "popup.js must import from lib/store-links.js for the rate-URL logic"
     );
   });
 

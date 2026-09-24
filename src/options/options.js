@@ -20,7 +20,8 @@ import {
 } from "../lib/cross-site-frequency.js";
 import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildTrackerFlagDeepLinkUrl } from "../lib/tracker-flag-deeplink.js";
-import { isFirefox as detectFirefox, hasCommands } from "../lib/browser-detect.js";
+import { hasCommands } from "../lib/browser-detect.js";
+import { getRateUrl } from "../lib/store-links.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
@@ -693,10 +694,7 @@ async function init() {
   // Rate link: point to the correct store
   const rateLink = document.getElementById("rate-store-link");
   if (rateLink) {
-    const isFirefox = detectFirefox();
-    rateLink.href = isFirefox
-      ? "https://addons.mozilla.org/firefox/addon/muga/"
-      : "https://chromewebstore.google.com/detail/muga/";
+    rateLink.href = getRateUrl();
   }
 
   // Signal init completion for e2e tests that need to avoid races with
@@ -2379,10 +2377,7 @@ function initDevTools() {
 
       rateBtn.addEventListener("click", () => {
         clearTimeout(timer);
-        const isFirefox = detectFirefox();
-        const storeUrl = isFirefox
-          ? "https://addons.mozilla.org/firefox/addon/muga/"
-          : "https://chromewebstore.google.com/detail/muga/";
+        const storeUrl = getRateUrl();
         chrome.tabs.create({ url: storeUrl });
         notice.remove();
       });

@@ -189,6 +189,18 @@ describe("manifest.json integrity", () => {
   const mv3 = require("../../src/manifest.json");
   const mv2 = require("../../src/manifest.v2.json");
 
+  // #1393: these pages are only opened via chrome.tabs.create() or
+  // window.location.href from within the extension — they do not need to be
+  // web-accessible to external origins. Shared by the MV3 and MV2 checks
+  // below (MV3's web_accessible_resources is a list of {resources, ...}
+  // objects; MV2's is a flat array of strings — same page list, different
+  // shape).
+  const WEB_ACCESSIBLE_SENSITIVE_PAGES = [
+    "onboarding/onboarding.html",
+    "privacy/privacy.html",
+    "privacy/tos.html",
+  ];
+
   test("MV3 and MV2 have matching version", () => {
     assert.equal(mv3.version, mv2.version, `MV3 version ${mv3.version} !== MV2 version ${mv2.version}`);
   });
@@ -320,17 +332,35 @@ describe("manifest.json integrity", () => {
   // prevents any webpage from iframing the onboarding page (clickjacking risk).
   test("MV3 does not expose onboarding or privacy pages as web_accessible_resources", () => {
     const allResources = (mv3.web_accessible_resources || []).flatMap(r => r.resources || []);
-    const sensitivePages = [
-      "onboarding/onboarding.html",
-      "privacy/privacy.html",
-      "privacy/tos.html",
-    ];
-    for (const page of sensitivePages) {
+    for (const page of WEB_ACCESSIBLE_SENSITIVE_PAGES) {
       assert.ok(
         !allResources.includes(page),
         `${page} must NOT be in web_accessible_resources — it is only opened by the extension itself`
       );
     }
+  });
+
+  // #1393: MV2's web_accessible_resources is a flat array of strings (unlike
+  // MV3's array of {resources, use_dynamic_url, ...} objects — see the
+  // "MV2 does not pretend to support use_dynamic_url" test below for that
+  // shape difference). Same clickjacking-hardening rationale as the MV3
+  // check above: these pages are only opened by the extension itself via
+  // chrome.tabs.create()/window.location.href, never by content scripts
+  // fetching them by URL (unlike the rules/*.json entries, which content
+  // scripts DO fetch via chrome.runtime.getURL() and must stay listed here).
+  test("MV2 does not expose onboarding or privacy pages as web_accessible_resources", () => {
+    const mv2Resources = mv2.web_accessible_resources || [];
+    for (const page of WEB_ACCESSIBLE_SENSITIVE_PAGES) {
+      assert.ok(
+        !mv2Resources.includes(page),
+        `${page} must NOT be in MV2 web_accessible_resources — it is only opened by the extension itself`
+      );
+    }
+    // The rules/*.json entries must remain — content scripts fetch them by URL.
+    assert.ok(
+      mv2Resources.includes("rules/domain-rules.json"),
+      "MV2 web_accessible_resources must still list rules/domain-rules.json (fetched by content scripts)"
+    );
   });
 
   // #1258: a published extension's ID is fixed and identical for every install,

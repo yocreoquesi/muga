@@ -8,7 +8,7 @@ import { isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "..
 import { loadCleaningContext, cleanForPreview } from "../lib/cleaning-context.js";
 import { getPrefs, sessionStorage } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
-import { isFirefox as detectFirefox } from "../lib/browser-detect.js";
+import { getRateUrl } from "../lib/store-links.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
 import { findSuspiciousParams } from "../lib/entropy-heuristic.js";
@@ -135,10 +135,7 @@ async function init() {
   // Footer rate link: always available, passive
   const popupRateLink = document.getElementById("popup-rate-link");
   if (popupRateLink) {
-    const isFirefox = detectFirefox();
-    popupRateLink.href = isFirefox
-      ? "https://addons.mozilla.org/firefox/addon/muga/"
-      : "https://chromewebstore.google.com/detail/muga/";
+    popupRateLink.href = getRateUrl();
     popupRateLink.target = "_blank";
     popupRateLink.rel = "noopener noreferrer";
   }
@@ -189,10 +186,7 @@ async function init() {
       nudgeShownCount: nudgeData.nudgeShownCount + 1,
       nudgeLastShown: Date.now(),
     }).catch(() => {}); // best-effort; count is non-critical
-    const isFirefox = detectFirefox();
-    const storeUrl = isFirefox
-      ? "https://addons.mozilla.org/firefox/addon/muga/"
-      : "https://chromewebstore.google.com/detail/muga/";
+    const storeUrl = getRateUrl();
     rateBtn.addEventListener("click", () => {
       // Async rejection can't be caught by a sync try/catch — use .catch (#728 item 27).
       chrome.storage.local.set({ nudgeDismissed: true }).catch((err) => console.error("[MUGA] save nudge dismiss:", err));
