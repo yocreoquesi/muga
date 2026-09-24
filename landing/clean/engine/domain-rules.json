@@ -3461,9 +3461,10 @@
     "domain": "onelink.me",
     "preserveParams": [],
     "stripParams": [
-      "af_sub1"
+      "af_sub1",
+      "pid"
     ],
-    "note": "AppsFlyer OneLink, mobile deep-link/attribution service. `af_sub1` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3)."
+    "note": "AppsFlyer OneLink, mobile deep-link/attribution service. `af_sub1` host-anchored per the AdGuard Filter 17 v2.0.14.20 / ClearURLs data.min.json measurement, not global (#1228 step 3). `pid` (AppsFlyer partner id, same family) host-anchored at nikke.onelink.me per the live AdGuard Filter 17 measurement (#1463)."
   },
   {
     "domain": "online.nojima.co.jp",
@@ -5188,5 +5189,69 @@
       }
     ],
     "note": "Path-scoped param strip, ingested from AdGuard Filter 17 (#1326 slice 3)."
+  },
+  {
+    "domain": "www.nicovideo.jp",
+    "preserveParams": [],
+    "stripParams": [
+      "at"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `at` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "hotosena.com",
+    "preserveParams": [],
+    "stripParams": [
+      "landing"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); no other host anchors `landing`, so it stays scoped here only."
+  },
+  {
+    "domain": "announcements.bybit.com",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "app.5-delivery.ru",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "getir.com",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "nikke-jp.com",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "qcplay.co.jp",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
+  },
+  {
+    "domain": "toomics.com",
+    "preserveParams": [],
+    "stripParams": [
+      "pid"
+    ],
+    "note": "Host-anchored per the live AdGuard Filter 17 measurement (#1463); `pid` is not global (generic name, high collision risk elsewhere)."
   }
 ]

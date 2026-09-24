@@ -132,7 +132,16 @@ rules + rules-source store + live signed channel; see
 
 ## Checks
 
-(filled in at close)
+After T1-T3 (commit: see below):
+- `npm test` — 9094 tests, 9093 pass, 1 skipped (pre-existing), 0 fail.
+- `npm run test:integration` — 233/233 pass.
+- `npm run lint:js` — clean.
+- `npm run lint` — 0 errors, 2 pre-existing unrelated warnings (`lib/i18n.js`).
+- `git diff --stat src/manifest.json` — empty (unchanged).
+- `npm run fpfn` — 0 FP / 0 FN.
+- `node tools/build-rules-store.mjs --check` — to run again after T4/T5.
+
+(full pass at close, T6)
 
 ## Progress
 
