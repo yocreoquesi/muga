@@ -65,7 +65,10 @@ export const PREF_DEFAULTS = {
   // ADR-0011 Decision 1 the removed-parameter breakdown IS the popup glance —
   // it now always renders when there is something to show. Do NOT add it
   // back to PREF_DEFAULTS.
-  showReportButton: true,
+  // showReportButton was retired too (#1355/#1354): reporting a problem now
+  // lives in Settings (#1353, section-report), reachable by every user,
+  // unlike the popup's report link this pref used to gate. Do NOT add it
+  // back to PREF_DEFAULTS.
   domainStats: true,
   // Toolbar badge toggle (#910). Default ON: shows the tab's running count
   // of tracking params stripped as a native browser badge (setBadgeText)

@@ -112,19 +112,16 @@
         <span class="preview-preserved-label" data-i18n="preview_preserved_creator">Looks like a creator referral. Kept.</span>
         <span class="preview-preserved-tag" id="preview-preserved-tag"></span>
       </div>
-      <small class="preview-preserved-hint" data-i18n="preview_preserved_creator_hint">If you think we got this one wrong, you can report it with the link below.</small>
+      <small class="preview-preserved-hint" data-i18n="preview_preserved_creator_hint">If you think we got this one wrong, you can report it from Settings.</small>
     </div>
     <div class="preview-honored" id="preview-honored" hidden aria-live="polite"></div>
     <div class="preview-autoinject" id="preview-autoinject" hidden aria-live="polite"></div>
     <div class="preview-url clean" id="preview-clean" hidden></div>
-    <a class="report-link" id="report-broken" href="#" hidden data-i18n="report_dirty_url">Report a problem with this URL</a>
-    <div class="report-include-url-row" id="report-include-url-row" hidden>
-      <label>
-        <input type="checkbox" id="report-include-url">
-        <span data-i18n="report_include_full_url_label">Include the full URL</span>
-      </label>
-      <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
-    </div>
+    <!-- #1355/#1354 (ADR-0011 internal-with-a-default): showReportButton and
+         its popup report flow are retired. Reporting a problem now lives in
+         Settings (#1353, section-report), which every user can reach —
+         unlike this popup flow, which required devToolsMode to see its
+         Settings counterpart at all. -->
   </section>
 
   <!-- Recent activity section (#460, A2). Surfaces the Attribution Ledger

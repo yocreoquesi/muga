@@ -434,13 +434,9 @@
         <!-- #1355/#1354 (ADR-0011 internal-with-a-default): paramBreakdown
              retired. The removed-parameter breakdown IS the popup glance
              (ADR-0011 Decision 1) and always renders now; no toggle. -->
-        <div class="row">
-          <div class="row-label">
-            <strong data-i18n="row_show_report_button_label">Show the report button in the popup</strong>
-            <small data-i18n="row_show_report_button_hint">Adds a button to report a URL that MUGA cleaned incorrectly.</small>
-          </div>
-          <label class="toggle"><input type="checkbox" id="show-report-button" data-i18n-aria-label="aria_show_report_button"><span class="slider"></span></label>
-        </div>
+        <!-- #1355/#1354: showReportButton retired too. Reporting a problem
+             now lives in Settings (#1353, section-report), reachable by
+             every user; the popup's own report button + flow are removed. -->
         <div class="row">
           <div class="row-label">
             <strong data-i18n="row_domain_stats_label">Record per-domain statistics</strong>
