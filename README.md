@@ -82,7 +82,7 @@ The popup shows what MUGA cleaned on the current page: which parameters were rem
 
 ![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
 
-Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in English and Spanish (officially maintained); Portuguese, German, French, Italian, and Japanese are community-contributed and may have gaps that fall back to English.
+Settings give you full control: affiliate behavior, per-domain rules, blacklists, whitelists, and advanced features. The UI ships in 7 languages: English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations, and corrections are welcome.
 
 ![Settings page](docs/assets/screenshot-ss3-options.png)
 
@@ -117,7 +117,7 @@ Settings give you full control: affiliate behavior, per-domain rules, blacklists
 - Toast notification when a third-party affiliate is detected (opt-in)
 - **Remote rule updates**: weekly signed updates to the tracking-param list from `rules.muga.app`. **On by default**: the signing infrastructure is stable and the fetch is a single Ed25519-signed GET to a public URL at most once every 7 days, with no user data sent (see the [CHANGELOG](CHANGELOG.md) for when this shipped). Disable it any time in Settings.
 - Export / Import settings as JSON
-- Languages: English and Spanish (officially maintained), Portuguese, German, French, Italian, and Japanese (community-contributed; missing entries fall back to English)
+- Languages: 7. English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations (corrections welcome)
 
 ### Two optional toggles
 
