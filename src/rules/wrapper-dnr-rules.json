@@ -9,7 +9,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://l\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
+      "regexFilter": "^https?://l\\.facebook\\.com/l\\.php.*[?&]u=([^&]+).*$",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
@@ -26,7 +26,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https?://lm\\.facebook\\.com/l\\.php.*[?&]u=([^&]+)",
+      "regexFilter": "^https?://lm\\.facebook\\.com/l\\.php.*[?&]u=([^&]+).*$",
       "resourceTypes": [
         "main_frame",
         "sub_frame"
