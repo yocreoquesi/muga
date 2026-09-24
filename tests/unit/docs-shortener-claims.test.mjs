@@ -239,3 +239,96 @@ describe("(E) docs do not promise a permission prompt the code never shows", () 
     });
   }
 });
+
+// ── (F) DESTINATION DISCLOSURE (#1385) ────────────────────────────────────────
+
+/**
+ * `resolveShortener()` fetches with `redirect: "follow"`, so the browser
+ * follows the WHOLE chain, including the final hop to the destination site,
+ * before MUGA cleans the result (src/lib/native-shortener-resolver.js). The
+ * destination is therefore also contacted, once, with the original
+ * (uncleaned) URL and no credentials, before the user's actual navigation.
+ * Docs and locale copy that said the request "goes straight to the
+ * shortener" or that "the shortener receives the request" understated this:
+ * they read as if the shortener were the sole recipient. This section pins
+ * the exact stale phrases so a regression is caught, and asserts the
+ * corrected, truthful phrasing is present instead.
+ */
+const STALE_SHORTENER_ONLY_PHRASES = [
+  "the shortener receives the request your click would have made",
+  "That request goes to the short link itself",
+];
+
+describe("(F) docs no longer claim only the shortener is contacted", () => {
+  for (const docPath of USER_FACING_DOCS) {
+    test(`${docPath} does not contain a stale shortener-only phrase`, () => {
+      const content = read(docPath);
+      const found = STALE_SHORTENER_ONLY_PHRASES.filter((phrase) => content.includes(phrase));
+      assert.deepStrictEqual(
+        found,
+        [],
+        `${docPath} still contains a stale claim implying only the shortener is contacted:\n  ${found.join("\n  ")}\n` +
+          "The whole redirect chain is followed, so the destination site is also contacted once, " +
+          "with the original uncleaned link and no credentials, before MUGA cleans the result."
+      );
+    });
+  }
+
+  test("docs/tos.html discloses that the destination is also contacted", () => {
+    assert.match(
+      read("docs/tos.html"),
+      /destination site.{0,40}receives one credential-less request/i,
+      "docs/tos.html must state that the destination site (not just the shortener) receives " +
+        "one credential-less request carrying the original link before MUGA cleans it."
+    );
+  });
+
+  test("src/privacy/tos.html discloses that the destination is also contacted", () => {
+    assert.match(
+      read("src/privacy/tos.html"),
+      /destination site.{0,40}receives one credential-less request/i,
+      "src/privacy/tos.html must state that the destination site (not just the shortener) receives " +
+        "one credential-less request carrying the original link before MUGA cleans it."
+    );
+  });
+
+  test("docs/tos.html and src/privacy/tos.html stay in sync on the shortener disclosure item", () => {
+    const extractItem = (content) => {
+      const match = content.match(/<li>Resolves well-known generic URL shorteners[\s\S]*?<\/li>/);
+      assert.ok(match, "expected to find the shortener disclosure <li> item");
+      return match[0];
+    };
+    assert.strictEqual(extractItem(read("docs/tos.html")), extractItem(read("src/privacy/tos.html")));
+  });
+});
+
+describe("(F) en.mjs no longer claims only the shortener is contacted", () => {
+  const STALE_LOCALE_PHRASES = [
+    "goes straight to the shortener",
+    "sends the link to the shortener before you click",
+  ];
+
+  test("src/lib/locales/en.mjs does not contain stale shortener-only phrasing", () => {
+    const content = read("src/lib/locales/en.mjs");
+    const found = STALE_LOCALE_PHRASES.filter((phrase) => content.includes(phrase));
+    assert.deepStrictEqual(
+      found,
+      [],
+      `src/lib/locales/en.mjs still contains stale phrasing:\n  ${found.join("\n  ")}`
+    );
+  });
+
+  test("src/lib/locales/en.mjs discloses the chain reaches the destination", () => {
+    const content = read("src/lib/locales/en.mjs");
+    assert.match(
+      content,
+      /redirect chain is followed all the way to the destination/i,
+      "follow_shorteners_disclosure must say the chain is followed to the destination, not just the shortener."
+    );
+    assert.match(
+      content,
+      /contacts the shortener and the destination site before you click/i,
+      "resolve_on_hover_label must say hovering also contacts the destination site, not just the shortener."
+    );
+  });
+});
