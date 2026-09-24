@@ -103,10 +103,13 @@ export async function migrateStatsToLocal() {
 export async function migrateLegacyProxyPref() {
   try {
     const data = await new Promise((resolve, reject) =>
-      chrome.storage.sync.get({ privacyProxyEnabled: null }, (result) => {
-        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-        else resolve(result);
-      })
+      chrome.storage.sync.get(
+        { privacyProxyEnabled: null, resolveShortenersOnClick: null, resolveShortenersOnHover: null },
+        (result) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve(result);
+        }
+      )
     ).catch(() => ({ privacyProxyEnabled: null }));
 
     if (data.privacyProxyEnabled === null) return; // key absent — nothing to do
@@ -119,8 +122,10 @@ export async function migrateLegacyProxyPref() {
       // concurrently, so migrateFollowShortenersSplit read storage before this
       // write landed and the split only happened on the next worker spawn.
       // These are exactly the values that split produces for `true`.
-      updates.resolveShortenersOnClick = true;
-      updates.resolveShortenersOnHover = true;
+      // Only where the final key is still unset: sync can deliver the legacy
+      // key from an older device after the user made a newer choice here.
+      if (data.resolveShortenersOnClick === null) updates.resolveShortenersOnClick = true;
+      if (data.resolveShortenersOnHover === null) updates.resolveShortenersOnHover = true;
     }
     // Write only when migrating a `true` value. A false old value needs no
     // write: the two-step chain never wrote one either (followShortenersEnabled

@@ -350,6 +350,19 @@ describe("migrateLegacyProxyPref (#1418)", () => {
     assert.equal(stores.syncStore.has("privacyProxyEnabled"), false);
   });
 
+  test("a newer explicit choice on the final keys is never overwritten (#1418 review)", async () => {
+    // An older device can still sync privacyProxyEnabled after this device's
+    // user turned hover resolution off on the new key.
+    stores.syncStore.set("privacyProxyEnabled", true);
+    stores.syncStore.set("resolveShortenersOnHover", false);
+    const { migrateLegacyProxyPref } = await loadMigration();
+    await migrateLegacyProxyPref();
+
+    assert.equal(stores.syncStore.get("resolveShortenersOnHover"), false, "explicit newer choice kept");
+    assert.equal(stores.syncStore.get("resolveShortenersOnClick"), true, "absent final key still migrated");
+    assert.equal(stores.syncStore.has("privacyProxyEnabled"), false);
+  });
+
   test("false writes nothing and the defaults apply, as the old two-step chain did", async () => {
     stores.syncStore.set("privacyProxyEnabled", false);
     const { migrateLegacyProxyPref } = await loadMigration();
