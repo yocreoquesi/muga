@@ -22,6 +22,7 @@ import { classify as classifyParams } from "./param-classifier.js";
 import { applyPathStrip, getPathAffiliatePolicy } from "./path-rules.js";
 import { isSignedUrl } from "./signed-url.js";
 import { unwrapAmpUrl } from "./amp-unwrap.js";
+import { scopedParamsForHostname } from "./scoped-params.js";
 
 // C5: O(1) lookup instead of O(n) array scan
 const TRACKING_PARAMS_SET = new Set(TRACKING_PARAMS.map(p => p.toLowerCase()));
@@ -637,6 +638,10 @@ function stripTrackingParams(url, prefs, domainRules, disabledCategories, classi
   const affiliateParamSet = getAffiliateParamSetForHost(hostname);
   const customParams = new Set((prefs.customParams || []).map(p => p.toLowerCase()));
   const remoteParams = new Set((prefs.remoteParams || []).map(p => p.toLowerCase()));  // T1.5: ADR-D10
+  // #1409: the signed channel's host-scoped facts for this host strip exactly
+  // like the global remote params (after the affiliate and preserve checks
+  // below), so copy-clean, the context menu and previews match the DNR rules.
+  for (const p of scopedParamsForHostname(hostname, prefs.remoteScopedFacts)) remoteParams.add(p);
   // #536: user-promoted strip rules. Lowercased once for case-insensitive
   // membership; consulted last so built-in/affiliate paths still win.
   const userCustomRules = new Set((prefs.userCustomRules || []).map(p => p.toLowerCase()));

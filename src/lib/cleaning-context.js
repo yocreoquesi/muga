@@ -167,7 +167,7 @@ export function resetCleaningContextCache() {
  *
  * @param {string} rawUrl
  * @param {object} prefs
- * @param {{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams?: string[]}} context
+ * @param {{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams?: string[], scopedFacts?: Array}} context
  * @param {{referrer?: string}} [opts] referrer drives honor-creator; "" disables it
  * @returns {object} the processUrl result
  */
@@ -177,9 +177,13 @@ export function cleanForPreview(rawUrl, prefs, context, opts = {}) {
   const remoteParams = !remoteOn
     ? []
     : Array.isArray(context?.remoteParams) ? context.remoteParams : (prefs?.remoteParams ?? []);
+  // #1409: the host-scoped half of the same payload, under the same gate.
+  const remoteScopedFacts = !remoteOn
+    ? []
+    : Array.isArray(context?.scopedFacts) ? context.scopedFacts : (prefs?.remoteScopedFacts ?? []);
   return processUrl(
     rawUrl,
-    { ...prefs, notifyForeignAffiliate: false, remoteParams },
+    { ...prefs, notifyForeignAffiliate: false, remoteParams, remoteScopedFacts },
     domainRules,
     undefined,
     undefined,

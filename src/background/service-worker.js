@@ -318,6 +318,12 @@ function getPrefsWithCache() {
       prefs._parsedBlacklist = (prefs.blacklist || []).map(parseListEntry);
       prefs._parsedWhitelist = (prefs.whitelist || []).map(parseListEntry);
       prefs.remoteParams = remote.remoteParams || [];
+      // #1409: the host-scoped half of the same signed payload. Without it,
+      // copy-clean, the context menu, selection and PROCESS_URL kept a scoped
+      // param that the DNR scoped rules strip on navigation.
+      prefs.remoteScopedFacts = Array.isArray(remote.remoteRulesMeta?.scopedFacts)
+        ? remote.remoteRulesMeta.scopedFacts
+        : [];
       cachedPrefs = prefs;
       prefsFetchPromise = null;
       return prefs;
@@ -686,7 +692,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   // Invalidate the prefs cache on both sync changes (disabledCategories, customParams, etc.)
   // and local changes that affect the merged cache (remoteParams — REQ-MERGE-5).
   if (area === "local") {
-    if (changes.remoteParams) _invalidatePrefsCache();
+    if (changes.remoteParams || changes.remoteRulesMeta) _invalidatePrefsCache(); // meta: scopedFacts (#1409)
     // E2E fixture overrides (#407): when fixtures change, prefs may
     // produce a different effective onboardingDone — drop the cache so
     // the next read picks up the fixture.
@@ -977,6 +983,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getPrefsWithCache()
       .then(prefs => sendResponse({
         ...prefs,
+        // #1409: the scoped facts (1000+ entries) serve the SW-side cleaning
+        // paths; they are not sent to every content script on every page.
+        remoteScopedFacts: undefined,
         _affiliateDomains,
       }))
       .catch(() => { try { sendResponse(null); } catch { /* channel closed */ } });
