@@ -39,7 +39,7 @@ The two stores have asymmetric capabilities. This shapes everything below.
 - Content-script architecture (the bundled cleaning library, message-passing topology, BADGE_AND_STATS side-channel).
 - Content-script bundle generation (`tools/bundle-content.mjs`, esbuild config, the committed bundle output).
 - AMP redirect or redirect-unwrap logic — anything affecting which URL the browser actually loads.
-- Affiliate injection logic (`affiliates.js`, `cleaner.js` affiliate paths).
+- Affiliate preservation / detection logic (`affiliates.js`, `cleaner.js` affiliate paths).
 - Anything that runs on **every navigation**. The blast radius of a bug here is the whole user base, instantly.
 - declarativeNetRequest rule changes (parameter list, redirect rules) — these run before the page loads.
 - Permission changes (manifest), even subtractive ones.

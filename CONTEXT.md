@@ -110,10 +110,11 @@ MUGA intercepts URL navigation at the browser layer and applies a three-tier cle
                         ▼
 ┌──────────────────────────────────────────────────────┐
 │              POPUP / OPTIONS SURFACES                │
-│  src/popup/popup.js   — badge, recent activity,     │
-│    "Creator referral preserved" badge, stats         │
+│  src/popup/popup.js   — glance: cleaned URL,        │
+│    removed params, entropy flags                     │
 │  src/options/options.js — full settings page,        │
-│    blacklist/whitelist, category toggles, export     │
+│    Activity (ledger, domain stats, suspicious        │
+│    params, report), lists, toggles, export           │
 │  src/onboarding/onboarding.js — consent + opt-in    │
 └──────────────────────────────────────────────────────┘
 ```
@@ -317,7 +318,7 @@ src/
 │   ├── tracking-params.json   DNR rules (generated from TRACKING_PARAMS)
 │   ├── domain-rules.json      Per-domain preserve/strip rules (289 entries)
 │   ├── path-strip-rules.json  Path-token strip rules (Amazon slug/ref, etc.)
-│   ├── path-affiliate-rules.json  Path-based affiliate injection rules
+│   ├── path-affiliate-rules.json  Path-based creator-referral detection/unwrap rules
 │   ├── wrapper-dnr-rules.json DNR wrapper-unwrap rules (generated)
 │   ├── wrappers.json          Wrapper recipe table (Ed25519-signed source)
 │   ├── manifest.data.js       caps-spec direct-injection programs (vendored)
