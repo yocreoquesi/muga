@@ -1,0 +1,110 @@
+name: Anchored-only globals — monthly report
+
+# Automates issue #1228's ongoing class: TRACKING_PARAMS entries that AdGuard
+# Filter 17 and ClearURLs only ever anchor to a host or path, never assert
+# globally. Every prior pass (#1322, #1323, #1324, #1338) used a throwaway,
+# never-committed measurement script; this runs the same detection
+# (tools/anchored-only-globals.mjs) on a schedule and surfaces the result as
+# ONE deduplicated tracking issue instead of a repeated manual re-derivation.
+#
+# This workflow NEVER edits TRACKING_PARAMS. It only reports candidates —
+# removal always needs a human to check per-host DNR coverage, guard
+# membership, and self-hosted/SaaS-platform risk (see the issue body's own
+# triage steps, mirrored from #1374's method).
+
+on:
+  schedule:
+    # 1st of the month, 08:00 UTC — 2 h after moat-expansion (0 6 1 * *),
+    # itself 2 h after import-upstream (0 4 1 * *), so the three monthly
+    # maintenance jobs do not collide.
+    - cron: "0 8 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+# Concurrency: only one run in flight; queued, no cancellation.
+concurrency:
+  group: anchored-only-globals
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      # One definition for both steps, so a rename cannot desync them.
+      REPORT_PATH: ${{ github.workspace }}/anchored-only-globals-report.json
+      ISSUE_BODY_PATH: ${{ github.workspace }}/anchored-only-globals-issue.md
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # No later step needs git credentials; keep the issues:write token
+          # out of the git config that npm ci's lifecycle scripts can read.
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run anchored-only-globals report
+        id: report
+        env:
+          ANCHORED_ONLY_REPORT_PATH: ${{ env.REPORT_PATH }}
+          ANCHORED_ONLY_ISSUE_BODY_PATH: ${{ env.ISSUE_BODY_PATH }}
+        run: |
+          set -eo pipefail
+          # A network/fetch failure here throws and exits non-zero (see
+          # tools/anchored-only-globals.mjs's main().catch) — this step must
+          # fail loudly, never fall through to a "0 candidates" read.
+          npm run anchored-only-report
+          # jq -e fails on a missing/null field; the integer check refuses
+          # anything else, so a malformed report can never read as a count.
+          COUNT=$(jq -e -r '.candidate_count' "$ANCHORED_ONLY_REPORT_PATH")
+          if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+            echo "::error::candidate_count is not a non-negative integer: $COUNT"
+            exit 1
+          fi
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Candidates discovered: $COUNT"
+
+      - name: Open, update, or resolve the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          COUNT: ${{ steps.report.outputs.count }}
+          BODY_PATH: ${{ env.ISSUE_BODY_PATH }}
+        run: |
+          set -euo pipefail
+
+          TITLE="Anchored-only globals: TRACKING_PARAMS entries with no global upstream evidence (#1228)"
+
+          # One open tracking issue, matched by exact title (same dedupe
+          # convention as alert-on-failure.yml). The title search runs
+          # server-side, so the lookup does not depend on how many other
+          # issues are open; the jq filter then requires an exact match.
+          NUM="$(gh issue list --repo "$REPO" --state open --search '"Anchored-only globals" in:title' --limit 50 --json number,title \
+                 | jq -r --arg t "$TITLE" 'map(select(.title == $t)) | .[0].number // empty')"
+
+          if [ "$COUNT" = "0" ]; then
+            if [ -n "$NUM" ]; then
+              gh issue comment "$NUM" --repo "$REPO" --body "Re-measured $(date -u +%Y-%m-%d): 0 candidates. Every current global entry now has global upstream evidence (or none at all). Auto-closing."
+              gh issue close "$NUM" --repo "$REPO" --reason completed
+            else
+              echo "No candidates this run and no open tracking issue — nothing to do."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --repo "$REPO" --body-file "$BODY_PATH"
+            gh issue comment "$NUM" --repo "$REPO" --body "Re-measured $(date -u +%Y-%m-%d): $COUNT candidate(s). Issue body updated above."
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body-file "$BODY_PATH" --label "needs-triage,category:ops"
+          fi
