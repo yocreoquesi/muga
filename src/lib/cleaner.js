@@ -1233,7 +1233,7 @@ function unwrapAndExtract(rawUrl, prefs, referrer, canonicalBundle, pathAffiliat
  * @param {Array} parsedBlacklist
  * @param {Array} parsedWhitelist
  * @param {string} hostname
- * @returns {{ action: "untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number }}
+ * @returns {{ action: "untouched"|"cleaned"|"detected_foreign"|"blacklisted"|"honored-creator", detectedAffiliate: object|null, blacklistStripped: number, landingParamsRemoved: string[], landingParamsRemovedValues: string[] }}
  */
 function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWhitelist, hostname) {
   // Build isWhitelisted closure for this host
