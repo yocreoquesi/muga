@@ -432,18 +432,16 @@ export async function migrateDropDnrEnabledPref() {
  * forever from key-shape alone), this migration WRITES a value the user
  * might deliberately change back — re-running "if true, set false" on every
  * worker wake would silently re-flip a later manual re-enable forever. It
- * needs a persistent one-time-done marker, `experimentalParamClassesOffMigrated`,
- * kept in `chrome.storage.local` (per-device: this corrects an install's
- * upgrade path, it is not itself a synced preference), mirroring the
- * per-device one-time-marker idiom migration-storage.js and
- * consent-storage.js already use.
+ * needs a persistent one-time-done marker, `experimentalParamClassesOffMigrated`.
  *
- * Ordering matters for safety: the marker is written ONLY after any needed
- * value write has actually succeeded. If the process is interrupted between
- * the two writes (or the value write fails), the marker stays unset and a
- * later wake retries the whole check — it can never "complete" without
- * having actually flipped the value, and re-checking an already-flipped
- * value is itself a safe no-op (see the read-first branch below).
+ * The marker lives in `chrome.storage.sync`, next to the value it guards.
+ * The value syncs across devices, so a per-device marker would let a second
+ * device that upgrades later re-flip a re-enable the user made after the
+ * first device migrated (#1355 review R3-per-device).
+ *
+ * The flip and the marker go out in ONE `sync.set`, so there is no
+ * intermediate state with the value flipped and the marker missing, or the
+ * reverse. If that write fails, nothing was written and a later wake retries.
  *
  * Wired into the single `runOneTimeMigrations()` call site (#1257) — same
  * mechanism as every sibling migration — so concurrent module-scope /
@@ -455,42 +453,32 @@ export async function migrateDropDnrEnabledPref() {
  * the caller or break startup.
  */
 export async function migrateExperimentalParamClassesOff() {
+  // The marker lives in chrome.storage.sync, next to the value it guards:
+  // the value syncs across devices, so a per-device marker would let a
+  // second device that upgrades later re-flip a re-enable the user made
+  // after the first device migrated (#1355 review R3-per-device).
   const DONE_KEY = "experimentalParamClassesOffMigrated";
   try {
-    const localData = await new Promise((resolve) => {
-      chrome.storage.local.get({ [DONE_KEY]: false }, (result) => {
-        void chrome.runtime.lastError; // non-critical
-        resolve(result);
-      });
-    });
-    if (localData[DONE_KEY] === true) return; // already migrated — never re-flip a later manual choice
-
     const syncData = await new Promise((resolve, reject) => {
-      chrome.storage.sync.get({ experimentalParamClassesEnabled: false }, (result) => {
+      chrome.storage.sync.get({ [DONE_KEY]: false, experimentalParamClassesEnabled: false }, (result) => {
         if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
         else resolve(result);
       });
     });
+    if (syncData[DONE_KEY] === true) return; // already migrated — never re-flip a later manual choice
 
-    if (syncData.experimentalParamClassesEnabled === true) {
-      await new Promise((resolve, reject) => {
-        chrome.storage.sync.set({ experimentalParamClassesEnabled: false }, () => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve();
-        });
-      });
-    }
-
-    // Mark done only now that any needed flip has actually persisted.
+    // One write carries both keys, so there is no intermediate state where
+    // the value is flipped but the marker is missing, or the reverse.
+    const update = { [DONE_KEY]: true };
+    if (syncData.experimentalParamClassesEnabled === true) update.experimentalParamClassesEnabled = false;
     await new Promise((resolve, reject) => {
-      chrome.storage.local.set({ [DONE_KEY]: true }, () => {
+      chrome.storage.sync.set(update, () => {
         if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
         else resolve();
       });
     });
   } catch {
-    // Migration is best-effort — a storage error must never throw out to
-    // the caller or break startup. The done marker is intentionally left
-    // unset on any failure above, so a later wake retries.
+    // Best-effort: a storage error must never throw out to the caller or
+    // break startup. Nothing was written, so a later wake retries.
   }
 }

@@ -15,14 +15,11 @@
  * a delete-only migration it is NOT naturally idempotent from key-shape
  * alone. Re-running "if true, set false" on every worker wake would silently
  * re-flip a user's deliberate later re-enable back off forever. It needs an
- * explicit one-time-done marker (chrome.storage.local, per-device — this is
- * an upgrade-correction for THIS install, not a synced preference), mirroring
- * the existing per-device one-time-marker idiom already used by
- * migration-storage.js's recorded migration responses and consent-storage.js's
- * per-device consent record. The marker is written ONLY after the value
- * write (if any) has actually succeeded, so a crash between the two leaves
- * the marker unset and the next wake safely retries rather than silently
- * completing without having flipped the value.
+ * explicit one-time-done marker. It lives in chrome.storage.sync, next to the
+ * value it guards, because the value syncs: a per-device marker would let a
+ * second device re-flip a re-enable made after the first device migrated
+ * (#1355 review R3-per-device). The flip and the marker are one sync.set, so
+ * no intermediate state separates them.
  *
  * Wired into the single runOneTimeMigrations() call site (#1257) — the same
  * mechanism migrateDropDnrEnabledPref and every sibling migration uses — so
@@ -92,7 +89,7 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
     stores.syncStore.set("experimentalParamClassesEnabled", true);
     const { migrateExperimentalParamClassesOff } = await loadMigrations();
     await migrateExperimentalParamClassesOff();
-    assert.strictEqual(stores.localStore.get("experimentalParamClassesOffMigrated"), true);
+    assert.strictEqual(stores.syncStore.get("experimentalParamClassesOffMigrated"), true);
   });
 
   test("leaves a user who never had it on untouched, still marks done", async () => {
@@ -100,7 +97,7 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
     const { migrateExperimentalParamClassesOff } = await loadMigrations();
     await migrateExperimentalParamClassesOff();
     assert.strictEqual(stores.syncStore.has("experimentalParamClassesEnabled"), false, "must not write a value when there was nothing to migrate");
-    assert.strictEqual(stores.localStore.get("experimentalParamClassesOffMigrated"), true);
+    assert.strictEqual(stores.syncStore.get("experimentalParamClassesOffMigrated"), true);
   });
 
   test("leaves a user who already had it off untouched, still marks done", async () => {
@@ -108,7 +105,7 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
     const { migrateExperimentalParamClassesOff } = await loadMigrations();
     await migrateExperimentalParamClassesOff();
     assert.strictEqual(stores.syncStore.get("experimentalParamClassesEnabled"), false);
-    assert.strictEqual(stores.localStore.get("experimentalParamClassesOffMigrated"), true);
+    assert.strictEqual(stores.syncStore.get("experimentalParamClassesOffMigrated"), true);
   });
 
   test("ONE-TIME: does not re-flip a value the user deliberately re-enabled after migration ran", async () => {
@@ -131,6 +128,17 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
     );
   });
 
+  test("CROSS-DEVICE: a second synced device never re-flips a re-enable made after device A migrated", async () => {
+    // Device A migrated, then the user deliberately re-enabled the flag. Both
+    // live in sync. Device B upgrades later with an empty local area: the
+    // marker must travel with the value, or B would flip the user's choice.
+    stores.syncStore.set("experimentalParamClassesEnabled", true);
+    stores.syncStore.set("experimentalParamClassesOffMigrated", true);
+    const { migrateExperimentalParamClassesOff } = await loadMigrations();
+    await migrateExperimentalParamClassesOff();
+    assert.strictEqual(stores.syncStore.get("experimentalParamClassesEnabled"), true);
+  });
+
   test("is idempotent: repeated calls in the same not-yet-migrated state converge safely", async () => {
     stores.syncStore.set("experimentalParamClassesEnabled", true);
     const { migrateExperimentalParamClassesOff } = await loadMigrations();
@@ -150,7 +158,7 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
       ])
     );
     assert.strictEqual(stores.syncStore.get("experimentalParamClassesEnabled"), false);
-    assert.strictEqual(stores.localStore.get("experimentalParamClassesOffMigrated"), true);
+    assert.strictEqual(stores.syncStore.get("experimentalParamClassesOffMigrated"), true);
   });
 
   test("never throws on a storage failure (best-effort, must not break startup)", async () => {
@@ -176,7 +184,7 @@ describe("migrateExperimentalParamClassesOff (#1355 R3-002)", () => {
     };
     await assert.doesNotReject(() => migrateExperimentalParamClassesOff());
     assert.strictEqual(
-      stores.localStore.get("experimentalParamClassesOffMigrated"), undefined,
+      stores.syncStore.get("experimentalParamClassesOffMigrated"), undefined,
       "must not mark done when the actual flip failed to persist",
     );
   });
