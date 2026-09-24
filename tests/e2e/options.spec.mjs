@@ -233,6 +233,14 @@ test.describe("Options — developer tools (#1271 item 1)", () => {
   // on the containing #dev-tools-panel, matching the pattern the rest of
   // this file already uses for gated toggles.
   test("canonical-extractor and experimental-param-classes live in Developer tools, not Advanced", async ({ optionsPage: page }) => {
+    // #1355 R3-004: the moved inputs are always opacity:0 + width:0/height:0
+    // (empty bounding box, see the file header note) — toBeHidden() on the
+    // checkbox itself would be trivially true whether dev tools mode is on
+    // or off, proving nothing. The real signal is the containing
+    // #dev-tools-panel's own visibility, which the CSS class toggle
+    // (dev-tools-hidden) actually gates.
+    await expect(page.locator("#dev-tools-panel")).toBeHidden();
+
     await setCheckbox(page, "dev-mode", true);
     await expect(page.locator("#dev-tools-card #canonical-extractor")).toHaveCount(0);
     await expect(page.locator("#dev-tools-card #experimental-param-classes")).toHaveCount(0);
@@ -243,7 +251,9 @@ test.describe("Options — developer tools (#1271 item 1)", () => {
     await expect(page.locator("#canonical-extractor")).toBeAttached();
     await expect(page.locator("#canonical-extractor")).toBeChecked();
     await expect(page.locator("#experimental-param-classes")).toBeAttached();
+
     await setCheckbox(page, "dev-tools-mode", false);
+    await expect(page.locator("#dev-tools-panel")).toBeHidden();
   });
 
   test("URL tester produces a clean result", async ({ optionsPage: page }) => {

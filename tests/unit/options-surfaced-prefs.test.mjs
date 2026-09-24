@@ -30,6 +30,68 @@ const ROOT = join(__dir, "../..");
 const optionsHtml = readFileSync(join(ROOT, "src/options/options.html"), "utf8");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
 
+// ── Real DOM-nesting check (#1355 R3-003/R3-004) ────────────────────────────
+//
+// A previous version of the containment tests below only compared string
+// offsets ("this id's index is greater than that id's index and less than
+// this other one") — that proves an id appears somewhere in a stretch of
+// TEXT, never that it is an actual DESCENDANT of a given container element.
+// Two sibling <div>s at the same nesting depth, or an id placed AFTER a
+// container's closing tag but still before some unrelated later marker,
+// would satisfy the old check just as well as real nesting would.
+//
+// options.html is our own controlled, well-formed template — no <div> tags
+// inside HTML comments (verified), every <div> explicitly closed — so a
+// plain balanced-tag walk is sufficient here without pulling in a full HTML
+// parser (none of jsdom/linkedom/happy-dom is a project devDependency, and
+// adding one is out of scope for a test-only fix). Comments are stripped
+// first anyway, defensively, so a future edit that mentions "<div" in a
+// comment can't silently corrupt the depth count.
+
+/** Strips HTML comments so they can never be mistaken for real tags. */
+function stripHtmlComments(html) {
+  return html.replace(/<!--[\s\S]*?-->/g, "");
+}
+
+/**
+ * True when `id="childId"` appears strictly inside the matching, balanced
+ * closing tag of `<div id="containerId">` — real DOM nesting, not merely
+ * "later in the text". Throws (fails loudly, not silently false) if the
+ * container id or its balanced close can't be found, so a typo'd id or a
+ * genuinely unbalanced template is a visible test error, not a false pass.
+ *
+ * @param {string} html
+ * @param {string} containerId
+ * @param {string} childId
+ * @returns {boolean}
+ */
+function isNestedInsideDiv(html, containerId, childId) {
+  const clean = stripHtmlComments(html);
+  const markerIdx = clean.indexOf(`id="${containerId}"`);
+  if (markerIdx === -1) throw new Error(`isNestedInsideDiv: container id="${containerId}" not found`);
+  const openTagEnd = clean.indexOf(">", markerIdx);
+  if (openTagEnd === -1) throw new Error(`isNestedInsideDiv: unterminated opening tag for id="${containerId}"`);
+
+  const tagRe = /<div\b|<\/div>/g;
+  tagRe.lastIndex = openTagEnd + 1;
+  let depth = 1; // already inside the container's own <div>
+  let closeIdx = -1;
+  let m;
+  while ((m = tagRe.exec(clean)) !== null) {
+    if (m[0] === "</div>") {
+      depth--;
+      if (depth === 0) { closeIdx = m.index; break; }
+    } else {
+      depth++;
+    }
+  }
+  if (closeIdx === -1) throw new Error(`isNestedInsideDiv: no balanced closing </div> found for id="${containerId}"`);
+
+  const childIdx = clean.indexOf(`id="${childId}"`);
+  if (childIdx === -1) return false;
+  return childIdx > openTagEnd && childIdx < closeIdx;
+}
+
 // Each surfaced boolean pref → { id, prefKey, ariaKey }
 // #1355: canonicalExtractorEnabled moved into the devToolsMode-gated
 // Developer tools panel — see the dedicated describe block below — so it is
@@ -110,24 +172,21 @@ describe("#1355 — canonical-extractor / experimental-param-classes have an HTM
 // and INTO the devToolsMode-gated Developer tools panel (#dev-tools-panel).
 // Moved, not retired: both stay real, default-preserving, exported prefs.
 describe("#1355 — canonical-extractor / experimental-param-classes live inside #dev-tools-panel, not #dev-tools-card", () => {
-  const cardIdx = optionsHtml.indexOf('id="dev-tools-card"');
-  const panelIdx = optionsHtml.indexOf('id="dev-tools-panel"');
-  const verIdx = optionsHtml.indexOf("version-info");
-
   for (const { id } of DEV_TOOLS_CONTROLS) {
-    test(`#${id} appears inside #dev-tools-panel, after #dev-tools-card`, () => {
-      const idx = optionsHtml.indexOf(`id="${id}"`);
-      assert.ok(idx > panelIdx && idx < verIdx, `#${id} must be inside #dev-tools-panel`);
-      assert.ok(idx > cardIdx, `#${id} must come after #dev-tools-card opens (sanity: document order)`);
+    test(`#${id} is a real DOM descendant of #dev-tools-panel`, () => {
+      assert.ok(
+        isNestedInsideDiv(optionsHtml, "dev-tools-panel", id),
+        `#${id} must be an actual descendant of <div id="dev-tools-panel">, not merely later in the file`,
+      );
+    });
+
+    test(`#${id} is NOT a descendant of #dev-tools-card`, () => {
+      assert.ok(
+        !isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
+        `#${id} must not remain a descendant of <div id="dev-tools-card">`,
+      );
     });
   }
-
-  test("neither control remains inside #dev-tools-card", () => {
-    const cardBlock = optionsHtml.slice(cardIdx, panelIdx);
-    for (const { id } of DEV_TOOLS_CONTROLS) {
-      assert.ok(!cardBlock.includes(`id="${id}"`), `#${id} must not remain inside #dev-tools-card`);
-    }
-  });
 });
 
 describe("#1355 — canonicalExtractorEnabled / experimentalParamClassesEnabled defaults are unchanged by the move", () => {
@@ -140,13 +199,12 @@ describe("#1355 — canonicalExtractorEnabled / experimentalParamClassesEnabled 
 });
 
 describe("#925 — surfaced controls live inside the dev-mode-gated Advanced card", () => {
-  const cardIdx = optionsHtml.indexOf('id="dev-tools-card"');
-  const verIdx = optionsHtml.indexOf("version-info");
-
   for (const { id } of BOOLEAN_CONTROLS) {
-    test(`#${id} appears inside #dev-tools-card`, () => {
-      const idx = optionsHtml.indexOf(`id="${id}"`);
-      assert.ok(idx > cardIdx && idx < verIdx, `#${id} must be inside the gated Advanced card`);
+    test(`#${id} is a real DOM descendant of #dev-tools-card`, () => {
+      assert.ok(
+        isNestedInsideDiv(optionsHtml, "dev-tools-card", id),
+        `#${id} must be an actual descendant of <div id="dev-tools-card">, not merely later in the file`,
+      );
     });
   }
 });
