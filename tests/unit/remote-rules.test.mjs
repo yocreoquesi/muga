@@ -593,10 +593,29 @@ describe("validateParams — content validation (REQ-VALIDATE-2 through REQ-VALI
   });
 
   // Version monotonicity (REQ-VALIDATE-7, SC-14)
-  test("version equal to stored → VERSION_REGRESSION (SC-14)", () => {
+  // #1404: an equal version is the SAME signed payload arriving again (an
+  // unchanged weekly check, or a re-enable after clearRemoteCache kept the
+  // floor). Re-applying it is not a rollback, so it must not be rejected.
+  test("version equal to stored → accepted, not a regression (#1404)", () => {
     const r = validateParams(["utm_x"], { version: 5, published: null }, nowMs, { newVersion: 5 });
+    assert.strictEqual(r.ok, true, `Expected equal version to be accepted, got: ${r.code}`);
+  });
+
+  // #1404 native review: an equal version is only a re-serve when its
+  // published stamp does not go backwards; an older stamp at the same version
+  // is a replay of a superseded payload.
+  test("equal version with an OLDER published stamp → VERSION_REGRESSION", () => {
+    const storedPublished = new Date(nowMs - 1000 * 60 * 60).toISOString();
+    const olderPublished = new Date(nowMs - 1000 * 60 * 60 * 24).toISOString();
+    const r = validateParams(["utm_x"], { version: 5, published: storedPublished }, nowMs, { newVersion: 5, newPublished: olderPublished });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.code, ERR.VERSION_REGRESSION);
+  });
+
+  test("equal version with the SAME published stamp → accepted", () => {
+    const storedPublished = new Date(nowMs - 1000 * 60 * 60).toISOString();
+    const r = validateParams(["utm_x"], { version: 5, published: storedPublished }, nowMs, { newVersion: 5, newPublished: storedPublished });
+    assert.strictEqual(r.ok, true, `Expected same-stamp re-serve to be accepted, got: ${r.code}`);
   });
 
   test("version less than stored → VERSION_REGRESSION", () => {
@@ -2189,5 +2208,121 @@ describe("#1221 slice 2 — clearRemoteCache takes the scoped range with it", ()
       dnr._calls[0].removeRuleIds,
       [REMOTE_RULE_ID, ...SCOPED_RULE_ID_RANGE],
     );
+  });
+});
+
+// ── #1404 — an equal-version payload is "up to date", never a regression ─────
+
+describe("#1404 — same-version payload: refresh when cached, re-apply when cleared", () => {
+  const subtle = globalThis.crypto?.subtle;
+  const testPubB64 = testPubKeyBase64();
+
+  function fetchBody(body) {
+    const bytes = Buffer.from(body, "utf8");
+    return async () => {
+      let done = false;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: {
+          getReader() {
+            return {
+              read() {
+                if (done) return Promise.resolve({ done: true, value: undefined });
+                done = true;
+                return Promise.resolve({ done: false, value: new Uint8Array(bytes) });
+              },
+              releaseLock() {},
+              cancel() { return Promise.resolve(); },
+            };
+          },
+        },
+      };
+    };
+  }
+
+  // One fixed signed body, served on every fetch: the live endpoint between
+  // two publishes.
+  const VERSION = 16;
+  const PUBLISHED = new Date(Date.now() - 3600_000).toISOString();
+  const PARAMS = ["utm_same_version_a", "utm_same_version_b"];
+  const BODY = JSON.stringify({
+    version: VERSION,
+    published: PUBLISHED,
+    params: PARAMS,
+    sig: signMessage(canonicalMessage(VERSION, PUBLISHED, PARAMS)),
+  });
+
+  function deps(storage, dnr, nowMs) {
+    return { fetchImpl: fetchBody(BODY), subtle, nowMs, storage, dnr, trustedKeys: [testPubB64] };
+  }
+
+  test("an unchanged payload a week later advances fetchedAt and records no error", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    const t0 = Date.now();
+    await runRemoteRulesFetch(deps(storage, dnr, t0));
+    const first = await storage.get({ remoteRulesMeta: null });
+    assert.strictEqual(first.remoteRulesMeta.version, VERSION);
+
+    const t1 = t0 + 8 * 24 * 3600_000; // past the 7-day throttle, well inside freshness
+    const dnrCallsBefore = dnr._calls.length;
+    await runRemoteRulesFetch(deps(storage, dnr, t1));
+    const later = await storage.get({ remoteRulesMeta: null, remoteParams: [] });
+
+    assert.strictEqual(later.remoteRulesMeta.lastError, null,
+      "an up-to-date check must not be recorded as an error (Settings would show it)");
+    assert.notStrictEqual(later.remoteRulesMeta.fetchedAt, first.remoteRulesMeta.fetchedAt,
+      "fetchedAt must advance so the weekly throttle holds");
+    assert.strictEqual(later.remoteRulesMeta.version, VERSION);
+    assert.deepEqual(later.remoteParams, PARAMS);
+    assert.strictEqual(dnr._calls.length, dnrCallsBefore,
+      "an up-to-date check must not rewrite the DNR rules");
+  });
+
+  test("an unchanged check keeps the last real changelog instead of an empty diff", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    const t0 = Date.now();
+    await runRemoteRulesFetch(deps(storage, dnr, t0));
+    const { remoteRulesChangelog: before } = await storage.get({ remoteRulesChangelog: null });
+    await runRemoteRulesFetch(deps(storage, dnr, t0 + 60_000));
+    const { remoteRulesChangelog: after } = await storage.get({ remoteRulesChangelog: null });
+    assert.deepEqual(after, before);
+  });
+
+  test("disable → re-enable at the same version re-applies the signed payload", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    const t0 = Date.now();
+    await runRemoteRulesFetch(deps(storage, dnr, t0));
+    await clearRemoteCache({ storage, dnr });
+
+    const cleared = await storage.get({ remoteRulesVersionFloor: 0, remoteParams: null });
+    assert.strictEqual(cleared.remoteRulesVersionFloor, VERSION, "the anti-rollback floor survives the disable");
+    assert.strictEqual(cleared.remoteParams, null);
+
+    await runRemoteRulesFetch(deps(storage, dnr, t0 + 60_000));
+    const after = await storage.get({ remoteRulesMeta: null, remoteParams: [] });
+
+    assert.strictEqual(after.remoteRulesMeta.lastError, null);
+    assert.strictEqual(after.remoteRulesMeta.version, VERSION);
+    assert.deepEqual(after.remoteParams, PARAMS, "re-enable must restore the remote params");
+    const lastGlobal = [...dnr._calls].reverse().find((c) => c.addRules?.some((r) => r.id === 1001));
+    assert.ok(lastGlobal, "rule 1001 must be re-added after re-enable");
+    const clearIdx = dnr._calls.findIndex((c) => c.removeRuleIds?.includes(1001) && !c.addRules?.length);
+    assert.ok(clearIdx >= 0, "the disable must have cleared rule 1001");
+    assert.ok(dnr._calls.indexOf(lastGlobal) > clearIdx, "the re-add must come after the disable cleared the rule");
+  });
+
+  test("an OLDER version than the surviving floor is still a regression", async () => {
+    const storage = makeStorageFake({ remoteRulesVersionFloor: VERSION + 1 });
+    const dnr = makeDnrFake();
+    await runRemoteRulesFetch(deps(storage, dnr, Date.now()));
+    const after = await storage.get({ remoteRulesMeta: null, remoteParams: null });
+    assert.strictEqual(after.remoteRulesMeta.lastError, ERR.VERSION_REGRESSION);
+    assert.strictEqual(after.remoteParams, null);
+    assert.strictEqual(dnr._calls.length, 0);
   });
 });

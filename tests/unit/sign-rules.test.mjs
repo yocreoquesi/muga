@@ -44,6 +44,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { unbumpedContentChanges } from "../../tools/rules-channel-guards.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(__dirname, "../../tools/sign-rules.mjs");
@@ -603,17 +604,21 @@ describe("sign-rules.mjs preserve guard vs. built-ins (#1221)", () => {
     // delta contradicted itself, and it fired on the change that removed 31
     // path-anchor-only params from the channel.
     //
-    // What is still worth pinning: params must NOT move without a bump, or an
-    // installed build rejects the payload as VERSION_REGRESSION and silently
-    // keeps the old rules.
-    if (signed.version === published.version) {
-      assert.deepStrictEqual(
-        signed.params,
-        published.params,
-        "the source params changed without a version bump, so every installed build would " +
-          "reject the republished payload and keep the old list"
-      );
-    }
+    // What is still worth pinning: content must NOT move without a bump. A
+    // build that already holds the version treats an equal-version payload
+    // as up to date (#1404; older builds reject it as VERSION_REGRESSION), so
+    // either way it silently keeps the old rules.
+    //
+    // #1421: the whole signed content, not params alone. The scoped section is
+    // most of the payload, and withdrawing a wrong scoped fact is the
+    // correction loop #1229 relies on; at an unchanged version that fix
+    // publishes green and never reaches a build already holding the version.
+    assert.deepStrictEqual(
+      unbumpedContentChanges(signed, published),
+      [],
+      "the source content changed without a version bump, so every installed build that " +
+        "already holds this version would never receive the republished payload"
+    );
   });
 
   test("a built-in that some host preserves is allowed through", () => {

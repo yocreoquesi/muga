@@ -30,6 +30,7 @@ import {
   normalizeParamsForCompare,
   computeNetChange,
   withVersion,
+  withPublished,
   toRepoRelativePath,
   runReconcile,
   DEFAULT_PARAMS_PATH,
@@ -175,10 +176,13 @@ describe("withVersion", () => {
 
 // ── runReconcile ─────────────────────────────────────────────────────────
 
-function harness({ headParamsText, currentParamsText, headStoreText = "s\n", currentStoreText = "s\n" }) {
+const RUN_CLOCK = "2026-09-27T04:00:00.000Z";
+
+function harness({ headParamsText, currentParamsText, headStoreText = "s\n", currentStoreText = "s\n", now = RUN_CLOCK }) {
   const writes = [];
   let restoredPaths = null;
   const result = runReconcile({
+    now: () => new Date(now),
     paramsPath: "unused-params-path",
     storePath: "unused-store-path",
     // Explicit, not derived: this fixture's paths are bare fixture names, not
@@ -237,12 +241,12 @@ describe("runReconcile", () => {
     assert.equal(writes.length, 1);
     assert.equal(writes[0].path, "unused-params-path");
     assert.match(writes[0].text, /"version": 16,/);
-    assert.match(writes[0].text, /"published": "2026-09-27T00:00:00\.000Z"/, "published is left as the run's own timestamp");
+    assert.match(writes[0].text, /"published": "2026-09-27T04:00:00\.000Z"/, "published is stamped with the run's clock (#1416)");
   });
 
-  test("net-changed and already exactly HEAD version + 1: does not rewrite the file at all", () => {
-    const headParamsText = JSON.stringify({ version: 15, published: "x", params: ["a"] });
-    const currentParamsText = JSON.stringify({ version: 16, published: "y", params: ["a", "b"] });
+  test("net-changed and already exactly HEAD version + 1 at the run's clock: does not rewrite the file at all", () => {
+    const headParamsText = JSON.stringify({ version: 15, published: "x", params: ["a"] }, null, 2);
+    const currentParamsText = JSON.stringify({ version: 16, published: RUN_CLOCK, params: ["a", "b"] }, null, 2);
 
     const { result, writes, restoredPaths } = harness({ headParamsText, currentParamsText });
 
@@ -251,12 +255,60 @@ describe("runReconcile", () => {
     assert.deepEqual(writes, [], "already correct — nothing to rewrite");
   });
 
+  test("#1416: a scoped-only delta gets a published newer than HEAD's, not HEAD's old date", () => {
+    // The measured shape: land-scoped or --prefer-anchors moved scoped[] but
+    // promote's write (the only other producer of `published`) was undone, so
+    // the working tree still carries HEAD's date. Signing that would publish a
+    // new version whose freshness clock never restarted.
+    const HEAD_DATE = "2026-04-01T00:00:00.000Z";
+    const headParamsText = JSON.stringify(
+      { version: 15, published: HEAD_DATE, params: ["a"], scoped: [{ param: "x", hosts: ["a.com"] }] },
+      null,
+      2
+    );
+    const currentParamsText = JSON.stringify(
+      { version: 15, published: HEAD_DATE, params: ["a"], scoped: [{ param: "y", hosts: ["b.com"] }] },
+      null,
+      2
+    );
+
+    const { result, writes } = harness({ headParamsText, currentParamsText });
+
+    assert.deepEqual(result, { changed: true, version: 16 });
+    assert.equal(writes.length, 1);
+    const written = JSON.parse(writes[0].text);
+    assert.equal(written.version, 16);
+    assert.equal(written.published, RUN_CLOCK);
+    assert.ok(Date.parse(written.published) > Date.parse(HEAD_DATE));
+    assert.deepEqual(written.scoped, [{ param: "y", hosts: ["b.com"] }], "content is untouched");
+  });
+
+  test("withPublished does not confuse a scoped fact whose OWN param is literally \"published\"", () => {
+    const text = [
+      "{",
+      '  "version": 3,',
+      '  "published": "2026-01-01T00:00:00.000Z",',
+      '  "params": ["a"],',
+      '  "scoped": [',
+      '    {"param":"published","hosts":["example.com"]}',
+      "  ]",
+      "}",
+    ].join("\n");
+    const out = withPublished(text, RUN_CLOCK);
+    assert.equal(JSON.parse(out).published, RUN_CLOCK);
+    assert.ok(out.includes('{"param":"published","hosts":["example.com"]}'));
+    assert.throws(() => withPublished('{"version":1}', RUN_CLOCK), /published/);
+  });
+
   test("net-changed via the STORE alone (params[]/scoped[] identical, rules.json differs)", () => {
-    const paramsText = JSON.stringify({ version: 15, published: "x", params: ["a"] });
+    // Pretty-printed like renderParamsFile: the run's clock is stamped into
+    // `published` on every net change (#1416), with the same line-anchored
+    // rewrite as `version`.
+    const paramsText = JSON.stringify({ version: 15, published: "x", params: ["a"] }, null, 2);
 
     const { result, restoredPaths } = harness({
       headParamsText: paramsText,
-      currentParamsText: JSON.stringify({ version: 16, published: "y", params: ["a"] }),
+      currentParamsText: JSON.stringify({ version: 16, published: "y", params: ["a"] }, null, 2),
       headStoreText: "before\n",
       currentStoreText: "after\n",
     });

@@ -53,6 +53,32 @@ function readWorkflow() {
   return readFileSync(WORKFLOW_PATH, "utf8");
 }
 
+/**
+ * Steps that carry `if: always()`. Since #1397 the signing key is removed
+ * right after each step that uses it, so there is more than one such step,
+ * but every one of them must be a pure key removal: a publish, commit or PR
+ * step with `if: always()` would run past a failed gate.
+ */
+function alwaysSteps(content) {
+  return content
+    .split(/\r?\n(?=      - name:)/)
+    .slice(1)
+    .filter((chunk) => chunk.split(/\r?\n/).some((l) => /^\s*if:\s*always\(\)/.test(l)));
+}
+
+function assertAlwaysOnlyRemovesKey(content) {
+  const steps = alwaysSteps(content);
+  assert.ok(steps.length >= 1, "expected at least the end-of-job key cleanup to run if: always()");
+  for (const step of steps) {
+    const runLines = step.split(/\r?\n/).filter((l) => /^\s*run:/.test(l));
+    assert.deepStrictEqual(
+      runLines.map((l) => l.trim()),
+      ['run: rm -f "$RUNNER_TEMP/key.pem"'],
+      `an if: always() step may only remove the signing key. Found:\n${step}`
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // R5-A — Triggers: schedule cron + workflow_dispatch
 // ---------------------------------------------------------------------------
@@ -719,21 +745,10 @@ describe("T-20 — quarantine review summary step", () => {
     }
   });
 
-  test("summary step does NOT carry if: always() — only the key cleanup step does", () => {
-    const content = readWorkflow();
+  test("summary step does NOT carry if: always() — only the key cleanup steps do", () => {
     // This test is already enforced by the existing 'if:always() usage' describe block,
-    // but we verify explicitly that adding the summary step does not add a second always().
-    const lines = content.split("\n");
-    const alwaysLines = lines.filter(l => {
-      const trimmed = l.trimStart();
-      return trimmed.startsWith("if:") && /if:\s*always\(\)/.test(trimmed);
-    });
-    assert.strictEqual(
-      alwaysLines.length,
-      1,
-      `Exactly 1 YAML step field may be 'if: always()' (the cleanup step). Found ${alwaysLines.length}: ` +
-      JSON.stringify(alwaysLines)
-    );
+    // but we verify explicitly that adding the summary step does not add an always().
+    assertAlwaysOnlyRemovesKey(readWorkflow());
   });
 
   test("PR-body step uses --body-file (not inline --body interpolation)", () => {
@@ -769,21 +784,8 @@ describe("T-20 — quarantine review summary step", () => {
 // publish step must NOT carry if:always() — only cleanup does
 // ---------------------------------------------------------------------------
 describe("if:always() usage — only cleanup step", () => {
-  test("only one non-comment line uses if: always() — the key cleanup step", () => {
-    const content = readWorkflow();
-    // Only count lines where `if: always()` appears as actual YAML (not in # comments).
-    // A real YAML `if:` key appears on a line whose non-whitespace content starts with `if:`.
-    const lines = content.split("\n");
-    const alwaysLines = lines.filter(l => {
-      const trimmed = l.trimStart();
-      return trimmed.startsWith("if:") && /if:\s*always\(\)/.test(trimmed);
-    });
-    assert.strictEqual(
-      alwaysLines.length,
-      1,
-      `Exactly 1 YAML step field may be 'if: always()' (the cleanup step). Found ${alwaysLines.length}: ` +
-      JSON.stringify(alwaysLines) +
-      ". Publish/PR steps must NOT have if:always() — gate failures must block them."
-    );
+  test("only key-removal steps use if: always() (#1397)", () => {
+    // Publish/PR steps must NOT have if:always() — gate failures must block them.
+    assertAlwaysOnlyRemovesKey(readWorkflow());
   });
 });
