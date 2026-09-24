@@ -1,0 +1,256 @@
+# Feature: #1463 — widen AdGuard Filter 17 coverage safely
+
+## Objective
+
+Close as much of the measured gap between MUGA and AdGuard Filter 17
+(Tracking Parameters) as can be done **safely**, across the 5 areas the
+issue names, without widening any anchor, without stripping a creator
+affiliate param by default, and without landing a global param that lacks
+vendor evidence or has plausible collision risk.
+
+## Problem / why
+
+#1463's own audit (2026-09-24) found MUGA at 85-86% coverage of AdGuard
+Filter 17 across global/host-anchored/path-anchored facts. The gap is not
+uniformly safe to close — some of it is deliberate (affiliate guard,
+functional denylist), some of it needs per-item vendor evidence, and one
+class (`ref`) is a live example of a param that is a genuine creator
+affiliate tag on some hosts (PcComponentes / MediaMarkt, already documented
+in `affiliates-data.js`) and ordinary referral noise on others.
+
+## Scope
+
+- `src/rules/domain-rules.json` — host-scoped `stripParams` additions for
+  Area 2/3's safe generic-name misses (hand-written source; re-synced via
+  `node tools/build-rules-store.mjs --import`).
+- `src/lib/redirect-networks.js` (or a new sibling leaf) — new host-anchored
+  affiliate-strip fact table for Area 4, consulted ONLY when
+  `stripAllAffiliates` is on.
+- `src/lib/cleaner.js` — `handleAffiliatePipeline` Step 4c extension: apply
+  Area 4's host-anchored facts under `stripAllAffiliates`, same pattern as
+  the existing landingParams strip (#1443).
+- `tools/adguard-global-candidates.mjs` (new) + matching workflow — Area 5's
+  measurement-only monthly report, mirrored on
+  `tools/anchored-only-globals.mjs` / `.github/workflows/anchored-only-globals.yml`.
+- Regenerated: `tracking-params.json`, `rules-manifest.json`,
+  `cleaner-bundle.js`, `web` bundle, `tools/rules-source/rules.json` (via
+  `--import`).
+- Tests: new `tests/unit/adguard-global-candidates.test.mjs`; extended
+  `processUrl` tests for the Area 4 stripAllAffiliates host-scoped strip;
+  network-coverage test extension if Area 2/3 additions need it.
+- Out of scope: `AFFILIATE_PARAM_GUARD` membership, `tools/rules-source/params.json`
+  (signed channel) — never edited.
+
+## Constraints (from AGENTS.md + issue)
+
+- Never widen an anchor: a host/path-anchored fact stays at its exact anchor.
+- Never strip a creator affiliate param by default; affiliate-related
+  stripping only under `stripAllAffiliates`.
+- Functional params (`REMOTE_PARAM_DENYLIST`, generic short names) never go
+  global.
+- Never touch `AFFILIATE_PARAM_GUARD` membership or `params.json`.
+- `domain-rules.json` is a projection of `tools/rules-source/rules.json`;
+  re-sync with `--import` after a direct edit.
+- `src/lib/cleaner.js` edits require `npm run build:content` +
+  `npm run build:web` with regenerated bundles committed.
+- `npm run lint` is web-ext; `npm run lint:js` is eslint — run both, and
+  verify `src/manifest.json` is still the Chrome MV3 manifest after `lint`.
+- Verify network coverage against the GENERATED ruleset, not just
+  `domain-rules.json`.
+- Never move a published fpfn figure to pass a test.
+
+## TDD
+
+Mode: ON for behavior changes (Area 4's stripAllAffiliates host-anchored
+strip). Runner: `node --test` (`npm test` / `npm run test:integration`).
+RED confirmed before GREEN for the new Step 4c host-scoped strip. Area 2/3's
+`domain-rules.json` additions are data-only (existing `getDomainParamSets`
+mechanism, already covered by parity/roundtrip tests) — no new RED/GREEN
+ceremony, but the roundtrip + strip-table-parity tests must stay green.
+Area 5 is pure measurement logic (mirrors `anchored-only-globals.mjs`),
+tested with `node:test`, no RED ceremony needed (no existing runtime
+behavior changes).
+
+## Measurement (re-run 2026-09-24 against live AdGuard Filter 17 + bundled
+rules + rules-source store + live signed channel; see
+`tools/import-upstream.mjs`'s `parseRemoveparamRules`)
+
+| Area | AdGuard total | Missing | Notes |
+|---|---|---|---|
+| Global params | 338 bare names | 48 not in `TRACKING_PARAMS`/prefixes | Overlaps Area 2 (generic names) and known guard-adjacent click-IDs |
+| Host-anchored facts | 1809 scoped | 270 not covered by domain-rules.json + rules-source scopedFacts + remote params.json scoped | Split below |
+| — `ref` | | 79 facts, 79 distinct hosts | Area 3 |
+| — guard-member names | | 78 facts / 46 distinct params | Area 4 (`aid`, `aff*`, `campid`, `clickid`, `cj_*`, `impact_*`, `partner*`, `tag`, …) |
+| — `REMOTE_PARAM_DENYLIST` names | | 100 facts / 24 distinct params | Functional, excluded by design |
+| — other generic names | | 18 facts / 8 distinct params (`at`, `cid`, `e`, `fr`, `landing`, `pid`, `ref_`, `src_tab_page_id`) | Area 2/3 |
+
+## Tasks
+
+- [x] T0 Set up worktree, branch, `npm ci`, read AGENTS.md/CONTEXT.md, write
+  this feature doc. Route: inline.
+- [x] T1 Area 1 — vendor research for the ~15 named global candidates
+  (`x-clickref`, `x-source`, `x-a-medium`, `eml-name`, `eml-mediaplan`,
+  `eml-publisher`, `ym_tracking_id`, `clckid`, `pixelid`, `nbt`,
+  `utm_roistat`, `c_*`, `cpt_*`) plus the unnamed remainder of the 48
+  global-missing list. Decide GLOBAL / anchored / SKIP per item with
+  evidence. Route: inline (WebSearch, <400 lines of doc output, no code
+  change expected pending evidence).
+- [x] T2 Area 2 — confirm the generic names (`c`, `ad`, `mid`, `var`, `clid`,
+  `soft`, `downloadmode`) stay excluded from global; land the 8
+  non-affiliate, non-denylist generic names that are ONLY ever host-anchored
+  (`at`, `landing`, `pid` ×6 hosts) as `domain-rules.json` scoped facts;
+  document the 3 rejected as functional-conflict (`cid`, `e` at
+  sharepoint.com; `fr` at yahoo.co.jp family) and 2 more (`ref_` at imdb.com,
+  `src_tab_page_id` at shein.com) — both already in that host's
+  `preserveParams`. Route: inline (single mechanical data file, already
+  understood; 9 host entries).
+- [x] T3 Area 3 — evaluate host-anchored `ref` (79 facts) for
+  affiliate-referral risk. Route: inline (research + doc, no code).
+- [ ] T4 Area 4 — `stripAllAffiliates`-only host-anchored affiliate strip.
+  New data table + `handleAffiliatePipeline` Step 4c extension, TDD RED/GREEN,
+  bundle rebuild. Route: delegated direct if it grows past ~3 files;
+  otherwise inline (currently 1 data file + cleaner.js + tests + bundle
+  regen = 4 files, mapping/writer trigger — will delegate the write).
+- [ ] T5 Area 5 — `tools/adguard-global-candidates.mjs` measurement-only
+  report + workflow, mirroring `anchored-only-globals.mjs`. Route: delegated
+  direct (new tool + workflow + test = 3+ files).
+- [ ] T6 Full verification pass: `npm test`, `test:integration`, `lint:js`,
+  `lint` (+ manifest diff check), `fpfn`, network-coverage tests.
+
+## Acceptance criteria
+
+- `npm test` and `npm run test:integration` green.
+- `fpfn`: 0 FP before and after (hard gate).
+- No `AFFILIATE_PARAM_GUARD` member touched; `params.json` byte-identical.
+- Area 4's strip only fires under `stripAllAffiliates`; default (off)
+  behavior for every affected host is unchanged (regression tests assert
+  both branches).
+- Every SKIP decision in Area 1/2/3 is documented with its reason
+  (no evidence / functional conflict / affiliate-adjacent risk).
+- `ref` is NOT added anywhere without maintainer sign-off; the PcComponentes/
+  MediaMarkt precedent is cited as the reason.
+
+## Checks
+
+(filled in at close)
+
+## Progress
+
+**T1 — Area 1 global candidates: all SKIPPED, none landed.**
+
+Public web search found no citable vendor documentation for any of
+`x-clickref`, `x-source`, `x-a-medium`, `eml-name`, `eml-mediaplan`,
+`eml-publisher`, `ym_tracking_id`, `clckid`, `pixelid`, `nbt`, the `c_*`
+family (`c_ad`, `c_app`, `c_dt`, `c_sys`, `c_ver`, `c_wh`), or the `cpt_*`
+family (`cpt_c`, `cpt_m`, `cpt_n`, `cpt_s`). These names appear to be
+crowdsourced/observed AdGuard entries without public vendor docs — the
+opposite of "low collision risk with evidence" the issue requires before
+landing a global strip.
+
+Specific findings:
+- **`x-clickref`**: structurally matches `clickref`, which is Partnerize's
+  own documented affiliate click-reference parameter
+  ([Partnerize docs](https://help.phgsupport.com/hc/en-us/articles/4834811308957-Tracking-Partnerize-Clickref-Pixel-Integration))
+  and is ALREADY an `AFFILIATE_PARAM_GUARD` member in MUGA (confirmed via
+  measurement: `clickref` is host-anchored-missing at awin1.com,
+  coolblue.nl, wise.com — all guard-member hits). An `x-` prefixed variant
+  of the same semantic name is a plausible affiliate-attribution param
+  under a different vendor's naming convention. **SKIP — affiliate-adjacent,
+  do not land.**
+- **`wt_mc`**: circumstantially close to WebTrends' documented
+  `WT.mc_id` campaign parameter
+  ([WebTrends KB](https://kb.webtrends.com/information/how-do-i-track-campaigns-using-the-campaign-id-parameter-wt-mc-id-1365447890899/)),
+  but the exact string (`wt_mc`, no dot, underscore form) is not confirmed
+  by any primary source. **SKIP — name similarity is not vendor
+  confirmation.**
+- `utm_roistat`: already covered — `utm_` is in `TRACKING_PREFIXES`, so it
+  is NOT in the global-missing list. No action needed (matches issue's own
+  caveat).
+- `cpt_*`: already host-anchored at yahoo.co.jp only (issue's own text
+  confirms this). A single-host observation is not corroboration for a
+  global promotion (mirrors the ingestion pipeline's own `MIN_SIGNALS=2`
+  posture). **SKIP — stays host-anchored, not promoted.**
+- `c_*` app-param family (`c_ad`, `c_app`, `c_dt`, `c_sys`, `c_ver`,
+  `c_wh`): coherent single-vendor mobile-app fingerprinting schema (app
+  name/version/OS/device), no vendor confirmed. **SKIP — no evidence.**
+
+Beyond the ~15 named candidates, the full 48-entry global-missing list also
+contains: (a) the Area 2 generic names (handled in T2/T3), and (b) a cluster
+of redirect-network click-IDs not literally in `AFFILIATE_PARAM_GUARD` but
+structurally identical to guard members already there (`awc`, `irclickid`,
+`irgwc` ARE already guard members and are correctly excluded from global by
+design — they show as "missing from TRACKING_PARAMS" only because they were
+never meant to be there). The rest of this cluster — `cjevent`, `cjdata`
+(CJ Affiliate), `admitad_uid` (Admitad), `raneaid`, `ranmid`, `ransiteid`
+(Rakuten Affiliate Network), `sscid` (ShareASale — same family as the `u`
+incident, #1212/#1217), `tduid` (TradeDoubler — explicitly moved OUT of the
+global strip list in #695 specifically because "required-at-landing means
+it MUST NOT be in the universal strip", see `affiliate-guard.mjs`) — are
+all redirect-network attribution click-IDs. **SKIP all — landing any of
+these globally would strip a real network's attribution universally,
+exactly the ADR-0005 catastrophic path. Recommend a maintainer decide
+whether any belong in `AFFILIATE_PARAM_GUARD` / `REDIRECT_NETWORK_PATTERNS`
+instead — out of this task's scope (never touch guard membership).**
+
+Remaining ungrouped: `a8` (plausibly A8.net, a major Japanese affiliate
+network's own click id — affiliate-adjacent, SKIP), `eurl` (no evidence,
+SKIP), `from` (extremely common functional param, 53 existing host-anchored
+uses in domain-rules.json alone — SKIP, high collision), `iclid`/`taid`
+(unverified click-ID-shaped names — SKIP), `sid` (session id — SKIP, high
+collision, also `REMOTE_PARAM_DENYLIST`-adjacent).
+
+**Net effect of T1: zero new `TRACKING_PARAMS` entries.** No code change
+required for this area; the deliverable is this documented decision record.
+
+**T2/T3 — the 18 "other" host-anchored misses, resolved:**
+
+Landed (9 host entries, `domain-rules.json` `stripParams`, no existing
+conflict):
+- `www.nicovideo.jp`: `at`
+- `hotosena.com`: `landing` (new entry; single AdGuard anchor, no counter-
+  evidence, plausible ad-tracking name)
+- `onelink.me` (covers `nikke.onelink.me` via suffix match): append `pid`
+  to existing `stripParams` (already strips `af_sub1` for the same
+  AppsFlyer OneLink family, #1228 precedent)
+- `announcements.bybit.com`, `app.5-delivery.ru`, `getir.com`,
+  `nikke-jp.com`, `qcplay.co.jp`, `toomics.com`: new entries, `pid`
+
+Rejected — direct conflict with existing `preserveParams` (AdGuard's anchor
+contradicts MUGA's own curated functional protection; reported, not
+silently overridden):
+- `cid`, `e` at `sharepoint.com` — both already in `preserveParams`
+  (SharePoint/OneDrive sharing-link tokens; stripping would break shared-
+  document access).
+- `fr` at `yahoo.co.jp` (and its 4 anchored subdomains
+  `detail.chiebukuro.yahoo.co.jp`, `promo-search.yahoo.co.jp`,
+  `search.yahoo.co.jp`, `toku.yahoo.co.jp`) — `fr` is already in
+  `yahoo.co.jp`'s `preserveParams` and inherited by every subdomain via
+  `getDomainParamSets`' suffix walk. AdGuard's anchor is a false positive
+  against MUGA's own already-verified functional param.
+- `ref_` at `imdb.com` — already in `imdb.com`'s `preserveParams`.
+- `src_tab_page_id` at `shein.com` — already in `shein.com`'s
+  `preserveParams`.
+
+**T3 — `ref` (79 facts): none landed. Returned to maintainer.**
+
+`ref` is a confirmed, documented creator-affiliate tag on at least two real
+hosts already in MUGA's own codebase (PcComponentes, MediaMarkt ES/DE — see
+`affiliates-data.js` line ~38, issue #160: "`ref` removed: it's the
+affiliate param for PcComponentes and MediaMarkt ES/DE in
+AFFILIATE_PATTERNS"). This is not a hypothetical collision class — it is a
+precedent for the exact failure mode. None of the 79 AdGuard-anchored hosts
+have an explicit `preserveParams`/`ref` conflict (checked), but the 79-host
+list includes several consumer subscription/security products with
+plausible "refer a friend" programs (`protonvpn.com`, `account.proton.me`,
+`startmail.com`, `olybet.lv`, `sportbank.ua`, `coincards.com`,
+`resourify.com`) where `ref` could equally be a referral-program identifier,
+not pure ad tracking. Vetting each of the 79 hosts' actual referral/
+affiliate program individually is out of reach for this task (no per-host
+vendor evidence available). Per the issue's own instruction ("If you cannot
+establish safety for a host with evidence, do not land it"), **all 79 are
+left unlanded** and returned to the maintainer as a single decision item —
+see the final report.
+
+**T4 — see commit for `handleAffiliatePipeline` Step 4c extension.**
+
+**T5 — see commit for `tools/adguard-global-candidates.mjs`.**
