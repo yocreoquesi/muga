@@ -57,7 +57,7 @@ function stripCssComments(css) {
 function parseCssRules(css) {
   css = stripCssComments(css);
   const rules = [];
-  function walk(str, start, end) {
+  function walk(str, start, end, nested = false) {
     let j = start;
     while (j < end) {
       while (j < end && /\s/.test(str[j])) j++;
@@ -73,7 +73,7 @@ function parseCssRules(css) {
           else if (str[m] === "}") depth--;
           m++;
         }
-        walk(str, k + 1, m - 1);
+        walk(str, k + 1, m - 1, true);
         j = m;
         continue;
       }
@@ -87,7 +87,7 @@ function parseCssRules(css) {
         else if (str[k] === "}") depth--;
         k++;
       }
-      rules.push({ selector, decls: str.slice(braceIdx + 1, k - 1) });
+      rules.push({ selector, decls: str.slice(braceIdx + 1, k - 1), nested });
       j = k;
     }
   }
@@ -154,7 +154,9 @@ function selectorMatchesElement(selector, el) {
 
 /** True if the stylesheet declares a global `[hidden] { display: none !important }` rule. */
 function hasGlobalHiddenGuard(rules) {
-  return rules.some((r) =>
+  // Only a top-level rule applies everywhere: one inside @media/@supports only
+  // applies when its condition matches (#popup review R3).
+  return rules.some((r) => !r.nested &&
     r.selector.split(",").map((s) => s.trim()).some((p) => {
       if (p !== "[hidden]") return false;
       const d = getDisplayDecl(r.decls);
@@ -223,4 +225,40 @@ describe("[hidden] elements never have their display overridden without a guard"
       );
     });
   }
+});
+
+
+// The page checks above short-circuit on the global guard, so these fixtures
+// prove the detector itself still finds the bug (#popup review R3).
+function violationsFor(html, css) {
+  const rules = parseCssRules(css);
+  if (hasGlobalHiddenGuard(rules)) return [];
+  return findHiddenElements(html).filter(
+    (el) => findRiskyDisplayRules(rules, el).length > 0 && !hasSpecificHiddenGuard(rules, el)
+  );
+}
+
+describe("the hidden/display detector finds the bug it guards against", () => {
+  const HTML = '<div class="box" id="b" hidden>x</div>';
+
+  test("a class that sets display on a hidden element is a violation", () => {
+    assert.equal(violationsFor(HTML, ".box { display: flex; }").length, 1);
+  });
+
+  test("a top-level global [hidden] guard clears it", () => {
+    assert.equal(violationsFor(HTML, ".box { display: flex; } [hidden] { display: none !important; }").length, 0);
+  });
+
+  test("a specific .box[hidden] override clears it", () => {
+    assert.equal(violationsFor(HTML, ".box { display: flex; } .box[hidden] { display: none; }").length, 0);
+  });
+
+  test("a global guard inside @media does NOT count as global", () => {
+    const css = ".box { display: flex; } @media (min-width: 1px) { [hidden] { display: none !important; } }";
+    assert.equal(violationsFor(HTML, css).length, 1);
+  });
+
+  test("an element without the hidden attribute is never a violation", () => {
+    assert.equal(violationsFor('<div class="box">x</div>', ".box { display: flex; }").length, 0);
+  });
 });
