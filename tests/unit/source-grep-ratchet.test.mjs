@@ -223,7 +223,7 @@ const BASELINE = {
   "a11y-contrast.test.mjs": 1,
   "a11y-structure.test.mjs": 9,
   "amp-redirect.test.mjs": 15,
-  "audit-2.5.0-copy-cleanups.test.mjs": 4, // rebase re-count onto the #1405 widened heuristic (audit behaviour branch, 2026-09-24): 2 -> 4, no new assertions added, the wider identifier-binding count simply now sees 2 more on the same file (#824)
+  "audit-2.5.0-copy-cleanups.test.mjs": 4, // 2 -> 4 (b5-3 audit fix #4, correcting a prior mischaracterization): this is NOT a pure heuristic re-count. #1391's "whitelist_add/blacklist_add logAction calls drop the entry detail" describe block genuinely ADDED 2 new source-grep assertions against service-worker.js (readFileSync'd, then two `!/logAction(.../.test(swSource)` checks). service-worker.js touches chrome.* at module scope and is not importable in Node (see this file's own doc comment on the repo's behavioral-where-importable / source-guard-otherwise convention), so a behavioral rewrite would need extracting the logAction call sites or a message-handler test harness — out of scope for this fix. These are genuine new wiring guards on browser-only SW source, not free slack from a wider counting heuristic (#824)
   "bounce-state-affiliate-redirect.test.mjs": 2,
   "bounce-state-wrappers-parity.test.mjs": 4,
   "cleaner.test.mjs": 3,
