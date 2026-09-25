@@ -1675,6 +1675,86 @@ describe("redirect-network landingParams under stripAllAffiliates (#1443)", () =
 });
 
 // ---------------------------------------------------------------------------
+// Host-anchored affiliate strip facts under stripAllAffiliates (#1463 Area 4)
+// AdGuard Filter 17 anchors these AFFILIATE_PARAM_GUARD-member params to
+// specific hosts. By default they stay preserved (guard protects them from
+// any unconditional strip). Under stripAllAffiliates, and ONLY on the exact
+// host AdGuard anchors each one to, they are stripped — same posture as the
+// #1443 landingParams strip (Step 4c), one anchor tighter.
+// ---------------------------------------------------------------------------
+describe("host-anchored affiliate strip facts under stripAllAffiliates (#1463)", () => {
+
+  test("default prefs: affid is preserved on cyberlink.com (regression pin)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=abc123",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "abc123");
+  });
+
+  test("stripAllAffiliates strips affid on cyberlink.com (its exact AdGuard anchor)", () => {
+    const { action, removedTracking, cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "cleaned");
+    assert.ok(removedTracking.includes("affid"));
+    assert.equal(new URL(cleanUrl).searchParams.has("affid"), false);
+  });
+
+  test("stripAllAffiliates does NOT strip affid on an unrelated host (anchor is not widened)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://unrelated-shop.example/product?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(action, "untouched");
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "abc123");
+  });
+
+  test("stripAllAffiliates strips a sample from several other host-anchored facts", () => {
+    const samples = [
+      ["campid", "https://www.otto.de/p/1?campid=xyz"],
+      ["aid", "https://klook.com/activity/1?aid=xyz"],
+      ["partnerid", "https://wise.com/send?partnerid=xyz"],
+      ["cj_pid", "https://www.fanatical.com/en/bundle/1?cj_pid=xyz"],
+      ["impact_click_id", "https://www.carwow.de/angebote?impact_click_id=xyz"],
+      ["tag", "https://gaming.amazon.com/loot?tag=xyz"],
+    ];
+    for (const [param, url] of samples) {
+      const { cleanUrl } = processUrl(url, { ...PREFS, stripAllAffiliates: true });
+      assert.equal(
+        new URL(cleanUrl).searchParams.has(param),
+        false,
+        `${param} must be stripped on its exact AdGuard-anchored host`,
+      );
+    }
+  });
+
+  test("whitelist entry protects a host-anchored fact's value even under stripAllAffiliates", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.cyberlink.com/store/buy?affid=creator-value",
+      {
+        ...PREFS,
+        stripAllAffiliates: true,
+        whitelist: ["cyberlink.com::affid::creator-value"],
+      }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.get("affid"), "creator-value",
+      "whitelisted host-anchored fact value must survive stripAllAffiliates");
+  });
+
+  test("a subdomain of the anchored host is also covered (suffix match, same convention as domain-rules.json)", () => {
+    const { cleanUrl } = processUrl(
+      "https://sub.cyberlink.com/store/buy?affid=abc123",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(new URL(cleanUrl).searchParams.has("affid"), false);
+  });
+
+});
+
+// ---------------------------------------------------------------------------
 // affiliate param / tracking param collision (BUG-06)
 // ---------------------------------------------------------------------------
 describe("affiliate param / tracking param collision", () => {
@@ -1707,6 +1787,52 @@ describe("affiliate param / tracking param collision", () => {
     const clean = new URL(cleanUrl);
     assert.equal(clean.searchParams.get("ref"), "creator-21",
       "whitelisted ref= must be preserved on pccomponentes");
+  });
+
+  // #1463 T3 (maintainer decision 2026-09-25): `ref` lands as a default
+  // host-scoped strip at AdGuard's exact per-host anchor on 79 hosts
+  // (domain-rules.json), while staying preserved wherever it is a genuine
+  // creator-affiliate tag. Regression pin, WITH domainRules passed (the
+  // real production shape — src/content/cleaner.js's cleanWithContext
+  // always passes _domainRulesCache, unlike the two `ref=` tests above
+  // which call processUrl with prefs only).
+  //
+  // NOTE ON THE HOSTS CHOSEN: the maintainer's instruction named
+  // "PcComponentes, MediaMarkt ES/DE" as hosts to exclude because `ref` is
+  // a known creator-affiliate tag there. Verified against the LIVE
+  // processUrl + domainRules path (not just the affiliates-data.js #160
+  // comment, which is stale) and found the opposite of what that comment
+  // says: pccomponentes.com / mediamarkt.de / mediamarkt.es already carry
+  // `ref` in their OWN domain-rules.json `stripParams` (pre-existing,
+  // unrelated to this branch), and `tests/unit/config-integrity.test.mjs`'s
+  // `allowedOverrides` table explicitly documents this as intentional
+  // ("intentionally stripped on incompatible stores (redirect-based
+  // affiliate policy)"). So `ref` is NOT currently preserved on those three
+  // hosts — using them here would assert something false and would
+  // contradict an existing, deliberately-tested guard. `vercel.com` is
+  // used instead: it is the one host where `ref` is a genuine, currently
+  // enforced creator-affiliate tag (`AFFILIATE_PATTERNS` /
+  // `src/rules/manifest.data.js`'s "Vercel Referrals" direct-injection
+  // program). See odd/tasks/1463-adguard-coverage.md T3 for the full
+  // finding and the resulting maintainer-facing report.
+  test("ref is stripped on a T3-landed host (goodreads.com) and preserved where it is a real creator-affiliate tag (vercel.com)", () => {
+    const stripped = processUrl(
+      "https://goodreads.com/book/1?ref=tracking&utm_source=google",
+      PREFS,
+      domainRules,
+    );
+    assert.equal(new URL(stripped.cleanUrl).searchParams.has("ref"), false,
+      "ref must be stripped on goodreads.com (T3-landed host, exact AdGuard anchor)");
+    assert.ok(stripped.removedTracking.includes("ref"));
+
+    const preserved = processUrl(
+      "https://vercel.com/pricing?ref=some-affiliate-tag&utm_source=google",
+      PREFS,
+      domainRules,
+    );
+    assert.equal(new URL(preserved.cleanUrl).searchParams.get("ref"), "some-affiliate-tag",
+      "ref must stay preserved on vercel.com — a genuine AFFILIATE_PATTERNS creator-affiliate tag");
+    assert.ok(!preserved.removedTracking.includes("ref"));
   });
 
 });

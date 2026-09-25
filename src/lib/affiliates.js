@@ -57,6 +57,9 @@ export {
   getLandingParamsForReferrer,
   getLandingParamsForHost,
   getAllLandingParams,
+  // #1463 Area 4: host-anchored affiliate-guard-member facts, consulted only
+  // under stripAllAffiliates.
+  AFFILIATE_HOST_STRIP_FACTS,
   // affiliate-autoinject-notice: platform-auto-injected tag detection.
   AUTOINJECTOR_PATTERNS,
   getAutoInjectorForReferrer,

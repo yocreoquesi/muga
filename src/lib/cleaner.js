@@ -12,6 +12,7 @@ import {
   getRedirectNetworkForRedirectHost,
   getLandingParamsForHost,
   getAllLandingParams,
+  AFFILIATE_HOST_STRIP_FACTS,
   detectAutoInjectedTag,
   stripAutoInjectedTag,
 } from "./affiliates.js";
@@ -1342,6 +1343,36 @@ function handleAffiliatePipeline(url, prefs, patterns, parsedBlacklist, parsedWh
         // Capture BEFORE delete, same convention as classifyAndStripTracking's
         // stripTrackingParams: one recorded value per removed param name (the
         // first occurrence), not one per repeated key.
+        landingParamsRemoved.push(actualKey);
+        landingParamsRemovedValues.push(url.searchParams.get(actualKey) ?? "");
+        url.searchParams.delete(actualKey);
+        for (const val of kept) url.searchParams.append(actualKey, val);
+        if (action === "untouched") action = "cleaned";
+      }
+    }
+
+    // Step 4d (#1463 maintainer decision, Area 4): under stripAllAffiliates,
+    // also strip AFFILIATE_HOST_STRIP_FACTS — AFFILIATE_PARAM_GUARD-member
+    // params AdGuard anchors to a SPECIFIC host — but ONLY on that exact
+    // host (suffix-matched, same convention as domain-rules.json's own
+    // host-anchored stripParams). By default this block never runs, so
+    // these params stay preserved everywhere exactly as before. Unlike
+    // Step 4c above, this is host-scoped: never widens past AdGuard's own
+    // anchor.
+    for (const hostParam of scopedParamsForHostname(hostname, AFFILIATE_HOST_STRIP_FACTS)) {
+      const actualKey = findParamKeyCI(url, hostParam);
+      if (!actualKey) continue;
+      const values = url.searchParams.getAll(actualKey);
+      const kept = [];
+      let strippedAny = false;
+      for (const val of values) {
+        if (isWhitelisted(hostParam, val)) {
+          kept.push(val);
+        } else {
+          strippedAny = true;
+        }
+      }
+      if (strippedAny) {
         landingParamsRemoved.push(actualKey);
         landingParamsRemovedValues.push(url.searchParams.get(actualKey) ?? "");
         url.searchParams.delete(actualKey);

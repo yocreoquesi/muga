@@ -936,3 +936,71 @@ export const ADJUDICATED_KEEP_GLOBAL = Object.freeze({
   tt_content: "MUGA's own TikTok campaign-content attribution param; ClearURLs' only anchor for this name (twitch.com) contradicts that attribution rather than confirming a narrower host scope (#1228 triage, 2026-09-24)",
   tt_medium: "MUGA's own TikTok campaign-medium attribution param; ClearURLs' only anchor for this name (twitch.com) contradicts that attribution rather than confirming a narrower host scope (#1228 triage, 2026-09-24)",
 });
+
+/**
+ * AdGuard Filter 17 global-strip-list candidates (params AdGuard strips
+ * unanchored, i.e. NOT already in `TRACKING_PARAMS`) that a human already
+ * triaged and decided NOT to land, for a reason `tools/adguard-global-
+ * candidates.mjs`'s mechanical detection cannot express on its own (no
+ * public vendor evidence, or a collision-risk pattern — the #1212/#1217
+ * class). Mirrors `ADJUDICATED_KEEP_GLOBAL` above, opposite direction: that
+ * one keeps an EXISTING global entry global despite anchored-only evidence;
+ * this one keeps a upstream CANDIDATE out of `TRACKING_PARAMS` despite
+ * global evidence.
+ *
+ * `tools/adguard-global-candidates.mjs`'s monthly report excludes every key
+ * here from its candidate list — without this, the same already-rejected
+ * names would reappear every month (the exact failure mode
+ * `ADJUDICATED_KEEP_GLOBAL`'s docblock names for the opposite direction).
+ * A name already excluded structurally (`AFFILIATE_PARAM_GUARD`,
+ * `REMOTE_PARAM_DENYLIST`, `TRACKING_PREFIXES`, or already in
+ * `REDIRECT_NETWORK_PATTERNS.landingParams`) does NOT need an entry here —
+ * only names with no other structural exclusion.
+ *
+ * Adding a new entry: after triaging a candidate from the monthly report
+ * and deciding it must NOT land, add `param: "reason (#issue)"` here. Do
+ * NOT add an entry just to silence the report without triage.
+ *
+ * Seeded 2026-09-24 from issue #1463's Area 1 triage (see
+ * odd/tasks/1463-adguard-coverage.md T1 for the full evidence per item).
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const ADJUDICATED_SKIP_GLOBAL = Object.freeze({
+  // Named T1 candidates: no public vendor documentation found.
+  "x-clickref": "structurally matches `clickref` (Partnerize's documented affiliate click-reference param, and already a MUGA landingParams entry) — affiliate-adjacent, not landed (#1463)",
+  "x-source": "no public vendor documentation found; custom/proprietary tracking param (#1463)",
+  "x-a-medium": "no public vendor documentation found; custom/proprietary tracking param (#1463)",
+  "eml-name": "no public vendor documentation found; proprietary email-marketing tracking param (#1463)",
+  "eml-mediaplan": "no public vendor documentation found; proprietary email-marketing tracking param (#1463)",
+  "eml-publisher": "no public vendor documentation found; proprietary email-marketing tracking param (#1463)",
+  ym_tracking_id: "no public vendor documentation found (#1463)",
+  clckid: "no public vendor documentation found; distinct from the already-covered `clickid`/`click_id` (#1463)",
+  pixelid: "no public vendor documentation found; generic pixel-tracking name (#1463)",
+  nbt: "no public vendor documentation found (#1463)",
+  c_ad: "coherent single-vendor mobile-app fingerprinting schema (c_ad/c_app/c_dt/c_sys/c_ver/c_wh), no vendor confirmed (#1463)",
+  c_app: "same c_* family as c_ad — no vendor confirmed (#1463)",
+  c_dt: "same c_* family as c_ad — no vendor confirmed (#1463)",
+  c_sys: "same c_* family as c_ad — no vendor confirmed (#1463)",
+  c_ver: "same c_* family as c_ad — no vendor confirmed (#1463)",
+  c_wh: "same c_* family as c_ad — no vendor confirmed (#1463)",
+  cpt_c: "only ever anchored to yahoo.co.jp in the live measurement — a single host is not corroboration for a global promotion (mirrors the ingestion pipeline's own MIN_SIGNALS=2 posture) (#1463)",
+  cpt_m: "same cpt_* family as cpt_c (#1463)",
+  cpt_n: "same cpt_* family as cpt_c (#1463)",
+  cpt_s: "same cpt_* family as cpt_c (#1463)",
+  // Ungrouped candidates: no vendor evidence, no existing mechanism.
+  client_m: "no public vendor documentation found; ambiguous generic-sounding name (#1463)",
+  eurl: "no public vendor documentation found (#1463)",
+  taid: "no public vendor documentation found; distinct from the already-covered `ttaid` (#1463)",
+  // Generic short/ambiguous names: high collision risk, confirmed excluded
+  // (Area 2 of #1463) rather than newly discovered here.
+  ad: "generic 2-letter name, high collision risk with functional query params (#1463, Area 2)",
+  c: "generic 1-letter name, high collision risk (#1463, Area 2)",
+  mid: "generic name (merchant id / message id / etc. depending on host), high collision risk (#1463, Area 2)",
+  var: "generic name, high collision risk (#1463, Area 2)",
+  clid: "generic name, high collision risk (#1463, Area 2)",
+  soft: "generic name, high collision risk (#1463, Area 2)",
+  downloadmode: "generic name, high collision risk (#1463, Area 2)",
+  pid: "generic name (product id on many e-commerce sites); landed host-anchored only where AdGuard evidence exists, never global (#1463, Area 2/3)",
+  ref: "confirmed creator-affiliate tag on PcComponentes/MediaMarkt (see the TRACKING_PARAMS `ref` removal comment, #160); the same collision class applies to any of the 79 AdGuard-anchored hosts without per-host evidence — returned to maintainer, not landed anywhere (#1463, Area 3)",
+});

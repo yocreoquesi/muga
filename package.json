@@ -48,6 +48,7 @@
     "lint:js": "eslint .",
     "moat:report": "node tools/moat-expansion/cli.mjs",
     "anchored-only-report": "node tools/anchored-only-globals.mjs",
+    "adguard-global-candidates-report": "node tools/adguard-global-candidates.mjs",
     "fpfn": "node tools/fpfn-harness/run.mjs"
   },
   "engines": {

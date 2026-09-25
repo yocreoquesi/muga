@@ -23,7 +23,14 @@ describe("domain-rules.json integrity", () => {
     // AdGuard/ClearURLs preserve harvest) is an explicit, reviewed change.
     // 252 -> 289 (#1326 slice 3): tools/import-path-anchors.mjs landed 37 new
     // path-scoped-only hosts (46 (host, pathPrefix) groups total).
-    assert.equal(domainRules.length, 289, `Expected 289 entries, got ${domainRules.length}`);
+    // 289 -> 297 (#1463): 8 new host-anchored entries landed from the live
+    // AdGuard Filter 17 measurement (generic names only ever host-anchored,
+    // never global — see odd/tasks/1463-adguard-coverage.md T2/T3).
+    // 297 -> 374 (#1463): 77 new host-anchored entries for `ref`, landed
+    // under the maintainer's 2026-09-25 decision on T3 (trust AdGuard's
+    // exact per-host anchor; excludes any host with a known creator-
+    // affiliate `ref` — see odd/tasks/1463-adguard-coverage.md T3).
+    assert.equal(domainRules.length, 374, `Expected 374 entries, got ${domainRules.length}`);
     for (const rule of domainRules) {
       assert.equal(typeof rule.domain, "string", `domain must be string: ${JSON.stringify(rule)}`);
       assert.ok(Array.isArray(rule.preserveParams), `preserveParams must be array: ${rule.domain}`);

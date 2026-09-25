@@ -277,3 +277,51 @@ test("ONE-RULE-PER-HOST — subdomain-aware: every tailored host (and a deep sub
     }
   }
 });
+
+// ── #1463 network-layer defect: excluded ⇒ COMPLETE, not just EXCLUSIVE ─────
+//
+// The "subdomain-aware" test above proves each tailored host matches EXACTLY
+// ONE param rule (no double-match, no zero-match) — but it never checks that
+// the ONE matching rule actually carries everything an excluded ancestor rule
+// would have stripped. A profile rule's own tailored removeParams is built
+// ONLY from that domain's OWN domain-rules.json entry
+// (tools/generate-rules.mjs's `perDomain` loop never reads an ancestor's
+// stripParams), so when a child domain is carved out of its parent's rule via
+// excludedRequestDomains (the ONE-RULE-PER-HOST handoff), the child's own
+// rule silently drops every extra strip the parent's anchor covers. Found in
+// review (#1463): `www.nicovideo.jp` (excluded from `nicovideo.jp`'s rule,
+// which strips `ref`) never actually applied `ref` at the network layer,
+// because its own rule only knew about `at`. The same gap existed for
+// `shopping.naver.com` under `naver.com` (8 params). Both were fixed by
+// adding the missing params directly to the excluded child's own
+// domain-rules.json `stripParams` (never by widening the parent's anchor).
+test("ONE-RULE-PER-HOST — excluded child's rule is a SUPERSET of every ancestor rule it was carved out of", () => {
+  const paramRules = RULES.filter((r) => r.action?.type === "redirect");
+
+  for (const ancestorRule of paramRules) {
+    const ancestorRemoveLc = new Set(removeOf(ancestorRule).map((p) => p.toLowerCase()));
+    const ancestorDomains = ancestorRule.condition?.requestDomains;
+    if (!ancestorDomains) continue; // the global rule has nothing to be an "ancestor" of here
+
+    for (const excludedHost of ancestorRule.condition?.excludedRequestDomains ?? []) {
+      // Find the rule that actually matches this excluded host (the handoff
+      // target) — proven to be exactly one by the test above.
+      const childRule = paramRules.find((r) => r !== ancestorRule && ruleMatchesHost(r, excludedHost));
+      assert.ok(
+        childRule,
+        `"${excludedHost}" is excluded from rule ${ancestorRule.id} but no other rule matches it — this test should run after the exact-match/subdomain-aware tests above, which would already have failed`,
+      );
+      const childRemoveLc = new Set(removeOf(childRule).map((p) => p.toLowerCase()));
+      const missing = [...ancestorRemoveLc].filter((p) => !childRemoveLc.has(p));
+      assert.deepEqual(
+        missing,
+        [],
+        `"${excludedHost}"'s own rule (id ${childRule.id}) is missing [${missing.join(", ")}] from the ` +
+          `ancestor rule (id ${ancestorRule.id}) it was excluded/carved out of — Chrome only ever fires ` +
+          `${childRule.id} for this host, so these params are silently never stripped at the network ` +
+          `layer. Add the missing param(s) to the excluded host's OWN domain-rules.json stripParams ` +
+          `(never widen the ancestor's anchor) and run \`npm run build:rules\`.`,
+      );
+    }
+  }
+});
