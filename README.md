@@ -15,7 +15,7 @@
 
 **MUGA is an open-source browser extension that strips tracking parameters from your URLs and, by default, tries to preserve the referral credit of whoever sent you the link.** Every other URL cleaner removes `utm_source`, `fbclid`, `gclid`, and the rest. So does MUGA. But every other URL cleaner also strips the affiliate tag of the YouTuber whose video you came from, the newsletter that shared the link, the reviewer who took the time to write the comparison. That tag is how independent creators get paid for the recommendation. By default MUGA tries to leave it alone. It is best-effort rather than a guarantee, and you stay in control. No other URL cleaner we know of even attempts this.
 
-> **MUGA?** Most URLs Get Abused. **MUGA.** Mercilessly Undoing Garbage Attachments. **MUGA!** Making URLs Good Again.
+> **MUGA?** Minus Useless Garbage Appended. **MUGA.** My URLs, Gloriously Abridged. **MUGA!** Mostly Unneeded, Gone Automatically.
 
 > **3.1.0 shipped.** `Referer` suppression and `<a ping>` beacon blocking are enforced at the network layer, and short-link resolution is split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
@@ -27,7 +27,7 @@
 
 ## How it works
 
-![Before and after URL cleaning](docs/assets/screenshot-ss1-before-after.png)
+![A messy shop link cleaned by MUGA: 193 characters down to 41, and it still opens the same page](docs/assets/store-1-clean-links-1280x800.png)
 
 MUGA intercepts URLs as you browse and removes the tracking before the page loads. The result is a shorter, cleaner URL: your browsing stays the same, minus the surveillance.
 
@@ -80,11 +80,11 @@ Domain-specific rules for **289 domains** preserve functional query params (sear
 
 The popup shows what MUGA cleaned on the current page: which parameters were removed, and what the URL looks like now.
 
-![Popup showing cleaned URL on a store page](docs/assets/screenshot-ss2-popup.png)
+![MUGA popup showing the link before and after, what came off and how much shorter it got](docs/assets/store-4-this-page-popup-1280x800.png)
 
 Settings give you full control: affiliate behavior, per-domain rules (Blocked domains, Protected tags & domains), and advanced features. The UI ships in 7 languages: English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations, and corrections are welcome.
 
-![Settings page](docs/assets/screenshot-ss3-options.png)
+![MUGA settings page](docs/assets/store-5-settings-1280x800.png)
 
 ---
 
