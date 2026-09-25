@@ -85,3 +85,20 @@ Push, PR and issue creation are the user's decisions.
   scroll, fonts loaded, and the live tool cleans a utm link (59% shorter).
 - Next step: user review of the previews. Push and PR are the user's call.
   The new images go live on rules.muga.app only after merge to main.
+- Review split (2026-09-25): the full branch exceeded the native reviewer
+  context budget (lens_context_budget_exceeded, 48 files / 4990 lines), so
+  the user chose to split the local history into slices. The resulting tree
+  is identical to the pre-split tip (backup ref
+  `backup/landing-brand-refresh-presplit`).
+  - 8b16189 chore(assets): new PNGs plus deletion of the stale generators.
+    Mechanical, so it ships with ordinary checks only and no native review.
+  - 1708055 chore(tools): ported render sources. Native review approved and
+    acknowledged (review-b66e6945d2d714ae, reliability lens). Five advisory
+    findings remain as follow-ups: fetch-fonts never checks response.ok; the
+    font cache only looks for fonts.css; the static server prefix check has
+    no path.sep; an unmatched filter exits 0; a template error waits for the
+    30 s timeout.
+  - 356e923 feat(landing) plus c18d1b8 docs(odd). Native review approved and
+    acknowledged (review-b95a79524f6a7e09). Both advisory findings are
+    expected: the "missing" images are in 8b16189, and the images depend on
+    deploy order (rules.muga.app serves them from main).
