@@ -35,11 +35,7 @@ npm install
 
 | Tool | Required for | Notes |
 |------|-------------|-------|
-| `python3` + `Pillow` | `npm run promo-tiles` | Generates Chrome Web Store promo tiles. Not needed for extension builds or tests. Install with `pip install Pillow`. |
-
-The `promo-tiles` script (`tools/generate-promo-tiles.py`) requires Python 3 with the
-`Pillow` library. It is not required for normal development, running tests, or building
-the extension. If `python3` is not available on your machine, skip this command.
+| Google Chrome or Playwright Chromium | `npm run screenshots`, `npm run promo-tile` | Renders the store screenshots, promo tiles and Open Graph card into `docs/assets/` from the templates in `tools/screenshots/`. The first run downloads the Archivo and IBM Plex Mono fonts into `tools/screenshots/fonts/` (gitignored). Not needed for extension builds or tests. |
 
 ## Running tests
 

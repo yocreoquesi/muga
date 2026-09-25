@@ -3,24 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Page not found — MUGA</title>
+<title>Page not found · MUGA</title>
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="dark">
 
 <link rel="icon" href="https://rules.muga.app/assets/muga-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
 <style>
   :root {
     --bg: #0E0C13;
+    --panel-2: #1A1622;
     --ink: #F2EFF7;
     --ink-2: #A9A2B8;
     --ink-3: #8C84A2;
     --rule: #2A2536;
+    --rule-2: #332C42;
     --accent: #6A2BCF;
+    --accent-hi: #7B3FE0;
     --accent-ink: #A883F0;
+    --accent-soft: #C9B2F5;
+    --bad: #E0665C;
     --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: Archivo, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
@@ -32,22 +37,24 @@
     min-height: 100vh; display: flex; align-items: center;
     -webkit-font-smoothing: antialiased;
   }
-  a { color: #C9B2F5; text-underline-offset: 3px; }
+  a { color: var(--accent-soft); text-underline-offset: 3px; }
   a:hover { color: #E4D8FA; }
+  :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 4px; }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 28px; width: 100%; }
+  @media (max-width: 480px) { .wrap { padding-left: 20px; padding-right: 20px; } }
   .eyebrow {
-    display: flex; align-items: center; gap: 10px; margin: 0 0 22px;
-    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+    display: flex; align-items: center; gap: 12px; margin: 0 0 22px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .16em;
     text-transform: uppercase; color: var(--accent-ink);
   }
   .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
   h1 {
     margin: 0 0 20px;
-    font-size: clamp(36px, 5vw, 60px);
-    line-height: .98; letter-spacing: -.035em; font-weight: 800;
-    max-width: 17ch; text-wrap: balance;
+    font-size: clamp(44px, 7vw, 88px);
+    line-height: .96; letter-spacing: -.045em; font-weight: 800;
+    max-width: 14ch; text-wrap: balance;
   }
-  h1 .mark { color: var(--accent-ink); }
+  h1 .dot { color: var(--accent); }
   p {
     margin: 0 0 30px; font-size: 17px; line-height: 1.6;
     color: var(--ink-2); max-width: 46ch; text-wrap: pretty;
@@ -57,14 +64,16 @@
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
     font-family: inherit; border: 0; cursor: pointer;
-    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 10px;
+    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 8px;
+    transition: background .2s ease, border-color .2s ease;
   }
-  .btn:hover { background: #7B3FE0; color: #fff; }
-  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid #332C42; }
-  .sig { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--rule); }
-  .sig svg { display: block; width: 190px; height: auto; color: var(--accent-ink); }
+  .btn:hover { background: var(--accent-hi); color: #fff; }
+  .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--ink); }
+  .sig { margin-top: 48px; padding-top: 22px; border-top: 1px dashed var(--rule-2); display: flex; align-items: center; gap: 16px; }
+  .sig svg { display: block; width: 64px; height: auto; color: var(--accent-ink); flex: none; }
   .sig .cap {
-    margin-top: 12px; font-family: var(--mono); font-size: 11.5px;
+    margin: 0; font-family: var(--mono); font-size: 12px;
     letter-spacing: .04em; color: var(--ink-3);
   }
 </style>
@@ -74,7 +83,7 @@
 <main class="wrap">
   <p class="eyebrow">Error 404</p>
 
-  <h1>That link went <span class="mark">nowhere.</span></h1>
+  <h1>That link went nowhere<span class="dot">.</span></h1>
 
   <p>
     No page lives at this address. If you followed a link from somewhere else it may have moved,
@@ -83,7 +92,7 @@
 
   <div class="ways">
     <a class="btn" href="/">Back to muga.app</a>
-    <a class="btn ghost" href="/clean/">Clean a link instead</a>
+    <a class="btn ghost" href="/#demo-tool">Clean a link instead</a>
   </div>
 
   <div class="sig">
@@ -91,7 +100,7 @@
       <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     </svg>
-    <p class="cap">muga &#8776; Making URLs Good Again.</p>
+    <p class="cap">MUGA &#183; Just the link.</p>
   </div>
 </main>
 
