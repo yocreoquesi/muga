@@ -66,6 +66,31 @@ Fix two audit findings (2026-09-27, audited at ebda114), both targeted at the
       already-stripped `dist/firefox` artifact) — observe GREEN. Commit
       `fix(release): sign the stripped Firefox artifact for AMO (#1481)`.
 
+### Follow-up round (native review advisory findings, same worktree/branch)
+- [x] T5: garbled assertion message in `config-integrity.test.mjs:262-263`
+      fixed. Commit `1d490d5`.
+- [x] T6: `with-firefox-manifest.sh` — mktemp creates `BACKUP` immediately
+      (empty), so `cleanup()`'s `[ -f "$BACKUP" ]` was true before the real
+      backup copy ran; an early exit/interrupt in that window overwrote
+      `src/manifest.json` with an empty file. Fixed with a `backed_up` flag
+      gate + `cat` restore (mode-preserving) + `rm -f` always. New
+      `tests/unit/with-firefox-manifest.test.mjs` reproduces the window
+      deterministically (RED before, GREEN after) and covers the normal
+      swap/restore path. Commit `4bfe6c5`.
+- [x] T7: `release.yml` — unpack step now globs `dist/firefox/*.zip`
+      (erroring on anything but exactly one match) instead of a hard-coded
+      filename, is `continue-on-error: true`, and the sign step guards on
+      `$AMO_SOURCE_DIR` being set (reporting `result=failure` otherwise) so
+      a failed unpack is still caught by the "Check store submissions" gate.
+      Commit `5bce05f`.
+- [x] T8: `tests/unit/amo-firefox-signing.test.mjs` rewritten to extract the
+      actual "Unpack…"/"Submit to Firefox AMO" steps and scope assertions to
+      them; raw-src regex broadened for `./src`; added variable-indirection
+      resolution (verified against a synthetic `SRC_DIR="src/"` regression
+      case — correctly flagged — and the real `$AMO_SOURCE_DIR` — correctly
+      not flagged); replaced the external "memory lesson" comment reference
+      with a self-contained inline reason. Commit `7b18dad`.
+
 ## Checks
 - `npm run typecheck`
 - `npm run lint:js`
@@ -124,6 +149,25 @@ sub-delegation needed).
   observed in this run — no failures to report.
 - `git status --short`: clean.
 
+## Follow-up verification (after native review advisory findings)
+- `npm run typecheck`: clean.
+- `npm run lint:js`: clean.
+- `npm run lint` (web-ext, not piped): 0 errors, same 2 pre-existing
+  unrelated warnings; `src/manifest.json` confirmed MV3 afterward.
+- `npm test`: 9251 pass (6 new), 1 skipped (unrelated), 0 fail.
+- `npm run test:integration`: 233 pass, 0 fail.
+- `npm run build:firefox` rebuilt with the further-fixed script: 470-byte
+  `lib/test-fixtures.js` stub, no `manifest.v3.json`, no `newicon.png`;
+  `src/manifest.json` MV3 afterward.
+- Independently verified (outside the test suite, via a scratch script) that
+  the broadened raw-src regex catches `./src` in every quoting shape the old
+  regex missed, and that the new variable-indirection check flags a
+  synthetic `SRC_DIR="src/"` + `--source-dir="$SRC_DIR"` regression while
+  correctly not flagging the real `$AMO_SOURCE_DIR` value.
+- `git status --short`: clean.
+
 ## Next step
-Done. Branch `fix/1478-1481-firefox-package` has 2 commits ahead of
-`origin/main` (17f4ab9, 2530c76). Not pushed, no PR opened, per instruction.
+Done. Branch `fix/1478-1481-firefox-package` has 7 commits ahead of
+`origin/main`: 17f4ab9, 2530c76, ca9d3a1 (original round), then 1d490d5,
+4bfe6c5, 5bce05f, 7b18dad (follow-up round addressing native review
+advisory findings). Not pushed, no PR opened, per instruction.
