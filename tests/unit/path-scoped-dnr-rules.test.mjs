@@ -213,15 +213,28 @@ describe("every path-scoped rule's removeParams is a superset of the ancestor ru
     const prefix = rule.condition.urlFilter.replace(/^\|\|[^/]+/, "");
 
     test(`rule ${rule.id} (${domain}${prefix}) covers every param the ancestor rule strips`, () => {
-      // Probed OUTSIDE the path rule's own prefix — this must resolve to
-      // whichever single priority-1 (profile or global) rule fires there.
+      // Probed OUTSIDE the path rule's own prefix — this must resolve to at
+      // most one priority-1 (profile or global) rule. Normally that is
+      // exactly one, but the nearest tailored ancestor can legitimately
+      // preserve EVERY tracking param and emit no rule at all (empty base —
+      // computeTailoredDomainState/resolvePathRuleHostBase, #1467/#1490): in
+      // that case Chrome fires NOTHING outside this path's own prefix, so
+      // zero matches is correct, not a bug. Two or more would still be a real
+      // violation (one-rule-per-request), so this stays strict for every
+      // real host.
       const probeUrl = `https://${domain}/`;
       const matching = priority1Rules.filter((r) => conditionMatches(r, probeUrl, domain));
-      assert.equal(
-        matching.length,
-        1,
-        `expected exactly one priority-1 rule to match ${domain} outside "${prefix}", got [${matching.map((r) => r.id)}]`,
+      assert.ok(
+        matching.length <= 1,
+        `expected at most one priority-1 rule to match ${domain} outside "${prefix}", got [${matching.map((r) => r.id)}]`,
       );
+
+      if (matching.length === 0) {
+        // Empty-base case: there is no ancestor rule to be a superset of, so
+        // this path rule's removeParams must be exactly its own path-scoped
+        // additions — nothing unioned in from an ancestor that does not fire.
+        return;
+      }
 
       const ancestorParams = new Set(removeOf(matching[0]).map((p) => p.toLowerCase()));
       const pathParams = new Set(removeOf(rule).map((p) => p.toLowerCase()));
