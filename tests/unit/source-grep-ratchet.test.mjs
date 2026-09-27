@@ -295,10 +295,10 @@ const BASELINE = {
   "service-worker-autoinject-passthrough.test.mjs": 1,
   "session-storage-race-1097.test.mjs": 2,
   "settings-activity-controls-relocation.test.mjs": 39, // 38 -> 39 (b5-3 audit fix #1): +1 source-grep assertion pinning that renderActivityLedgerPanel now accepts an explicit attributionLedgerEnabledOverride parameter, so the toggle-race fix (call sites pass the in-memory enabled state instead of the function re-reading storage) cannot regress silently (#824)
-  "settings-activity-domain-stats.test.mjs": 21,
+  "settings-activity-domain-stats.test.mjs": 22, // 21 -> 22 (#1473): the gate-on-domainStats pin now asserts panel.hidden=false (always-visible switch) AND view.hidden=true (data-view-only hide) instead of one panel.hidden=true check — options.js still isn't importable in Node, so this stays a source guard.
   "settings-activity-ledger-copy.test.mjs": 36,
   "settings-activity-ledger.test.mjs": 62,
-  "settings-activity-suspicious-params.test.mjs": 52,
+  "settings-activity-suspicious-params.test.mjs": 53, // 52 -> 53 (#1473): same split as domain-stats above — panel.hidden=false always-visible pin added alongside the existing view/panel gating pin.
   "store-links.test.mjs": 4, // new file, audit behaviour branch (#1387): store-links.js's own URL/getRateUrl() behavior is covered behaviorally above; these 4 pin that it imports isFirefox() rather than reimplementing it, and that both call sites import getRateUrl from the shared module, read from source (#824)
   "strip-test-seams.test.mjs": 4,
   "tos-version-sync.test.mjs": 1,

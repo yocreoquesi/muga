@@ -134,16 +134,28 @@ describe("options.js — renders the Activity domain-stats table", () => {
     );
   });
 
-  test("gates the panel on prefs.domainStats (#1351: per-panel, not section-level)", () => {
+  // #1473: the panel (switch row + Reset stats) must always stay visible
+  // so the switch can be re-enabled and stats reset while recording is
+  // off. Only the data view underneath gates on prefs.domainStats now.
+  test("gates the data view, not the panel/switch, on prefs.domainStats (#1351 per-panel + #1473 keep-switch-visible)", () => {
     const fnStart = optionsJs.indexOf("async function renderDomainStatsActivity(");
     assert.ok(fnStart !== -1, "renderDomainStatsActivity must exist");
-    const fnEnd = optionsJs.indexOf("\n}", fnStart);
-    const fnBody = optionsJs.slice(fnStart, fnEnd);
+    // Bracket-depth walk (not the first "\n}") since the body now contains
+    // a nested if-block of its own (the domainStats-off early return).
+    let depth = 0;
+    let i = optionsJs.indexOf("{", fnStart);
+    const bodyStart = i;
+    for (; i < optionsJs.length; i++) {
+      if (optionsJs[i] === "{") depth++;
+      else if (optionsJs[i] === "}") { depth--; if (depth === 0) break; }
+    }
+    const fnBody = optionsJs.slice(bodyStart, i + 1);
     // #1351 moved the hide from the whole #section-activity to just this
-    // panel, so a sibling panel (suspicious-params) with content is never
-    // hidden by the domainStats pref being off.
-    assert.match(fnBody, /panel\.hidden\s*=\s*true/, "must hide the domain-stats panel when domain stats is off");
-    assert.match(fnBody, /updateActivitySectionVisibility\(\)/, "must recompute section-level visibility after hiding its panel");
+    // panel's data view, so a sibling panel (suspicious-params) with
+    // content is never hidden by the domainStats pref being off.
+    assert.match(fnBody, /panel\.hidden\s*=\s*false/, "the panel/switch must always stay visible (#1473)");
+    assert.match(fnBody, /view\.hidden\s*=\s*true/, "must hide the data view when domain stats is off");
+    assert.match(fnBody, /updateActivitySectionVisibility\(\)/, "must recompute section-level visibility");
   });
 });
 

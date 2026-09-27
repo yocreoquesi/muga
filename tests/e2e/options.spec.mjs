@@ -539,3 +539,65 @@ test.describe("Options — attribution-ledger toggle race (audit b5-3, part 1)",
     await expect(page.locator("#activity-recent-list")).toBeEmpty();
   });
 });
+
+// #1473: turning off "Record per-domain statistics" or "Cross-site
+// identifier detection" used to hide the WHOLE panel (panel.hidden = true /
+// panel.hidden = !enabled), including the switch that controls it and
+// "Reset stats" — leaving no way to turn the feature back on from the UI.
+// The fix keeps the switch row (and Reset stats) outside the element that
+// hides; only the ranked data view underneath collapses.
+test.describe("Options — Activity recording switches stay reachable when off (#1473)", () => {
+  test("turning off domain-stats keeps its own switch and Reset stats visible and re-checkable", async ({ optionsPage: page }) => {
+    const toggle = page.locator("#domain-stats");
+    const resetBtn = page.locator("#reset-stats-btn");
+    const dataView = page.locator("#domain-stats-view");
+
+    await expect(toggle).toBeChecked();
+    await expect(resetBtn).toBeVisible();
+    await expect(dataView).toBeVisible();
+
+    await setCheckbox(page, "domain-stats", false);
+
+    // The regression: these used to disappear along with the data view.
+    await expect(toggle).toBeAttached();
+    await expect(resetBtn).toBeVisible();
+    // The data view (the ranked table) is the only part allowed to hide.
+    await expect(dataView).toBeHidden();
+
+    // And the switch must still be usable — re-check it.
+    await setCheckbox(page, "domain-stats", true);
+    await expect(toggle).toBeChecked();
+    await expect(dataView).toBeVisible();
+  });
+
+  test("turning off cross-site-frequency keeps its own switch visible and re-checkable", async ({ optionsPage: page }) => {
+    const toggle = page.locator("#cross-site-frequency");
+    const dataView = page.locator("#suspicious-params-view");
+
+    await expect(toggle).toBeChecked();
+    await expect(dataView).toBeVisible();
+
+    await setCheckbox(page, "cross-site-frequency", false);
+
+    await expect(toggle).toBeAttached();
+    await expect(dataView).toBeHidden();
+
+    await setCheckbox(page, "cross-site-frequency", true);
+    await expect(toggle).toBeChecked();
+    await expect(dataView).toBeVisible();
+  });
+
+  test("updateActivitySectionVisibility never hides #section-activity while its switches are present", async ({ optionsPage: page }) => {
+    await setCheckbox(page, "domain-stats", false);
+    await setCheckbox(page, "cross-site-frequency", false);
+
+    // Both recording panels are visible for their switches even though
+    // both data views are off — the section itself must stay visible.
+    await expect(page.locator("#section-activity")).toBeVisible();
+    await expect(page.locator("#domain-stats-panel")).toBeVisible();
+    await expect(page.locator("#suspicious-params-panel")).toBeVisible();
+
+    await setCheckbox(page, "domain-stats", true);
+    await setCheckbox(page, "cross-site-frequency", true);
+  });
+});

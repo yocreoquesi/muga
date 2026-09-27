@@ -861,16 +861,21 @@ function updateActivitySectionVisibility() {
  */
 async function renderDomainStatsActivity(domainStatsEnabled) {
   const panel = document.getElementById("domain-stats-panel");
+  const view = document.getElementById("domain-stats-view");
   const list = document.getElementById("domain-stats-list");
-  if (!panel || !list) return;
+  if (!panel || !view || !list) return;
 
-  if (!domainStatsEnabled) {
-    panel.hidden = true;
-    updateActivitySectionVisibility();
-    return;
-  }
+  // #1473: the panel itself (switch row + Reset stats) always stays
+  // visible so recording can be turned back on and stats can still be
+  // reset while it's off. Only the data view — the ranked table — hides.
   panel.hidden = false;
   updateActivitySectionVisibility();
+
+  if (!domainStatsEnabled) {
+    view.hidden = true;
+    return;
+  }
+  view.hidden = false;
 
   let allStats;
   try { allStats = await getDomainStats(); } catch (err) { console.error("[MUGA] getDomainStats:", err); allStats = {}; }
@@ -941,8 +946,9 @@ let _suspiciousParamsRenderRun = 0;
  */
 async function renderSuspiciousParamsActivity(prefs) {
   const panel = document.getElementById("suspicious-params-panel");
+  const view = document.getElementById("suspicious-params-view");
   const list = document.getElementById("suspicious-params-settings-list");
-  if (!panel || !list) return;
+  if (!panel || !view || !list) return;
 
   // Bump before the disabled gate: a call that turns the panel off must also
   // mark any render still awaiting storage as stale, or that render would
@@ -950,9 +956,13 @@ async function renderSuspiciousParamsActivity(prefs) {
   const run = ++_suspiciousParamsRenderRun;
   const isStale = () => run !== _suspiciousParamsRenderRun;
 
-  const enabled = prefs.crossSiteFrequencyEnabled !== false;
-  panel.hidden = !enabled;
+  // #1473: the panel itself (switch row) always stays visible so
+  // detection can be turned back on. Only the data view hides.
+  panel.hidden = false;
   updateActivitySectionVisibility();
+
+  const enabled = prefs.crossSiteFrequencyEnabled !== false;
+  view.hidden = !enabled;
   if (!enabled) return;
 
   // Also fetch the raw tracker state once so "Report upstream" can extract
