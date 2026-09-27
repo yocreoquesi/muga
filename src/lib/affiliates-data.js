@@ -35,10 +35,13 @@ export const TRACKING_PARAMS = [
 
 
   // Generic
-  // "ref" removed: it's the affiliate param for PcComponentes and MediaMarkt ES/DE in
-  // AFFILIATE_PATTERNS. Applying it globally (urlFilter: "*") would strip it on those
-  // domains before the affiliate engine can act, and also break GitHub ?ref= branch refs
-  // and SPA internal navigation. Context-specific removal only via AFFILIATE_PATTERNS. (#160)
+  // "ref" removed: applying it globally (urlFilter: "*") would strip a genuine
+  // creator-affiliate tag on vercel.com (AFFILIATE_PATTERNS), and would also
+  // break GitHub ?ref= branch refs and SPA internal navigation. PcComponentes
+  // and MediaMarkt ES/DE also strip `ref`, but as their own host-anchored
+  // Awin redirect-store policy (domain-rules.json), unrelated to
+  // AFFILIATE_PATTERNS — see odd/tasks/1463-adguard-coverage.md T3. Context-
+  // specific removal only via AFFILIATE_PATTERNS / domain-rules.json. (#160)
   "source", "clickid",
   "_hsenc", "_hsmi", "hsctatracking",
   "mkt_tok", "trkcampaign",
@@ -1008,5 +1011,5 @@ export const ADJUDICATED_SKIP_GLOBAL = Object.freeze({
   soft: "generic name, high collision risk (#1463, Area 2)",
   downloadmode: "generic name, high collision risk (#1463, Area 2)",
   pid: "generic name (product id on many e-commerce sites); landed host-anchored only where AdGuard evidence exists, never global (#1463, Area 2/3)",
-  ref: "confirmed creator-affiliate tag on PcComponentes/MediaMarkt (see the TRACKING_PARAMS `ref` removal comment, #160); the same collision class applies to any of the 79 AdGuard-anchored hosts without per-host evidence — returned to maintainer, not landed anywhere (#1463, Area 3)",
+  ref: "confirmed creator-affiliate tag on vercel.com (AFFILIATE_PATTERNS; see the TRACKING_PARAMS `ref` removal comment, #160). PcComponentes/MediaMarkt strip `ref` too, but as their own host-anchored Awin redirect-store policy (domain-rules.json), unrelated to this exclusion. Still correctly excluded from TRACKING_PARAMS (this global entry), but no longer unlanded: the maintainer decided 2026-09-25 to land `ref` host-anchored, at AdGuard's exact per-host anchor, on all 79 AdGuard-anchored hosts (#1463, Area 3 — see odd/tasks/1463-adguard-coverage.md T3)",
 });

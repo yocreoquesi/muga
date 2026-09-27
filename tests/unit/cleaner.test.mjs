@@ -1790,10 +1790,9 @@ describe("affiliate param / tracking param collision", () => {
   // (pccomponentes ref + eBay campid collisions moved to the shared canary
   //  fixtures — tools/affiliate-safety/canaries.mjs, #769 / #777)
   test("ref= is NOT stripped on a non-affiliate host (e.g., example.com) — ref removed from global TRACKING_PARAMS (#160)", () => {
-    // 'ref' was removed from TRACKING_PARAMS because it is the affiliate param for
-    // PcComponentes and MediaMarkt. Applying it globally stripped it before the
-    // affiliate engine could act, and also broke GitHub ?ref= and SPA navigation.
-    // It should only be stripped context-specifically via AFFILIATE_PATTERNS.
+    // 'ref' was removed from TRACKING_PARAMS: globally it would strip vercel.com's
+    // creator-affiliate tag (AFFILIATE_PATTERNS) and break GitHub ?ref= and SPA
+    // navigation. It is only stripped host-anchored, via domain-rules.json (#1488).
     const { cleanUrl, removedTracking } = processUrl(
       "https://example.com/page?ref=tracking&utm_source=google",
       PREFS
@@ -1828,9 +1827,9 @@ describe("affiliate param / tracking param collision", () => {
   // NOTE ON THE HOSTS CHOSEN: the maintainer's instruction named
   // "PcComponentes, MediaMarkt ES/DE" as hosts to exclude because `ref` is
   // a known creator-affiliate tag there. Verified against the LIVE
-  // processUrl + domainRules path (not just the affiliates-data.js #160
-  // comment, which is stale) and found the opposite of what that comment
-  // says: pccomponentes.com / mediamarkt.de / mediamarkt.es already carry
+  // processUrl + domainRules path (the affiliates-data.js #160 comment was
+  // stale at the time and has since been corrected, #1488) and found the
+  // opposite of what it then said: pccomponentes.com / mediamarkt.de / mediamarkt.es already carry
   // `ref` in their OWN domain-rules.json `stripParams` (pre-existing,
   // unrelated to this branch), and `tests/unit/config-integrity.test.mjs`'s
   // `allowedOverrides` table explicitly documents this as intentional
