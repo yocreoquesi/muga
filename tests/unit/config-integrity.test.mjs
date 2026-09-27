@@ -259,8 +259,8 @@ describe("manifest.json integrity", () => {
     assert.ok(dcp, "manifest.v2.json must have data_collection_permissions");
     assert.ok(
       dcp.optional === undefined || (Array.isArray(dcp.optional) && dcp.optional.length === 0),
-      "data_collection_permissions.optional must be absent or empty — MUGA requests no " +
-      "code path reads or requests a data-collection permission, so declaring one shows " +
+      "data_collection_permissions.optional must be absent or empty — no code path in " +
+      "MUGA reads or requests a data-collection permission, so declaring one shows " +
       "Firefox users an install-time opt-in toggle that does nothing (#1478)."
     );
   });
