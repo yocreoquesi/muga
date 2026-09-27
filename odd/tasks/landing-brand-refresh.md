@@ -102,3 +102,10 @@ Push, PR and issue creation are the user's decisions.
     acknowledged (review-b95a79524f6a7e09). Both advisory findings are
     expected: the "missing" images are in 8b16189, and the images depend on
     deploy order (rules.muga.app serves them from main).
+- CI fix (2026-09-27): PR #1469's `test` job failed on `npm run typecheck`
+  (3 TS errors in tools/screenshots/render.mjs). Fixed in 8d82e30 with JSDoc
+  casts. Full `test` job reproduced locally: all steps pass (the polyfill
+  hash check fails only on a Windows CRLF checkout; the blob is LF). Review:
+  the selectorless candidate (whole branch) hit lens_context_budget_exceeded
+  again; assessed from the last reviewed boundary c18d1b8 instead: medium,
+  review_due false, under_budget (23 lines).
