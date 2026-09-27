@@ -57,7 +57,7 @@ function serve() {
         res.writeHead(404).end();
       }
     });
-    srv.listen(0, "127.0.0.1", () => resolve({ srv, base: `http://127.0.0.1:${srv.address().port}` }));
+    srv.listen(0, "127.0.0.1", () => resolve({ srv, base: `http://127.0.0.1:${/** @type {import("node:net").AddressInfo} */ (srv.address()).port}` }));
   });
 }
 
@@ -77,8 +77,8 @@ try {
     const page = await ctx.newPage();
     const q = new URLSearchParams({ t: j.t, ...j.params });
     await page.goto(`${base}/stage.html?${q}`);
-    await page.waitForFunction(() => window.__ready === true);
-    const { w, h } = await page.evaluate(() => window.__size);
+    await page.waitForFunction(() => /** @type {any} */ (window).__ready === true);
+    const { w, h } = await page.evaluate(() => /** @type {any} */ (window).__size);
     await page.setViewportSize({ width: w, height: h });
     await page.locator("#stage").screenshot({ path: path.join(OUT_DIR, j.out) });
     await page.close();
