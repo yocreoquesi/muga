@@ -1331,14 +1331,24 @@ export async function applyScopedDnrRules(facts, dnr) {
  *   - storage:   object with { get, set, remove } (default: thin wrapper over chrome.storage.local)
  *   - dnr:       object with { updateDynamicRules } (default: thin wrapper over chrome.declarativeNetRequest)
  *   - trustedKeys: override trusted key array (default: TRUSTED_PUBLIC_KEYS, supports test injection)
- *   - gateOpen:  whether prefs.enabled && prefs.onboardingDone (default: true — see #1474).
- *                Forwarded to mergeIntoCache, which refuses to write ANY DNR
- *                rule while this is false, writing only the cache instead.
- *                Callers that gate before calling (remote-rules-wake.js) or
- *                that read prefs for their own UX gate (service-worker.js's
- *                ENABLE_REMOTE_RULES / FORCE_FETCH_REMOTE_RULES handlers) pass
- *                their own prefs.enabled && prefs.onboardingDone here too, so
- *                a bug in one caller's gate cannot re-arm DNR through another.
+ *   - getGateOpen: async () => boolean — re-read prefs.enabled && prefs.onboardingDone
+ *                RIGHT BEFORE mergeIntoCache (step 7), i.e. AFTER the network
+ *                fetch and every validation step above. Preferred over a
+ *                static `gateOpen` boolean: a fetch can take up to
+ *                FETCH_TIMEOUT_MS (15s), long enough for the user to flip
+ *                prefs.enabled either way while it is in flight, so a value
+ *                read once at call time is stale by the time the DNR write
+ *                would happen (#1474 follow-up — TOCTOU). service-worker.js's
+ *                _remoteRulesDeps() requires this (no default) so every
+ *                production call site — the wake path, ENABLE_REMOTE_RULES,
+ *                FORCE_FETCH_REMOTE_RULES — is forced to wire it; dropping it
+ *                is a loud TypeError, not a silent fallback to "always open."
+ *   - gateOpen:  static fallback boolean (default: true — see #1474), used only
+ *                when getGateOpen is not provided. Kept for callers/tests that
+ *                have no live prefs source to re-read from.
+ *   Either way, the resolved value is forwarded to mergeIntoCache, which
+ *   refuses to write ANY DNR rule while it is false, writing only the cache
+ *   instead — a bug in one caller's gate cannot re-arm DNR through another.
  *
  * @param {object} deps
  * @returns {Promise<void>}
@@ -1354,7 +1364,6 @@ export async function runRemoteRulesFetch(deps = {}) {
   const nowMs = deps.nowMs ?? Date.now();
   const storage = deps.storage ?? _defaultStorage();
   const dnr = deps.dnr ?? _defaultDnr();
-  const gateOpen = deps.gateOpen ?? true;
   // #1448: on Firefox, mergeIntoCache must never install a remote-channel DNR
   // redirect rule — see dnr-sync.js's reconcileRemoteDnrRule for the full
   // reasoning. Defaults to false (assume Chrome) when the caller does not say,
@@ -1536,6 +1545,28 @@ export async function runRemoteRulesFetch(deps = {}) {
     }
 
     // 7. Merge into cache
+    //
+    // #1474 follow-up (TOCTOU): the gate is read as LATE as possible — here,
+    // after the network fetch and every validation step above, never once at
+    // the top of this function. A fetch can take up to FETCH_TIMEOUT_MS, long
+    // enough for the user to flip prefs.enabled either way while it is in
+    // flight; reading once at call time would let a user who disabled MUGA
+    // mid-fetch still get the DNR rule written (stale "open"), or a user who
+    // re-enabled it mid-fetch get nothing written until the next fetch (stale
+    // "closed"). deps.getGateOpen is preferred (re-reads live prefs); the
+    // static deps.gateOpen boolean is a fallback for callers/tests with no
+    // live prefs source. Fails CLOSED on a read error — failing open here
+    // would be worse than a missed cache-refresh.
+    let gateOpen = deps.gateOpen ?? true;
+    if (typeof deps.getGateOpen === "function") {
+      try {
+        gateOpen = !!(await deps.getGateOpen());
+      } catch (err) {
+        gateOpen = false;
+        console.warn("[MUGA] remote-rules: getGateOpen read failed, treating as closed:", err?.message ?? err);
+      }
+    }
+
     const nowIso = new Date(nowMs).toISOString();
     await mergeIntoCache(accepted, {
       version: obj.version,

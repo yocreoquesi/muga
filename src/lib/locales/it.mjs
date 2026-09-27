@@ -168,6 +168,7 @@ export default Object.freeze({
   optionsRemoteRulesUpdateNow: "Aggiorna ora",
   optionsRemoteRulesUpdating: "Ricerca aggiornamenti",
   optionsRemoteRulesUpdated: "Regole aggiornate",
+  optionsRemoteRulesUpdateDisabled: "MUGA è disattivato. Attivalo per cercare aggiornamenti.",
   optionsRemoteRulesPermDenied: "Permesso non concesso. Gli aggiornamenti rimangono disattivati.",
   optionsRemoteRulesErrNetwork: "Impossibile raggiungere il server di aggiornamento. L'elenco precedente è ancora in uso.",
   optionsRemoteRulesErrSchema: "Il file di aggiornamento era malformato.",

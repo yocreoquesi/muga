@@ -3027,6 +3027,15 @@ async function initRemoteRules() {
         }
         if (resp?.ok && !statusResp?.meta?.lastError) {
           showToast(t("optionsRemoteRulesUpdated", _currentLang));
+        } else if (resp?.ok === false && resp?.reason === "disabled") {
+          // #1474/#1475 follow-up: the handler now also gates on the master
+          // enabled toggle (service-worker.js's FORCE_FETCH_REMOTE_RULES),
+          // so this button can genuinely no-op while MUGA is off. Tell the
+          // user why instead of going silent — a button that visibly does
+          // nothing reads as broken, not as "consistent with disabled means
+          // no egress." Never a misleading success toast: the branch above
+          // only fires on resp.ok, so this can never overlap with it.
+          showToast(t("optionsRemoteRulesUpdateDisabled", _currentLang));
         }
       } catch (err) {
         console.error("[MUGA] FORCE_FETCH_REMOTE_RULES:", err);

@@ -88,7 +88,20 @@ const PATTERNS_TEST_PATH = join(
 // handleProcessUrl, reading back what logAction really wrote to the (in-memory
 // ponyfill) debug log — see tests/unit/process-url.test.mjs for the fuller
 // ordering suite this same move unlocked.
-const MAX_SOURCE_STRING_ASSERTIONS = 65;
+// 65 → 70 (#1474/#1475 follow-up, coordinator-requested hardening): added
+// FIVE swSource.* calls proving _remoteRulesDeps requires its getGateOpen
+// argument with no default (1 includes + 1 negated includes), throws a
+// TypeError when it is not a function (1 indexOf + 1 slice; the two
+// fnBody.includes() checks after the slice do not match this file's
+// swSource.-only pattern), and that every call site passes _currentGateOpen
+// by reference (1 match()). service-worker.js still has no Node-import path.
+// Unlike most entries above, this guard is not a "does the function exist"
+// pin: it is written to actually FAIL if a future edit drops the argument at
+// any call site or removes the throw (verified empirically both ways before
+// landing), which is the whole point of the hardening — a default value or a
+// silently-dropped argument would reopen the #1474 hole this file's own
+// tests exist to close.
+const MAX_SOURCE_STRING_ASSERTIONS = 70;
 
 const SOURCE_STRING_PATTERN = /swSource\.(includes|indexOf|slice|match)\(/g;
 

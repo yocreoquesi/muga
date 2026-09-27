@@ -1048,7 +1048,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Opportunistic remote-rules refresh — cheap no-op after the first call
     // in each SW lifetime. Catches the "user never restarts browser" case
     // that onStartup can't reach. Runs in parallel with URL processing.
-    maybeFetchRemoteRules(_remoteRulesDeps());
+    maybeFetchRemoteRules(_remoteRulesDeps(_currentGateOpen));
     const tabId = sender.tab?.id;
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, skipSideEffects: !!message.skipSideEffects, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
@@ -1190,12 +1190,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         //
         // #1474: this is a Settings action, independent of the master enabled
         // toggle — a user CAN flip remoteRulesEnabled while MUGA itself is
-        // off. Read fresh prefs (cache was just invalidated above) so
-        // mergeIntoCache still refuses to write DNR rule 1001 / the scoped
-        // range in that case; the fetched payload is still cached so it's
-        // ready the moment the extension is re-enabled.
-        const freshPrefs = await getPrefsWithCache();
-        await runRemoteRulesFetch(_remoteRulesDeps(freshPrefs.enabled && freshPrefs.onboardingDone));
+        // off. _currentGateOpen re-reads live prefs (cache was just
+        // invalidated above) RIGHT BEFORE the DNR write inside
+        // runRemoteRulesFetch, not once here, so mergeIntoCache still refuses
+        // to write DNR rule 1001 / the scoped range for a disabled extension
+        // even if the user flips the toggle mid-fetch either way (#1474
+        // follow-up TOCTOU); the fetched payload is always cached regardless.
+        await runRemoteRulesFetch(_remoteRulesDeps(_currentGateOpen));
         try { sendResponse({ ok: true }); } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] ENABLE_REMOTE_RULES handler failed:", err);
@@ -1272,6 +1273,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const prefs = await getPrefs();
+        // #1474 follow-up: mirrors maybeFetchRemoteRules's own gate order
+        // exactly (enabled, then remoteRulesEnabled, then onboarding) — "no
+        // egress while disabled" applies to this manual button too, so
+        // disabled means no fetch and no misleading {ok:true}, consistent
+        // with the wake path.
+        if (!prefs.enabled) {
+          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          return;
+        }
         if (!prefs.remoteRulesEnabled) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
@@ -1280,15 +1290,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
         }
-        // #1474 defense-in-depth: this handler's own gate above only mirrors
-        // maybeFetchRemoteRules's PRE-#1474 checks (remoteRulesEnabled +
-        // onboarding), not the master prefs.enabled toggle — a user CAN reach
-        // "Update now" while MUGA itself is off. Rather than widen this
-        // handler's response contract (tracked separately from #1474's wake
-        // path), pass the real gate through so mergeIntoCache still refuses
-        // to write DNR rule 1001 / the scoped range in that case; the fetch
-        // still runs and the payload is still cached.
-        await runRemoteRulesFetch(_remoteRulesDeps(prefs.enabled && prefs.onboardingDone));
+        // #1474 follow-up (TOCTOU): the checks above only prove the gate was
+        // open when the button was clicked. The fetch that follows can take
+        // up to FETCH_TIMEOUT_MS, long enough for the user to disable MUGA
+        // before it finishes — _currentGateOpen re-reads live prefs RIGHT
+        // BEFORE the DNR write (inside runRemoteRulesFetch), not once here,
+        // so mergeIntoCache still refuses to write DNR rule 1001 / the scoped
+        // range in that case; the fetched payload is always cached regardless.
+        await runRemoteRulesFetch(_remoteRulesDeps(_currentGateOpen));
         try { sendResponse({ ok: true }); } catch { /* channel closed */ }
       } catch (err) {
         console.error("[MUGA] FORCE_FETCH_REMOTE_RULES handler failed:", err);
@@ -1446,15 +1455,32 @@ function _resolveTrustedKeys() {
   return trustedKeys;
 }
 
-// gateOpen (#1474 defense-in-depth): prefs.enabled && prefs.onboardingDone,
-// as computed by each call site. Defaults to true so a caller that has
-// already applied its own equivalent gate (maybeFetchRemoteRules, which
-// returns before this factory is even reached when disabled) does not need
-// to pass it. ENABLE_REMOTE_RULES and FORCE_FETCH_REMOTE_RULES below pass
-// their own freshly-read prefs so mergeIntoCache (remote-rules.js) still
-// refuses to write DNR rule 1001 / the scoped range while the extension is
-// disabled, even from these explicit Settings actions.
-function _remoteRulesDeps(gateOpen = true) {
+// #1474 follow-up (TOCTOU): re-reads the CURRENT prefs.enabled &&
+// prefs.onboardingDone from the warm cache. Passed as _remoteRulesDeps's
+// getGateOpen so runRemoteRulesFetch (remote-rules.js) evaluates the gate as
+// LATE as possible — right before it writes any DNR rule, AFTER the network
+// fetch — instead of once at call time, which could be stale by the time the
+// write happens (a fetch can take up to FETCH_TIMEOUT_MS, long enough for the
+// user to flip the toggle either way while it is in flight). Every call site
+// below shares this one function rather than each computing its own snapshot,
+// so there is exactly one place this invariant can drift.
+function _currentGateOpen() {
+  return getPrefsWithCache().then((prefs) => !!(prefs.enabled && prefs.onboardingDone));
+}
+
+// getGateOpen is REQUIRED, with no default (#1474 follow-up): a caller that
+// forgets to pass it gets a loud TypeError instead of silently falling back
+// to "always open," which would reintroduce the exact hole #1474 closed —
+// dropping the argument must fail, not degrade. Every call site passes
+// _currentGateOpen so mergeIntoCache (remote-rules.js) always re-checks
+// prefs.enabled && prefs.onboardingDone against LIVE state, not a value
+// captured before this factory ran.
+function _remoteRulesDeps(getGateOpen) {
+  if (typeof getGateOpen !== "function") {
+    throw new TypeError(
+      "_remoteRulesDeps: getGateOpen is required (#1474) — pass _currentGateOpen (or an equivalent live-prefs reader), never a static boolean or the default"
+    );
+  }
   const trustedKeys = _resolveTrustedKeys();
   return {
     fetchImpl: globalThis.fetch,
@@ -1473,7 +1499,7 @@ function _remoteRulesDeps(gateOpen = true) {
     // weekly opportunistic fetch runs through runRemoteRulesFetch independently
     // of the gate-open reconcile, so it needs the same platform signal.
     isFirefoxMV2: isFirefoxMV2(),
-    gateOpen,
+    getGateOpen,
   };
 }
 
@@ -1484,7 +1510,7 @@ chrome.runtime.onStartup.addListener(async () => {
   // Opportunistic fetch: time-gated so it only fires if the stored fetchedAt
   // is older than REMOTE_REFRESH_INTERVAL_MS or absent. Also short-circuits
   // immediately if remoteRulesEnabled is false.
-  maybeFetchRemoteRules(_remoteRulesDeps());
+  maybeFetchRemoteRules(_remoteRulesDeps(_currentGateOpen));
   // Migrations are NOT invoked here (#1257). This handler only fires on a wake,
   // and every wake evaluates the module, so the single call site at module
   // scope has already started them. Repeating them here raced that call.
@@ -1586,7 +1612,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // before the update and the stored payload is stale (or absent). On a fresh
   // install this now fires immediately — the implicit-accept write above
   // already moved consent to "valid" before this call runs.
-  maybeFetchRemoteRules(_remoteRulesDeps());
+  maybeFetchRemoteRules(_remoteRulesDeps(_currentGateOpen));
   // Migrations are NOT invoked here (#1257) — see the onStartup handler and the
   // single call site at module scope, which this handler's own wake has
   // already evaluated.

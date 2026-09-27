@@ -26,6 +26,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { IMPORT_LIST_CAPS } from "../../src/lib/validation.js";
+import en_ from "../../src/lib/locales/en.mjs";
+import es_ from "../../src/lib/locales/es.mjs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, "../..");
@@ -630,5 +632,29 @@ describe("shortener re-grant notice wiring in options.js", () => {
       firstCodeLine && firstCodeLine.includes("await requestShortenerPermissions()"),
       `requestShortenerPermissions() must be the first statement (comments aside) in the click handler, got: ${firstCodeLine}`
     );
+  });
+});
+
+// ── #1474/#1475 follow-up: "Update now" no-egress-while-disabled UI feedback ─
+// FORCE_FETCH_REMOTE_RULES now also gates on the master enabled toggle
+// (service-worker.js), so a click can genuinely no-op with
+// {ok:false, reason:"disabled"}. The handler must tell the user why instead
+// of going silent, and must never show the success toast for that response.
+
+describe("'Update now' button surfaces the disabled reason instead of going silent", () => {
+  test("the click handler's else-if branch shows optionsRemoteRulesUpdateDisabled only for resp.reason === \"disabled\"", () => {
+    const btnIdx = optionsJs.indexOf('getElementById("remote-rules-update-now")');
+    assert.ok(btnIdx !== -1, "options.js must wire the remote-rules-update-now button");
+    const window_ = optionsJs.slice(btnIdx, btnIdx + 1700);
+    assert.ok(
+      window_.includes('resp?.reason === "disabled"') &&
+      window_.includes('showToast(t("optionsRemoteRulesUpdateDisabled"'),
+      "the click handler must show optionsRemoteRulesUpdateDisabled when resp.reason is \"disabled\""
+    );
+  });
+
+  test("optionsRemoteRulesUpdateDisabled exists in both en and es locales", () => {
+    assert.ok(en_.optionsRemoteRulesUpdateDisabled, "en.mjs must define optionsRemoteRulesUpdateDisabled");
+    assert.ok(es_.optionsRemoteRulesUpdateDisabled, "es.mjs must define optionsRemoteRulesUpdateDisabled");
   });
 });
