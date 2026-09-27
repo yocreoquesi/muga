@@ -450,9 +450,9 @@ export function buildDnrRules() {
     perDomain.push({ domain: rule.domain, removeParams });
   }
 
-  // Reused below (#1326) to build each path rule's COMPLETE set: a domain's
-  // own tailored removeParams when it has one, else the full global list —
-  // the set that already applies to the rest of the host today.
+  // Reused by resolvePathRuleHostBase (#1326, #1467) to build each path rule's
+  // COMPLETE set: a tailored domain's own removeParams, looked up while walking
+  // up from the path rule's domain toward the nearest tailored ancestor.
   const removeParamsByDomain = new Map(perDomain.map((d) => [d.domain, d.removeParams]));
 
   // Group domains that share an identical removeParams set into one rule.
@@ -588,16 +588,47 @@ export function buildDnrRules() {
   // DNR's urlFilter cannot OR multiple prefixes, so one rule is emitted per
   // (domain, pathPrefixes-group, prefix) tuple, and — same one-rule-per-request
   // reasoning as every rule above — each carries the COMPLETE set for that
-  // host+path: the domain's own removeParams (or the full global list when the
-  // domain has no profile of its own) UNION the path-scoped params, guarded
-  // exactly like extraStrips above.
+  // host+path: whatever profile/global rule Chrome would otherwise apply to
+  // that host (resolvePathRuleHostBase, #1467) UNION the path-scoped params,
+  // guarded exactly like extraStrips above.
+  //
+  // resolvePathRuleHostBase(domain): the removeParams set Chrome's OWN
+  // priority-1 rule applies to `domain` today. Needed for hosts that carry
+  // pathStrips but no profile of their own (search.naver.com, cc.naver.com,
+  // lcs.naver.com, ca.indeed.com — #1467): their own tailored profile always
+  // wins first when present; failing that, Chrome's requestDomains/
+  // excludedRequestDomains matching is subdomain-inclusive (see
+  // isProperSubdomain above), so a profile rule scoped to an ANCESTOR domain
+  // still fires on this host unless that ancestor's rule excludes it. An
+  // ancestor only excludes a descendant when the descendant is itself tailored
+  // (allTailored, computed above), so walking up label-by-label and stopping at
+  // the first tailored domain mirrors Chrome exactly: that domain is either the
+  // nearest ancestor whose own rule matches `domain`, or (rare: it preserves
+  // every tracking param and so emits no rule at all) the nearest ancestor
+  // that is itself excluded from every rule above it, in which case no
+  // profile/global rule reaches `domain` and there is nothing to union in.
+  // Only past the outermost tailored domain does the untouched global rule
+  // (TRACKING_PARAMS) apply. Using raw TRACKING_PARAMS as a blanket fallback
+  // (the pre-#1467 bug) silently dropped every extra per-host strip and could
+  // silently widen past a per-host preserve whenever a tailored ancestor
+  // existed.
+  const resolvePathRuleHostBase = (domain) => {
+    let d = domain;
+    for (;;) {
+      if (tailoredDomains.has(d)) return removeParamsByDomain.get(d) ?? [];
+      const dot = d.indexOf(".");
+      if (dot === -1) return [...TRACKING_PARAMS];
+      d = d.slice(dot + 1);
+    }
+  };
+
   const pathRuleSpecs = [];
   for (const rule of domainRules) {
     if (typeof rule.domain !== "string") continue;
     const pathStrips = rule.pathStrips;
     if (!Array.isArray(pathStrips) || pathStrips.length === 0) continue;
 
-    const hostBase = removeParamsByDomain.get(rule.domain) ?? [...TRACKING_PARAMS];
+    const hostBase = resolvePathRuleHostBase(rule.domain);
     const hostBaseLc = new Set(hostBase.map((p) => p.toLowerCase()));
 
     for (const group of pathStrips) {
