@@ -937,10 +937,10 @@ export async function fetchWithCap(url, { timeoutMs, maxBytes, fetchImpl }) {
  *
  * @param {string[]} accepted - Validated and deduped remote params.
  * @param {{ version: number, fetchedAt: string|null, paramCount: number, lastError: null, published: string|null, scopedFacts?: Array<{param: string, hosts: string[]}> }} meta
- * @param {{ storage: object, dnr: object, isFirefoxMV2?: boolean }} deps - Injected storage and DNR facades.
+ * @param {{ storage: object, dnr: object, isFirefoxMV2?: boolean, gateOpen?: boolean }} deps - Injected storage and DNR facades.
  * @returns {Promise<void>}
  */
-export async function mergeIntoCache(accepted, meta, { storage, dnr, isFirefoxMV2 = false }) {
+export async function mergeIntoCache(accepted, meta, { storage, dnr, isFirefoxMV2 = false, gateOpen = true }) {
   // Defense-in-depth (#631 item 2): assert MAX_PARAM_COUNT before touching the
   // DNR table. `validateRemotePayload` already enforces this cap on the input,
   // but an explicit guard here makes the contract impossible to bypass if a
@@ -966,28 +966,47 @@ export async function mergeIntoCache(accepted, meta, { storage, dnr, isFirefoxMV
   // had already been persisted, poisoning the cache so the next payload at the
   // same version failed VERSION_REGRESSION forever. Emit a remove-only update
   // instead so any stale rule 1001 is cleared and nothing invalid is added. (#923)
-  const dnrUpdate = isFirefoxMV2 || accepted.length === 0
-    ? { removeRuleIds: [REMOTE_RULE_ID] }
-    : { removeRuleIds: [REMOTE_RULE_ID], addRules: [buildRemoteDnrRule(accepted)] };
+  // #1474 defense-in-depth: while the gate is closed (extension disabled or
+  // onboarding pending), this function MUST NOT write ANY live DNR rule —
+  // the same contract applyDnrState's gate-closed branch enforces for every
+  // other cleaning mechanism (dnr-sync.js). `gateOpen` defaults to true so
+  // every existing caller/test keeps writing DNR rules exactly as before;
+  // callers on the wake/force-fetch/enable paths pass the real gate state
+  // (see remote-rules-wake.js and service-worker.js's _remoteRulesDeps()).
+  // The cache write below still runs unconditionally: reconcileRemoteDnrRule
+  // (dnr-sync.js) rebuilds rule 1001 AND the scoped range from that cache the
+  // moment applyDnrState's gate-open branch runs again, so a payload fetched
+  // while disabled is never lost — only its network-layer effect is deferred.
+  if (gateOpen) {
+    // An empty accepted set (a valid signed payload whose params all dedupe
+    // against the built-ins) must NOT produce a rule with an empty removeParams
+    // transform — the DNR API rejects that, which used to throw AFTER the version
+    // had already been persisted, poisoning the cache so the next payload at the
+    // same version failed VERSION_REGRESSION forever. Emit a remove-only update
+    // instead so any stale rule 1001 is cleared and nothing invalid is added. (#923)
+    const dnrUpdate = isFirefoxMV2 || accepted.length === 0
+      ? { removeRuleIds: [REMOTE_RULE_ID] }
+      : { removeRuleIds: [REMOTE_RULE_ID], addRules: [buildRemoteDnrRule(accepted)] };
 
-  // Apply the DNR change BEFORE persisting the new version. If the update
-  // throws, the version is never advanced and lastError is recorded on the
-  // existing meta, so a later payload at the same version is not rejected as
-  // VERSION_REGRESSION — the pipeline self-heals on the next fetch. (#923)
-  try {
-    await dnr.updateDynamicRules(dnrUpdate);
-  } catch (err) {
-    await _writeError(ERR.DNR_ERROR, storage);
-    console.error("[MUGA] remote-rules:", ERR.DNR_ERROR, err?.message ?? err);
-    return;
+    // Apply the DNR change BEFORE persisting the new version. If the update
+    // throws, the version is never advanced and lastError is recorded on the
+    // existing meta, so a later payload at the same version is not rejected as
+    // VERSION_REGRESSION — the pipeline self-heals on the next fetch. (#923)
+    try {
+      await dnr.updateDynamicRules(dnrUpdate);
+    } catch (err) {
+      await _writeError(ERR.DNR_ERROR, storage);
+      console.error("[MUGA] remote-rules:", ERR.DNR_ERROR, err?.message ?? err);
+      return;
+    }
+
+    // Host-scoped rules (#1221 slice 2), AFTER the global rule and in their own
+    // call so a failure here cannot take the global channel down with it. An
+    // empty or absent scoped section clears the range, which is what makes a
+    // payload that withdraws a scoped fact actually withdraw it. On Firefox,
+    // always clear-only (#1448) — see above.
+    await applyScopedDnrRules(isFirefoxMV2 ? [] : meta?.scopedFacts, dnr);
   }
-
-  // Host-scoped rules (#1221 slice 2), AFTER the global rule and in their own
-  // call so a failure here cannot take the global channel down with it. An
-  // empty or absent scoped section clears the range, which is what makes a
-  // payload that withdraws a scoped fact actually withdraw it. On Firefox,
-  // always clear-only (#1448) — see above.
-  await applyScopedDnrRules(isFirefoxMV2 ? [] : meta?.scopedFacts, dnr);
 
   // Build the weekly changelog against the PREVIOUS cache before overwriting
   // it (#984). This runs for every successful merge, including the
@@ -1312,6 +1331,24 @@ export async function applyScopedDnrRules(facts, dnr) {
  *   - storage:   object with { get, set, remove } (default: thin wrapper over chrome.storage.local)
  *   - dnr:       object with { updateDynamicRules } (default: thin wrapper over chrome.declarativeNetRequest)
  *   - trustedKeys: override trusted key array (default: TRUSTED_PUBLIC_KEYS, supports test injection)
+ *   - getGateOpen: async () => boolean — re-read prefs.enabled && prefs.onboardingDone
+ *                RIGHT BEFORE mergeIntoCache (step 7), i.e. AFTER the network
+ *                fetch and every validation step above. Preferred over a
+ *                static `gateOpen` boolean: a fetch can take up to
+ *                FETCH_TIMEOUT_MS (15s), long enough for the user to flip
+ *                prefs.enabled either way while it is in flight, so a value
+ *                read once at call time is stale by the time the DNR write
+ *                would happen (#1474 follow-up — TOCTOU). service-worker.js's
+ *                _remoteRulesDeps() requires this (no default) so every
+ *                production call site — the wake path, ENABLE_REMOTE_RULES,
+ *                FORCE_FETCH_REMOTE_RULES — is forced to wire it; dropping it
+ *                is a loud TypeError, not a silent fallback to "always open."
+ *   - gateOpen:  static fallback boolean (default: true — see #1474), used only
+ *                when getGateOpen is not provided. Kept for callers/tests that
+ *                have no live prefs source to re-read from.
+ *   Either way, the resolved value is forwarded to mergeIntoCache, which
+ *   refuses to write ANY DNR rule while it is false, writing only the cache
+ *   instead — a bug in one caller's gate cannot re-arm DNR through another.
  *
  * @param {object} deps
  * @returns {Promise<void>}
@@ -1508,6 +1545,28 @@ export async function runRemoteRulesFetch(deps = {}) {
     }
 
     // 7. Merge into cache
+    //
+    // #1474 follow-up (TOCTOU): the gate is read as LATE as possible — here,
+    // after the network fetch and every validation step above, never once at
+    // the top of this function. A fetch can take up to FETCH_TIMEOUT_MS, long
+    // enough for the user to flip prefs.enabled either way while it is in
+    // flight; reading once at call time would let a user who disabled MUGA
+    // mid-fetch still get the DNR rule written (stale "open"), or a user who
+    // re-enabled it mid-fetch get nothing written until the next fetch (stale
+    // "closed"). deps.getGateOpen is preferred (re-reads live prefs); the
+    // static deps.gateOpen boolean is a fallback for callers/tests with no
+    // live prefs source. Fails CLOSED on a read error — failing open here
+    // would be worse than a missed cache-refresh.
+    let gateOpen = deps.gateOpen ?? true;
+    if (typeof deps.getGateOpen === "function") {
+      try {
+        gateOpen = !!(await deps.getGateOpen());
+      } catch (err) {
+        gateOpen = false;
+        console.warn("[MUGA] remote-rules: getGateOpen read failed, treating as closed:", err?.message ?? err);
+      }
+    }
+
     const nowIso = new Date(nowMs).toISOString();
     await mergeIntoCache(accepted, {
       version: obj.version,
@@ -1516,7 +1575,7 @@ export async function runRemoteRulesFetch(deps = {}) {
       lastError: null,
       published: obj.published,
       scopedFacts, // #1221 — persisted and applied as scoped DNR rules by mergeIntoCache
-    }, { storage, dnr, isFirefoxMV2 });
+    }, { storage, dnr, isFirefoxMV2, gateOpen });
 
   } finally {
     _remoteFetchInFlight = false;

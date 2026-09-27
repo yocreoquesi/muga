@@ -168,6 +168,7 @@ export default Object.freeze({
   optionsRemoteRulesUpdateNow: "今すぐ更新",
   optionsRemoteRulesUpdating: "更新を確認中",
   optionsRemoteRulesUpdated: "ルールを更新しました",
+  optionsRemoteRulesUpdateDisabled: "MUGAは無効です。更新を確認するには有効にしてください。",
   optionsRemoteRulesPermDenied: "権限が付与されませんでした。更新はオフのままです。",
   optionsRemoteRulesErrNetwork: "更新サーバーに到達できませんでした。以前のリストを引き続き使用します。",
   optionsRemoteRulesErrSchema: "更新ファイルの形式が不正でした。",

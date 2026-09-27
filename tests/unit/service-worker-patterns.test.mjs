@@ -660,9 +660,12 @@ describe("T2.3 — Message handler source patterns", () => {
 
   test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
     const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
-    // Window widened (600 → 1200) after the handler grew a per-device override
-    // reconcile step + comment ahead of the immediate fetch (#888 write path).
-    const enableBlock = swSource.slice(enablePos, enablePos + 1200);
+    // Window widened (600 → 1200 → 1600) after the handler grew a per-device
+    // override reconcile step + comment ahead of the immediate fetch (#888
+    // write path), then a fresh-prefs re-read + gateOpen comment (#1474
+    // defense-in-depth: the immediate fetch must not re-arm DNR while the
+    // extension is disabled, see _remoteRulesDeps()).
+    const enableBlock = swSource.slice(enablePos, enablePos + 1600);
     assert.ok(
       enableBlock.includes("runRemoteRulesFetch"),
       "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"
@@ -696,11 +699,13 @@ describe("T2.3 — Message handler source patterns", () => {
   test("all remote-rules message handlers return true (keep channel open)", () => {
     // All three handlers must return true per the onMessage invariant.
     // Each handler uses an IIFE pattern; the status handler grew with v1.10.1
-    // explanatory comments so give the window enough headroom.
+    // explanatory comments so give the window enough headroom. Widened
+    // 1800 → 2000: ENABLE_REMOTE_RULES's own "return true" moved further out
+    // after its #1474 fresh-prefs re-read + gateOpen comment.
     for (const msgType of ["ENABLE_REMOTE_RULES", "DISABLE_REMOTE_RULES", "GET_REMOTE_RULES_STATUS"]) {
       const pos = swSource.indexOf(`"${msgType}"`);
       assert.ok(pos !== -1, `${msgType} handler must exist`);
-      const block = swSource.slice(pos, pos + 1800);
+      const block = swSource.slice(pos, pos + 2000);
       assert.ok(block.includes("return true"), `${msgType} handler must return true`);
     }
   });
@@ -731,18 +736,26 @@ describe("T2.3 — Message handler source patterns", () => {
 /**
  * Pure extraction of the FORCE_FETCH_REMOTE_RULES handler body for unit
  * testing. Mirrors the production logic in service-worker.js exactly:
- * same gate, same order, same response shapes.
+ * same gate, same order, same response shapes — INCLUDING the per-gate
+ * reason string (native review, round 2): "disabled" (master toggle),
+ * "remote_rules_off" (the feature's own pref), "onboarding" (consent
+ * pending). The options-page toast (options.js) keys off the EXACT
+ * "disabled" string, so a reason collapsing back to one shared value would
+ * silently make it show the wrong message for the other two gates.
  *
  * DRIFT GUARD: the source-existence test below only pins that the real
- * handler exists, NOT that its consent gate (remoteRulesEnabled +
- * shouldOpenOnboarding, in that order) is intact. If you edit the real
- * handler's gate in service-worker.js, edit this mirror to match — otherwise
- * these behavioral tests keep passing against stale gate logic.
+ * handler exists, NOT that its consent gate (prefs.enabled, then
+ * remoteRulesEnabled, then shouldOpenOnboarding, in that order — #1474
+ * added the leading prefs.enabled check) or its three distinct reason
+ * strings are intact. If you edit the real handler's gate or its reason
+ * strings in service-worker.js, edit this mirror to match — otherwise these
+ * behavioral tests keep passing against stale gate logic.
  */
 async function forceFetchRemoteRules(deps) {
   const prefs = await deps.getPrefs();
-  if (!prefs.remoteRulesEnabled) return { ok: false, reason: "disabled" };
-  if (deps.shouldOpenOnboarding(prefs)) return { ok: false, reason: "disabled" };
+  if (!prefs.enabled) return { ok: false, reason: "disabled" };
+  if (!prefs.remoteRulesEnabled) return { ok: false, reason: "remote_rules_off" };
+  if (deps.shouldOpenOnboarding(prefs)) return { ok: false, reason: "onboarding" };
   await deps.runFetch(deps.fetchDeps);
   return { ok: true };
 }
@@ -755,27 +768,42 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
     );
   });
 
-  test("(a) disabled: remoteRulesEnabled false -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+  // #1474: master toggle checked FIRST, before the remoteRulesEnabled /
+  // onboarding checks — "Update now" must not fetch (or report {ok:true})
+  // while MUGA itself is off, consistent with the wake path.
+  test("(0) disabled: prefs.enabled false -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
     let fetchCalled = false;
     const result = await forceFetchRemoteRules({
-      getPrefs: async () => ({ remoteRulesEnabled: false }),
+      getPrefs: async () => ({ enabled: false, onboardingDone: true, remoteRulesEnabled: true }),
       shouldOpenOnboarding: () => false,
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
     assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.strictEqual(fetchCalled, false, "must not fetch while the extension is disabled");
+  });
+
+  test("(a) disabled: remoteRulesEnabled false -> no fetch, responds {ok:false, reason:'remote_rules_off'}", async () => {
+    let fetchCalled = false;
+    const result = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: false }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => { fetchCalled = true; },
+      fetchDeps: {},
+    });
+    assert.deepStrictEqual(result, { ok: false, reason: "remote_rules_off" });
     assert.strictEqual(fetchCalled, false, "must not fetch when the feature is disabled");
   });
 
-  test("(b) consent not accepted: shouldOpenOnboarding true -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+  test("(b) consent not accepted: shouldOpenOnboarding true -> no fetch, responds {ok:false, reason:'onboarding'}", async () => {
     let fetchCalled = false;
     const result = await forceFetchRemoteRules({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
       shouldOpenOnboarding: () => true,
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
-    assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.deepStrictEqual(result, { ok: false, reason: "onboarding" });
     assert.strictEqual(fetchCalled, false, "must not fetch before consent is accepted");
   });
 
@@ -784,28 +812,118 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
     let receivedDeps = null;
     const fakeFetchDeps = { marker: "force-fetch" };
     const result = await forceFetchRemoteRules({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
       shouldOpenOnboarding: () => false,
       runFetch: async (deps) => { fetchCalled = true; receivedDeps = deps; },
       fetchDeps: fakeFetchDeps,
     });
     assert.deepStrictEqual(result, { ok: true });
-    assert.strictEqual(fetchCalled, true, "must fetch once enabled + consent gates both pass");
+    assert.strictEqual(fetchCalled, true, "must fetch once every gate passes");
     assert.strictEqual(receivedDeps, fakeFetchDeps);
   });
 
-  test("consent gate is checked even when remoteRulesEnabled is true (both gates independently enforced)", async () => {
+  test("consent gate is checked even when enabled + remoteRulesEnabled are true (all three gates independently enforced)", async () => {
     // Regression guard: a naive implementation might short-circuit on the
-    // first falsy check and skip the second. Both gates must be independent.
+    // first falsy check and skip the rest. All three gates must be independent.
     let fetchCalled = false;
     const result = await forceFetchRemoteRules({
-      getPrefs: async () => ({ remoteRulesEnabled: true }),
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
       shouldOpenOnboarding: () => true, // consent still not accepted
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
     assert.strictEqual(result.ok, false);
     assert.strictEqual(fetchCalled, false);
+  });
+
+  // Native review, round 2: the three gates used to collapse into one shared
+  // reason:"disabled" string. options.js's toast now keys off the EXACT
+  // string "disabled" (only the master toggle) — if a future edit merged two
+  // of these back together, the toast would fire (or stay silent) for the
+  // wrong gate. This pins them as three DISTINCT, stable values.
+  test("each of the three gates yields its OWN distinct reason string", async () => {
+    const disabled = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: false, remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+    const remoteRulesOff = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: false }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+    const onboarding = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => true,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+
+    assert.strictEqual(disabled.reason, "disabled");
+    assert.strictEqual(remoteRulesOff.reason, "remote_rules_off");
+    assert.strictEqual(onboarding.reason, "onboarding");
+
+    // All three must be pairwise distinct — a Set collapses duplicates.
+    const reasons = new Set([disabled.reason, remoteRulesOff.reason, onboarding.reason]);
+    assert.strictEqual(reasons.size, 3, "all three gates must report distinct reason strings");
+
+    // Only "disabled" is the string the options-page toast (options.js)
+    // shows optionsRemoteRulesUpdateDisabled for — the other two must NOT
+    // equal it, or the toast would wrongly fire for them too.
+    assert.notStrictEqual(remoteRulesOff.reason, "disabled");
+    assert.notStrictEqual(onboarding.reason, "disabled");
+  });
+});
+
+// ── #1474 follow-up: _remoteRulesDeps requires a REAL gate ──────────────────
+// Coordinator-requested hardening: mergeIntoCache's gateOpen defense is only
+// as strong as what every caller passes into _remoteRulesDeps. A default
+// value (or a caller passing a stale boolean instead of a live re-checker)
+// would silently reopen the #1474 hole. _remoteRulesDeps has NO default for
+// its parameter and throws a TypeError if it is not a function, so dropping
+// the argument is a loud failure, not a silent "always open." SW is not
+// Node-importable, so this is necessarily source-text (structural), same as
+// every other guard in this file — but it is written to actually FAIL if a
+// future edit drops the argument at any call site, not merely to note that
+// the function exists.
+
+describe("_remoteRulesDeps requires getGateOpen — dropping it must fail loudly, not default to open (#1474 follow-up)", () => {
+  test("the parameter has NO default value", () => {
+    assert.ok(
+      swSource.includes("function _remoteRulesDeps(getGateOpen)"),
+      "_remoteRulesDeps must declare getGateOpen with no default"
+    );
+    assert.ok(
+      !swSource.includes("function _remoteRulesDeps(getGateOpen ="),
+      "_remoteRulesDeps must never gain a default value for getGateOpen — that would silently reopen #1474"
+    );
+  });
+
+  test("throws a TypeError when getGateOpen is not a function", () => {
+    const fnStart = swSource.indexOf("function _remoteRulesDeps(getGateOpen)");
+    assert.ok(fnStart !== -1);
+    const fnBody = swSource.slice(fnStart, fnStart + 400);
+    assert.ok(fnBody.includes('typeof getGateOpen !== "function"'));
+    assert.ok(fnBody.includes("throw new TypeError("));
+  });
+
+  test("every _remoteRulesDeps( call site passes _currentGateOpen — none call it empty or with a boolean", () => {
+    const allCalls = swSource.match(/_remoteRulesDeps\([^)]*\)/g) || [];
+    // Exclude the function's own declaration (`function _remoteRulesDeps(getGateOpen)`).
+    const invocations = allCalls.filter((c) => c !== "_remoteRulesDeps(getGateOpen)");
+    assert.ok(
+      invocations.length >= 5,
+      `expected at least 5 call sites (wake x3, ENABLE_REMOTE_RULES, FORCE_FETCH_REMOTE_RULES), found ${invocations.length}: ${invocations.join(", ")}`
+    );
+    for (const call of invocations) {
+      assert.strictEqual(
+        call,
+        "_remoteRulesDeps(_currentGateOpen)",
+        `every call must pass _currentGateOpen by reference, got: ${call}`
+      );
+    }
   });
 });
 

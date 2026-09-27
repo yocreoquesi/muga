@@ -206,6 +206,165 @@ describe("SC-02 — Happy path: signed payload merges into storage and DNR", () 
   });
 });
 
+// ── #1474: gateOpen threaded end-to-end through runRemoteRulesFetch ─────────
+// Defense-in-depth for the disabled-state hole audited in #1474: even a
+// direct call to runRemoteRulesFetch (bypassing whatever gate the caller
+// applied, or applied incorrectly) must not write a live DNR rule while
+// deps.gateOpen is false. The fetched payload is still cached so a later
+// gate-open reconcile (dnr-sync.js's reconcileRemoteDnrRule) can rebuild
+// rule 1001 from it immediately, without waiting for the next weekly fetch.
+
+describe("SC-1474 — gateOpen:false: fetch succeeds, cache is written, DNR is untouched", () => {
+  let storage, dnr;
+
+  before(async () => {
+    const remoteParams = ["remote_tracker_disabled_a", "remote_tracker_disabled_b"];
+    const { fetchImpl } = makeSignedFetch(remoteParams, 1);
+    storage = makeStorageFake({});
+    dnr = makeDnrFake();
+
+    await runRemoteRulesFetch({
+      fetchImpl,
+      subtle: globalThis.crypto.subtle,
+      trustedKeys: [testPubKeyBase64()],
+      storage,
+      dnr,
+      gateOpen: false,
+    });
+  });
+
+  test("remoteParams is still written to storage", () => {
+    const stored = storage._raw.remoteParams;
+    assert.ok(Array.isArray(stored) && stored.length > 0, "the payload must still be cached while the gate is closed");
+    assert.ok(stored.includes("remote_tracker_disabled_a"));
+  });
+
+  test("remoteRulesMeta.fetchedAt is still recorded (throttle must not re-fire on every wake)", () => {
+    const meta = storage._raw.remoteRulesMeta;
+    assert.ok(meta && typeof meta.fetchedAt === "string" && meta.fetchedAt.length > 0);
+    assert.strictEqual(meta.lastError, null);
+  });
+
+  test("NO dnr.updateDynamicRules call is made — rule 1001 must not be re-armed while disabled", () => {
+    assert.strictEqual(dnr._calls.length, 0, "gateOpen:false must produce zero DNR writes");
+  });
+});
+
+// ── #1474 follow-up (TOCTOU) — deps.getGateOpen is re-read AFTER the fetch ──
+// A static gateOpen captured once at call time can be stale by the time the
+// DNR write happens: fetchWithCap allows up to FETCH_TIMEOUT_MS (15s), long
+// enough for the user to flip prefs.enabled either way while the fetch is in
+// flight. deps.getGateOpen is called right before mergeIntoCache — AFTER the
+// fetch resolves — so its answer always reflects the LATEST state, not a
+// snapshot taken before the network round-trip. Each test below flips a
+// shared flag INSIDE fetchImpl, after it resolves, so a passing assertion
+// proves getGateOpen was actually read late, not once up front.
+
+describe("SC-1474 follow-up — getGateOpen re-reads live state after the network fetch (TOCTOU)", () => {
+  test("a gate that OPENS while the fetch is in flight still gets the DNR rule written (re-enabled mid-fetch)", async () => {
+    const { fetchImpl: signedFetchImpl } = makeSignedFetch(["remote_tracker_toctou_open"], 1);
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    let live = false; // gate CLOSED when the fetch starts
+    const fetchImpl = async (...args) => {
+      const result = await signedFetchImpl(...args);
+      live = true; // flips OPEN only after the network round-trip completes
+      return result;
+    };
+    let getGateOpenCalls = 0;
+    const getGateOpen = async () => { getGateOpenCalls++; return live; };
+
+    await runRemoteRulesFetch({
+      fetchImpl,
+      subtle: globalThis.crypto.subtle,
+      trustedKeys: [testPubKeyBase64()],
+      storage,
+      dnr,
+      getGateOpen,
+    });
+
+    assert.strictEqual(getGateOpenCalls, 1, "getGateOpen must be consulted exactly once per fetch");
+    const addCall = dnr._calls.find((c) => c.addRules && c.addRules.length > 0);
+    assert.ok(
+      addCall,
+      "a gate that opened mid-fetch must still get rule 1001 written — a value captured before the fetch started would have missed this"
+    );
+  });
+
+  test("a gate that CLOSES while the fetch is in flight gets NO DNR rule written (disabled mid-fetch)", async () => {
+    const { fetchImpl: signedFetchImpl } = makeSignedFetch(["remote_tracker_toctou_closed"], 1);
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    let live = true; // gate OPEN when the fetch starts
+    const fetchImpl = async (...args) => {
+      const result = await signedFetchImpl(...args);
+      live = false; // flips CLOSED only after the network round-trip completes
+      return result;
+    };
+    const getGateOpen = async () => live;
+
+    await runRemoteRulesFetch({
+      fetchImpl,
+      subtle: globalThis.crypto.subtle,
+      trustedKeys: [testPubKeyBase64()],
+      storage,
+      dnr,
+      getGateOpen,
+    });
+
+    assert.strictEqual(
+      dnr._calls.length,
+      0,
+      "a gate that closed mid-fetch must get NO DNR write — a value captured before the fetch started would have wrongly written one"
+    );
+    assert.ok(
+      storage._raw.remoteParams?.includes("remote_tracker_toctou_closed"),
+      "the cache must still be written regardless of the gate"
+    );
+  });
+
+  test("getGateOpen takes priority over a static gateOpen when both are provided", async () => {
+    const { fetchImpl } = makeSignedFetch(["remote_tracker_priority"], 1);
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await runRemoteRulesFetch({
+      fetchImpl,
+      subtle: globalThis.crypto.subtle,
+      trustedKeys: [testPubKeyBase64()],
+      storage,
+      dnr,
+      gateOpen: true, // would write DNR if this were honored instead
+      getGateOpen: async () => false,
+    });
+
+    assert.strictEqual(dnr._calls.length, 0, "getGateOpen must win over a stale static gateOpen");
+  });
+
+  test("a getGateOpen that throws fails CLOSED, never open", async () => {
+    const { fetchImpl } = makeSignedFetch(["remote_tracker_fail_closed"], 1);
+    const storage = makeStorageFake({});
+    const dnr = makeDnrFake();
+
+    await runRemoteRulesFetch({
+      fetchImpl,
+      subtle: globalThis.crypto.subtle,
+      trustedKeys: [testPubKeyBase64()],
+      storage,
+      dnr,
+      getGateOpen: async () => { throw new Error("simulated prefs-read failure"); },
+    });
+
+    assert.strictEqual(dnr._calls.length, 0, "a getGateOpen failure must fail CLOSED, never open");
+    assert.ok(
+      storage._raw.remoteParams?.includes("remote_tracker_fail_closed"),
+      "the cache write must still succeed despite the gate-read failure"
+    );
+  });
+});
+
 // ── SC-03: Disable path — clearRemoteCache ────────────────────────────────────
 
 describe("SC-03 — Disable path: clearRemoteCache clears storage and removes rule 1001", () => {
