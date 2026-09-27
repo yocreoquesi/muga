@@ -89,6 +89,20 @@ describe("findReleaseVersionProblems — each drift is caught", () => {
     assert.ok(problems.some((p) => /version_name is 3\.0\.0/.test(p)));
   });
 
+  it("catches a stale MV2 version_name, the one AMO's about:addons displays", () => {
+    // This is the exact drift that shipped once: manifest.v2.json's version
+    // moved to 3.1.0 while its version_name was left at 3.0.0, and nothing
+    // here checked it because only the MV3 manifest was covered.
+    const s = sources({ mv2: { version: "3.0.1", version_name: "3.0.0" } });
+    const problems = findReleaseVersionProblems("v3.0.1", s);
+    assert.ok(problems.some((p) => /src\/manifest\.v2\.json version_name is 3\.0\.0/.test(p)));
+  });
+
+  it("accepts an MV2 manifest with no version_name at all", () => {
+    const s = sources({ mv2: { version: "3.0.1" } });
+    assert.deepEqual(findReleaseVersionProblems("v3.0.1", s), []);
+  });
+
   it("catches a missing CHANGELOG section, which would ship placeholder notes", () => {
     const s = sources({ changelog: "# Changelog\n\n## [3.0.0] - 2026-08-08\n\n- older\n" });
     const problems = findReleaseVersionProblems("v3.0.1", s);

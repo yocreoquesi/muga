@@ -1,10 +1,10 @@
 # MUGA: Store Listings
 
 > Version: 3.1.0
-> Last updated: 2026-09-11
+> Last updated: 2026-09-27
 > NOTE: version tracks package.json (version-consistency.test.mjs). If the short description below changes, sync src/manifest.json "description" to match.
 > Status: Consumer-first, honesty pass. Same friendly, non-technical voice as prior versions. MUGA is a URL cleaner: it removes tracking parameters, unwraps redirect chains, reveals what a shortened link actually points to, and by default tries to preserve the referral of whoever recommended you (a best-effort intention, not a guarantee, and always user-controllable). MUGA adds no affiliate tag of its own, so there is no injection to disclose: the copy states plainly that it never monetizes your clicks. IMPORTANT copy rules kept from prior versions: NO enumeration of retailer/brand names anywhere (this triggered the Chrome Web Store keyword-spam rejection, routing ID FZSL, 2026-05). Technical detail (full param list, permission internals, affiliate mechanics) is deferred to GitHub and the website. Permission justifications live in the CWS "Privacy practices" tab and the privacy policy, NOT in this marketing body. No em-dashes and no "--" per house copy rules.
-> Decision (#1272): the extension name stays `MUGA: URL Cleaner. Remove tracking` on both stores. It already carries the identity this issue is protecting, so renaming a published listing would be pure churn the issue does not ask for.
+> Decision (#1472): the extension is renamed to `MUGA: URL Cleaner. Just the link.` on both stores, matching the "Just the link." identity shipped on muga.app (#1468). This reverses the #1272 decision below: tracking removal is one thing MUGA does, not the product's identity, and it moves to the short description as a secondary point.
 
 ---
 
@@ -12,13 +12,13 @@
 
 ### Extension name
 
-MUGA: URL Cleaner. Remove tracking
+MUGA: URL Cleaner. Just the link.
 
 ### Short description (132 chars max)
 
-Strips tracking from URLs and tries to preserve creator credit. Unwraps redirects, reveals short links. Open source, no telemetry.
+Cleans the links you open, copy and share so they stay short. Removes tracking, unwraps redirects. Open source, no telemetry.
 
-*(130 chars)*
+*(125 chars)*
 
 ---
 
@@ -70,13 +70,13 @@ Rationale (#1272): "tracking parameters" is the product's own vocabulary and was
 
 ### Extension name
 
-MUGA: URL Cleaner. Remove tracking
+MUGA: URL Cleaner. Just the link.
 
 ### Summary (250 chars max)
 
-Strips tracking parameters from your URLs without breaking pages: unwraps redirect chains, reveals short links, and tries to preserve creator credit, best-effort, never guaranteed. No analytics, no telemetry, no account. Open source, GPL v3.
+Cleans the links you open, copy and share so they stay short and still work. Removes tracking, unwraps redirect chains, reveals short links, and tries to preserve creator credit. No analytics, no telemetry, no account. Open source, GPL v3.
 
-*(241 chars)*
+*(239 chars)*
 
 ---
 
@@ -115,7 +115,7 @@ https://github.com/yocreoquesi/muga
 
 ### AMO metadata
 
-- Extension name: MUGA: URL Cleaner. Remove tracking
+- Extension name: MUGA: URL Cleaner. Just the link.
 - License: GPL v3
 - Primary category: Privacy & Security (recorded choice, #1272: AMO has no URL-tools bucket, so this places MUGA on a category page dominated by ad blockers and VPNs. It is the least bad fit rather than a claim about what MUGA is, and it should be revisited if AMO ever adds a utilities-shaped category.)
 - Secondary category: Shopping

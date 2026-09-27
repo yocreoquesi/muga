@@ -65,8 +65,9 @@ test.describe("Onboarding", () => {
     // creators · nice to you · honest about both") was moral positioning the 2.1
     // pivot dropped (ADR-0002, and the original miss in #704). The denoise frame
     // that replaced it was itself retired in 3.0: the stores list MUGA as "URL
-    // Cleaner. Remove tracking" while onboarding still opened with "Denoise every
-    // URL", so an install read as a different product than the listing sold.
+    // Cleaner. Just the link." (renamed again in #1472, was "Remove tracking")
+    // while onboarding still opened with "Denoise every URL", so an install
+    // read as a different product than the listing sold.
     // Descriptive "noise" prose elsewhere is current copy and deliberately out
     // of scope here — this only pins the identity line.
     //
