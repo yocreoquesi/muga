@@ -104,6 +104,26 @@ sub-delegation needed).
   step confirmed the resulting source dir has `manifest_version: 2` and no
   stray files.
 
+## Verification results
+- `npm run typecheck`: clean, no output.
+- `npm run lint:js`: clean, no output.
+- `npm run lint` (web-ext, not piped): 0 errors, 2 pre-existing unrelated
+  warnings (lib/i18n.js UNSAFE_VAR_ASSIGNMENT — sanitizeHTML allowlist
+  path). `src/manifest.json` confirmed MV3 afterward; `git status --short`
+  clean (no leftover manifest.v3.json).
+- `npm test`: 9245 pass, 1 skipped (pre-existing, unrelated), 0 fail.
+- `npm run test:integration`: 233 pass, 0 fail, including the extended
+  release-zip-hygiene guard (6/6) against real local builds.
+- Local Firefox package build (`npm run build:firefox`, mirroring
+  release.yml): 146 files, no `manifest.v3.json`, no `icons/newicon.png`,
+  `lib/test-fixtures.js` is the 470-byte inert stub, no
+  `__MUGA_TRUSTED_KEYS__` runtime seam. Simulated the release.yml AMO
+  unzip step against that artifact: resulting source dir has
+  `manifest_version: 2` and no stray files.
+- Known env failure (browser-polyfill integrity on Windows CRLF): not
+  observed in this run — no failures to report.
+- `git status --short`: clean.
+
 ## Next step
-Run full repo-wide verification suite (typecheck, lint:js, lint, test,
-test:integration) and commit the #1481 changes.
+Done. Branch `fix/1478-1481-firefox-package` has 2 commits ahead of
+`origin/main` (17f4ab9, 2530c76). Not pushed, no PR opened, per instruction.
