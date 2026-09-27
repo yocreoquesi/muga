@@ -167,3 +167,8 @@ regenerated with byte-identical content once CRLF is ignored
 - 2cba553 is regenerated output only.
 - Parent spot check: `node --test tests/unit/path-scoped-dnr-rules.test.mjs
   tests/unit/dnr-rules-sync.test.mjs` passed 71 of 71.
+- Native review approved and acknowledged (review-af4454c15800e881,
+  reliability lens, 5 files / 331 lines). Two advisory follow-ups, both
+  non-blocking: (1) the empty-list branch and multi-label walk-up of
+  resolvePathRuleHostBase have no generator-level test; (2) no test asserts
+  that a path rule never strips a param its ancestor preserves.
