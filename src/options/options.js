@@ -647,17 +647,19 @@ async function init() {
   // unconditionally here rather than alongside devToolsMode below.
   initReportFlow();
 
-  // devMode is device-local (chrome.storage.local), not sync — bind separately
+  // devMode is device-local (chrome.storage.local), not sync — bind separately.
+  // handleDevModeChange (below) is the SINGLE path that persists the
+  // checkbox's value and syncs the Advanced panel — the checkbox's own
+  // "change" listener and revealAggressivePrivacySection() (#1479) both go
+  // through it, so a setDevMode() rejection can never leave the checkbox
+  // and the panel disagreeing with storage in only one of the two paths.
   const devModeVal = await getDevMode();
   const devModeEl = document.getElementById("dev-mode");
   if (devModeEl) {
     devModeEl.checked = devModeVal;
-    devModeEl.addEventListener("change", () => {
-      setDevMode(devModeEl.checked).catch(err => console.error("[MUGA] save devMode:", err));
-    });
+    devModeEl.addEventListener("change", handleDevModeChange);
   }
   syncDevTools();
-  if (devModeEl) devModeEl.addEventListener("change", syncDevTools);
 
   // devToolsMode (#1271 item 1) is its OWN device-local flag, independent of
   // devMode — same storage shape, same not-in-PREF_DEFAULTS reasoning, bound
@@ -2293,25 +2295,56 @@ function initExportImport() {
 }
 
 /**
+ * Persists the #dev-mode checkbox's CURRENT checked value and syncs the
+ * Advanced panel to it. This is the single shared path for every write to
+ * the devMode pref: the checkbox's own "change" listener (init()) and
+ * revealAggressivePrivacySection() (#1479) both call it instead of poking
+ * setDevMode()/syncDevTools() separately, so a setDevMode() rejection
+ * cannot leave one of the two paths' UI disagreeing with storage — on
+ * failure the checkbox (and therefore the panel) reverts to the value
+ * that's actually persisted.
+ */
+async function handleDevModeChange() {
+  const devModeEl = document.getElementById("dev-mode");
+  if (!devModeEl) return;
+  const checked = devModeEl.checked;
+  try {
+    await setDevMode(checked);
+    syncDevTools();
+  } catch (err) {
+    console.error("[MUGA] save devMode:", err);
+    devModeEl.checked = !checked;
+    syncDevTools();
+  }
+}
+
+/**
  * Reveals the Aggressive privacy section (#1479): it lives inside the
  * dev-mode-gated Advanced card, so a plain scrollIntoView() is a no-op
  * while Advanced is off (the default). Both the strip-affiliates nudge
- * link and the blocklist migration notice link route through this: turn
- * Advanced on (checkbox + persisted pref + syncDevTools), then scroll and
- * move focus to the section heading so keyboard/screen-reader users land
- * on it too, matching the DOM/a11y focus-management pattern used for
- * other dynamically-revealed sections in this file.
+ * link and the blocklist migration notice link route through this.
+ *
+ * Turning Advanced on goes through the EXACT same path a user's own
+ * checkbox click would (handleDevModeChange): set `.checked` here, then
+ * await the same shared handler the checkbox's own "change" listener
+ * uses, rather than calling setDevMode()/syncDevTools() by hand. If
+ * setDevMode() rejects, handleDevModeChange reverts the checkbox (and
+ * re-hides the card via syncDevTools()) — checked here afterwards, so the
+ * section is only scrolled to and focused once Advanced actually ended
+ * up on.
  */
-function revealAggressivePrivacySection() {
+async function revealAggressivePrivacySection() {
   const devModeEl = document.getElementById("dev-mode");
   if (devModeEl && !devModeEl.checked) {
     devModeEl.checked = true;
-    setDevMode(true).catch(err => console.error("[MUGA] save devMode:", err));
-    syncDevTools();
+    await handleDevModeChange();
+    if (!devModeEl.checked) return; // setDevMode() failed and reverted — stay hidden.
   }
   const section = document.getElementById("section-aggressive-privacy");
   section?.scrollIntoView({ behavior: "smooth", block: "start" });
-  section?.focus();
+  // preventScroll: a bare focus() forces its OWN instant scroll-into-view,
+  // which would fight/cancel the smooth scroll just started above.
+  section?.focus({ preventScroll: true });
 }
 
 /** Shows/hides the Advanced settings panel based on the dev-mode pref. */

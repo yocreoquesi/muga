@@ -540,6 +540,18 @@ test.describe("Options — attribution-ledger toggle race (audit b5-3, part 1)",
   });
 });
 
+/**
+ * The `<label class="toggle">` wrapping a switch's `<input>` is the actual
+ * VISIBLE, clickable control (34x20px, see options.css) — the input itself
+ * is opacity:0/0x0 by design (see this file's header note), so a real
+ * Playwright `.click()` must land on this label (or its `.slider` span),
+ * never on the hidden input directly (that would fail Playwright's own
+ * actionability/visibility check, or require `force: true` to bypass it).
+ */
+function visibleToggleFor(page, id) {
+  return page.locator(`label.toggle:has(#${id})`);
+}
+
 // #1473: turning off "Record per-domain statistics" or "Cross-site
 // identifier detection" used to hide the WHOLE panel (panel.hidden = true /
 // panel.hidden = !enabled), including the switch that controls it and
@@ -547,8 +559,17 @@ test.describe("Options — attribution-ledger toggle race (audit b5-3, part 1)",
 // The fix keeps the switch row (and Reset stats) outside the element that
 // hides; only the ranked data view underneath collapses.
 test.describe("Options — Activity recording switches stay reachable when off (#1473)", () => {
+  // Storage writes are made directly (not via UI), so this runs and
+  // restores the defaults even if an assertion above threw mid-test.
+  test.afterEach(async ({ context, extensionId }) => {
+    await seedStorage(context, extensionId, {
+      sync: { domainStats: true, crossSiteFrequencyEnabled: true },
+    });
+  });
+
   test("turning off domain-stats keeps its own switch and Reset stats visible and re-checkable", async ({ optionsPage: page }) => {
     const toggle = page.locator("#domain-stats");
+    const visibleToggle = visibleToggleFor(page, "domain-stats");
     const resetBtn = page.locator("#reset-stats-btn");
     const dataView = page.locator("#domain-stats-view");
 
@@ -560,18 +581,22 @@ test.describe("Options — Activity recording switches stay reachable when off (
 
     // The regression: these used to disappear along with the data view.
     await expect(toggle).toBeAttached();
+    await expect(visibleToggle).toBeVisible();
     await expect(resetBtn).toBeVisible();
     // The data view (the ranked table) is the only part allowed to hide.
     await expect(dataView).toBeHidden();
 
-    // And the switch must still be usable — re-check it.
-    await setCheckbox(page, "domain-stats", true);
+    // And the switch must still be usable by an actual user: a real click
+    // on the visible label/slider, not the setCheckbox test helper (which
+    // clicks the hidden input directly via page.evaluate).
+    await visibleToggle.click();
     await expect(toggle).toBeChecked();
     await expect(dataView).toBeVisible();
   });
 
   test("turning off cross-site-frequency keeps its own switch visible and re-checkable", async ({ optionsPage: page }) => {
     const toggle = page.locator("#cross-site-frequency");
+    const visibleToggle = visibleToggleFor(page, "cross-site-frequency");
     const dataView = page.locator("#suspicious-params-view");
 
     await expect(toggle).toBeChecked();
@@ -580,9 +605,11 @@ test.describe("Options — Activity recording switches stay reachable when off (
     await setCheckbox(page, "cross-site-frequency", false);
 
     await expect(toggle).toBeAttached();
+    await expect(visibleToggle).toBeVisible();
     await expect(dataView).toBeHidden();
 
-    await setCheckbox(page, "cross-site-frequency", true);
+    // Real user click, not setCheckbox — see the comment above.
+    await visibleToggle.click();
     await expect(toggle).toBeChecked();
     await expect(dataView).toBeVisible();
   });
@@ -596,9 +623,6 @@ test.describe("Options — Activity recording switches stay reachable when off (
     await expect(page.locator("#section-activity")).toBeVisible();
     await expect(page.locator("#domain-stats-panel")).toBeVisible();
     await expect(page.locator("#suspicious-params-panel")).toBeVisible();
-
-    await setCheckbox(page, "domain-stats", true);
-    await setCheckbox(page, "cross-site-frequency", true);
   });
 });
 
@@ -608,6 +632,16 @@ test.describe("Options — Activity recording switches stay reachable when off (
 // dev-mode-gated #dev-tools-card (display:none while Advanced is off, the
 // default). The fix reveals Advanced first.
 test.describe("Options — 'View Aggressive privacy settings' works with Advanced off (#1479)", () => {
+  // Direct storage writes, not UI interaction — restores the defaults even
+  // if an assertion above threw mid-test, instead of relying on a trailing
+  // setCheckbox() call that a thrown assertion would skip.
+  test.afterEach(async ({ context, extensionId }) => {
+    await seedStorage(context, extensionId, {
+      sync: { blacklist: [], stripAllAffiliates: false },
+      local: { referrerBeaconNoticeShown: false, devMode: false },
+    });
+  });
+
   test("clicking the strip-affiliates nudge link reveals Advanced and focuses the section", async ({ optionsPage: page }) => {
     const devToolsCard = page.locator("#dev-tools-card");
     const devModeToggle = page.locator("#dev-mode");
@@ -630,9 +664,6 @@ test.describe("Options — 'View Aggressive privacy settings' works with Advance
       () => new Promise((resolve) => chrome.storage.local.get({ devMode: false }, resolve))
     );
     expect(stored.devMode).toBe(true);
-
-    await setCheckbox(page, "strip-affiliates", false);
-    await setCheckbox(page, "dev-mode", false);
   });
 
   test("clicking the blocklist migration notice link reveals Advanced and focuses the section", async ({ optionsPage: page, context, extensionId }) => {
@@ -657,7 +688,5 @@ test.describe("Options — 'View Aggressive privacy settings' works with Advance
     await expect(devToolsCard).toBeVisible();
     await expect(page.locator("#section-aggressive-privacy")).toBeVisible();
     await expect(page.locator("#section-aggressive-privacy")).toBeFocused();
-
-    await setCheckbox(page, "dev-mode", false);
   });
 });
