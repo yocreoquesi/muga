@@ -13,8 +13,8 @@
  * Three things are checked, all of them silent failures otherwise:
  *
  *   1. The tag matches package.json and BOTH manifests.
- *   2. manifest.json's `version_name` matches too, since that is the string
- *      users actually see in chrome://extensions.
+ *   2. Both manifests' `version_name` match too, since that is the string
+ *      users actually see in chrome://extensions and about:addons.
  *   3. CHANGELOG.md has a section for this version. scripts/prepare-amo-
  *      metadata.sh greps for `## [x.y.z]` and falls back to generic
  *      "Bug fixes and improvements" notes with only a warning if it is
@@ -73,10 +73,16 @@ export function findReleaseVersionProblems(tag, sources = {}) {
   if (mv2.version !== version) {
     problems.push(`src/manifest.v2.json is ${mv2.version}, tag says ${version}`);
   }
-  // version_name is what chrome://extensions displays. It is allowed to be
-  // absent, but if present it must not contradict the shipped version.
+  // version_name is what chrome://extensions (and about:addons on Firefox)
+  // displays. It is allowed to be absent, but if present it must not
+  // contradict the shipped version. The MV2 manifest went stale exactly
+  // this way once already (3.1.0 shipped with version_name still "3.0.0"),
+  // silently, because only the MV3 manifest was checked here.
   if (mv3.version_name !== undefined && mv3.version_name !== version) {
     problems.push(`src/manifest.json version_name is ${mv3.version_name}, tag says ${version}`);
+  }
+  if (mv2.version_name !== undefined && mv2.version_name !== version) {
+    problems.push(`src/manifest.v2.json version_name is ${mv2.version_name}, tag says ${version}`);
   }
 
   // Anchored to line start so a link reference like "[3.0.0]: https://..."
