@@ -1,0 +1,77 @@
+/**
+ * MUGA brand tokens. Canonical source for every surface in this kit.
+ * "Signal Path" direction: dark, flat, hairlines instead of glows or cards,
+ * purple used sparingly as the signal.
+ */
+:root {
+  /* Signal Path (dark, marketing surfaces) */
+  --bg: #0E0C13;
+  --bg-2: #110E17;
+  --panel: #14111B;
+  --panel-2: #1A1622;
+  --ink: #F2EFF7;
+  --ink-2: #A9A2B8;
+  --ink-3: #8C84A2;
+  --rule: #2A2536;
+  --rule-2: #332C42;
+  --rule-soft: #221D2D;
+  --accent: #6A2BCF;
+  --accent-hi: #7B3FE0;
+  --accent-ink: #A883F0;
+  --accent-soft: #C9B2F5;
+  --good: #4CC38A;
+  --bad: #E0665C;
+
+  /* Product UI, light (popup / options) */
+  --ui-surface-0: #FAFAFB;
+  --ui-surface-1: #FFFFFF;
+  --ui-surface-2: #F3F2F5;
+  --ui-surface-3: #E9E8EC;
+  --ui-text-1: #18171C;
+  --ui-text-2: #4F4D58;
+  --ui-text-3: #6E6C78;
+  --ui-border-1: #E6E5EA;
+  --ui-border-2: #D4D3D9;
+  --ui-accent: #6A2BCF;
+  --ui-accent-strong: #5318B5;
+  --ui-accent-soft: #EFE6FB;
+
+  /* Product UI, dark */
+  --ui-d-surface-1: #1A1820;
+  --ui-d-surface-2: #25232E;
+  --ui-d-surface-3: #312E3C;
+  --ui-d-text-1: #F2F0F5;
+  --ui-d-text-2: #B0AEBA;
+  --ui-d-text-3: #85838F;
+  --ui-d-border-1: #2C2A36;
+  --ui-d-border-2: #3A3848;
+  --ui-d-accent: #9F7AE8;
+  --ui-d-accent-strong: #B79CEF;
+  --ui-d-accent-soft: #2A1C4A;
+
+  /* Type */
+  --sans: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --fs-display: 72px;  --lh-display: 0.98; --tr-display: -0.035em; --fw-display: 800;
+  --fs-h1: 48px;       --lh-h1: 1.02;      --tr-h1: -0.03em;       --fw-h1: 800;
+  --fs-h2: 32px;       --lh-h2: 1.1;       --tr-h2: -0.02em;       --fw-h2: 700;
+  --fs-h3: 22px;       --lh-h3: 1.25;      --tr-h3: -0.01em;       --fw-h3: 600;
+  --fs-body: 16px;     --lh-body: 1.55;
+  --fs-small: 14px;
+  --fs-label: 11px;    --tr-label: 0.16em; /* mono, uppercase eyebrows */
+  --fs-url: 14px;      /* mono URLs */
+
+  /* Hairlines */
+  --hair: 1px;
+  --dash: 2 3;          /* SVG dasharray for the baseline, in mark units */
+
+  /* Radius */
+  --r-inline: 3px; --r-small: 6px; --r-button: 8px; --r-card: 10px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(.2,.7,.2,1);     /* default: everything settles */
+  --ease-in-out: cubic-bezier(.65,0,.35,1); /* travel along the path */
+  --ease-peel: cubic-bezier(.5,0,.9,.4);    /* params leaving: accelerate away */
+  --ease-snap: cubic-bezier(.3,1.5,.5,1);   /* arrowhead snap, small overshoot */
+  --dur-1: 150ms; --dur-2: 200ms; --dur-3: 320ms; --dur-4: 600ms; --dur-draw: 1200ms;
+}

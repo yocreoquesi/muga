@@ -118,11 +118,13 @@ export default [
       sourceType: "module",
       globals: {
         ...globals.node,
-        // screenshots/capture.mjs evaluates JS inside a browser page via
-        // Playwright, so it uses browser globals (document, chrome) inside
-        // page.evaluate() calls. Declare them to avoid false no-undef.
+        // Playwright-driven tools (screenshots/render.mjs) evaluate JS inside
+        // a browser page, so they use browser globals (window, document,
+        // chrome) inside page.evaluate() calls. Declare them to avoid false
+        // no-undef.
         chrome: "readonly",
         document: "readonly",
+        window: "readonly",
       },
     },
     rules: RULES,

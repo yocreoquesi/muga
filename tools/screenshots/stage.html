@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MUGA stage</title>
+<link rel="stylesheet" href="./kit.css">
+<link rel="stylesheet" href="./templates.css">
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+  // One page renders every still: ?t=<template>&lang=en|es&...extra params.
+  import { TEMPLATES } from "./templates.js";
+  const p = Object.fromEntries(new URLSearchParams(location.search));
+  const tpl = TEMPLATES[p.t];
+  const stage = document.getElementById("stage");
+  if (!tpl) { stage.textContent = "unknown template " + p.t; window.__ready = true; }
+  else {
+    const { w, h, html, transparent } = tpl(p);
+    stage.style.width = w + "px"; stage.style.height = h + "px";
+    if (transparent) { document.documentElement.style.background = "transparent"; document.body.style.background = "transparent"; stage.style.background = "transparent"; }
+    stage.innerHTML = html;
+    await document.fonts.ready;
+    await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+    window.__size = { w, h };
+    window.__ready = true;
+  }
+</script>
+</body>
+</html>

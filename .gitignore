@@ -39,6 +39,7 @@ Thumbs.db
 # Generated outputs
 mnt/
 tools/screenshots/out/
+tools/screenshots/fonts/
 *.zip
 .gstack/
 test-results/

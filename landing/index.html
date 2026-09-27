@@ -3,28 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MUGA: URL Cleaner. Remove tracking</title>
-<meta name="description" content="MUGA removes the tracking from your URLs without breaking them. No analytics, no telemetry. Open source, GPL v3.">
+<title>MUGA: URL Cleaner. Just the link.</title>
+<meta name="description" content="MUGA cleans the links you open, copy and share, so they stay short, readable and still open the same page. Free and open source for Chrome and Firefox.">
 <meta name="color-scheme" content="dark">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://muga.app/">
-<meta property="og:title" content="MUGA: URL Cleaner. Remove tracking">
-<meta property="og:description" content="Remove the tracking from your URLs without breaking the pages. No analytics, no telemetry. Open source.">
-<meta property="og:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
+<meta property="og:title" content="MUGA: URL Cleaner. Just the link.">
+<meta property="og:description" content="Links, without the clutter. MUGA cleans the links you open, copy and share, and they still open the same page.">
+<meta property="og:image" content="https://rules.muga.app/assets/og-1200x630.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MUGA: URL Cleaner. Remove tracking">
-<meta name="twitter:description" content="Remove the tracking from your URLs without breaking the pages. No analytics, no telemetry. Open source.">
-<meta name="twitter:image" content="https://rules.muga.app/assets/promo-marquee-1400x560.png">
+<meta name="twitter:title" content="MUGA: URL Cleaner. Just the link.">
+<meta name="twitter:description" content="Links, without the clutter. MUGA cleans the links you open, copy and share, and they still open the same page.">
+<meta name="twitter:image" content="https://rules.muga.app/assets/og-1200x630.png">
 
 <link rel="icon" href="https://rules.muga.app/assets/muga-mark.svg">
 
-<!-- Archivo (display/body) + IBM Plex Mono (technical labels). Google Fonts is
-     the only external origin the landing Worker's CSP admits; keep the two in
-     step (see the CSP in landing/_headers, which Cloudflare Pages applies). -->
+<!-- Archivo (display/body) + IBM Plex Mono (URLs and technical labels).
+     Google Fonts is the only external stylesheet origin the CSP admits; keep
+     the two in step (see the CSP in landing/_headers, which Cloudflare Pages
+     applies). Archivo is variable, so one range covers every weight. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@399;500;600;700;800&family=IBM+Plex+Mono:wght@399;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 
 <script type="application/ld+json">
 {
@@ -33,7 +36,7 @@
   "name": "MUGA",
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Chrome, Firefox",
-  "description": "Open-source browser extension that removes the tracking from your URLs without breaking pages, with no analytics and no telemetry.",
+  "description": "Open-source URL cleaner for Chrome and Firefox. It cleans the links you open, copy and share, so they stay short, readable and still open the same page.",
   "offers": { "@type": "Offer", "price": "0" },
   "softwareVersion": "3.1.0",
   "license": "https://www.gnu.org/licenses/gpl-3.0.html"
@@ -61,10 +64,12 @@
     --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
     --sans: Archivo, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --maxw: 1120px;
+    --loop: 8s;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
     font-family: var(--sans);
     background: var(--bg); color: var(--ink);
@@ -76,12 +81,15 @@
   a:hover { color: #E4D8FA; }
   ::selection { background: var(--accent); color: #fff; }
   img { max-width: 100%; display: block; }
-  :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 4px; }
+  :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 4px; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .mono { font-family: var(--mono); }
 
   .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+  @media (max-width: 480px) { .wrap { padding-left: 20px; padding-right: 20px; } }
 
   /* ---------- header ---------- */
-  header.top { padding: 26px 0; }
+  header.top { padding: 24px 0; }
   .top-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
   .brand-mark { color: var(--accent-ink); flex: none; }
@@ -90,65 +98,66 @@
     font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
     border: 1px solid var(--rule); border-radius: 999px; padding: 2px 9px;
   }
-  .nav-links { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12.5px; }
-  .nav-links a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+  .nav-links { display: flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 12.5px; }
+  .nav-links a { color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: color .2s, background .2s; }
   .nav-links a:hover { color: var(--ink); background: var(--panel-2); }
-  .nav-links a.gh { color: var(--ink); border: 1px solid var(--rule); padding: 8px 14px; }
+  .nav-links a.gh { color: var(--ink); border: 1px solid var(--rule); padding: 8px 14px; margin-left: 6px; }
   .nav-links a.gh:hover { border-color: var(--accent); color: #E4D8FA; background: transparent; }
-  @media (max-width: 560px) {
-    .nav-links a:not(.gh) { display: none; }
-    .brand .ver { display: none; }
-  }
+  @media (max-width: 720px) { .nav-links a.opt { display: none; } }
+  @media (max-width: 420px) { .brand .ver { display: none; } }
 
-  /* ---------- hero ----------
-     The hero is left-aligned and carries no radial glow. The brand mark is
-     promoted from a 30px icon to the figure that explains the product: the
-     arc is the noisy URL, the spike is where the tracking comes off, the flat
-     run and the arrow are the clean link you actually wanted. */
-  .hero { position: relative; padding: 24px 0 40px; }
-  .hero-inner { position: relative; }
-  .hero-top {
-    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: clamp(32px, 5vw, 60px); align-items: center;
-  }
-  .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
-  .eyebrow {
-    display: flex; align-items: center; gap: 10px; margin: 0 0 22px;
-    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  /* ---------- shared type ---------- */
+  .eyebrow, .section-label {
+    display: flex; align-items: center; gap: 12px; margin: 0 0 20px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .16em;
     text-transform: uppercase; color: var(--accent-ink);
   }
-  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
+  .eyebrow::before, .section-label::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
+  h2 {
+    margin: 0 0 16px;
+    font-size: clamp(30px, 4vw, 46px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.04; text-wrap: balance;
+  }
+  h2 .sig { color: var(--accent-ink); }
+  .section { padding-top: clamp(72px, 10vw, 120px); }
+  .section-head { max-width: 640px; margin-bottom: 40px; }
+  .section-head p, .prose { color: var(--ink-2); font-size: 16.5px; line-height: 1.65; margin: 0; text-wrap: pretty; }
+
+  /* ---------- hero ----------
+     The brand mark is the figure that explains the product: the arc is the
+     messy link going in, the spike is where the clutter comes off, the flat
+     run and the arrow are the clean link that comes out. A dashed baseline
+     and three ticks label it, in the mark's own coordinate space. */
+  .hero { padding: clamp(28px, 6vw, 72px) 0 0; }
+  .hero-top {
+    display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+    gap: clamp(32px, 5vw, 64px); align-items: center;
+  }
+  .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
   h1 {
-    margin: 0 0 22px;
-    font-size: clamp(40px, 5.4vw, 66px);
-    line-height: .98; letter-spacing: -.035em; font-weight: 800;
-    max-width: 17ch; text-wrap: balance;
+    margin: 0;
+    font-size: clamp(52px, 8.2vw, 104px);
+    line-height: .94; letter-spacing: -.045em; font-weight: 800;
+    text-wrap: balance;
   }
-  h1 .mark { color: var(--accent-ink); }
+  h1 .dot { color: var(--accent); }
+  .descriptor {
+    margin: 18px 0 0;
+    font-size: clamp(22px, 2.6vw, 30px); line-height: 1.2; letter-spacing: -.015em;
+    color: var(--ink-2); font-weight: 500;
+  }
   .lede {
-    margin: 0 0 32px;
-    font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6;
-    color: var(--ink-2); max-width: 46ch; text-wrap: pretty;
+    margin: 22px 0 32px;
+    font-size: clamp(15.5px, 1.6vw, 17px); line-height: 1.6;
+    color: var(--ink-2); max-width: 44ch; text-wrap: pretty;
   }
-  .lede b { color: var(--ink); font-weight: 600; }
-
-  .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-bottom: 16px; }
-
-  /* Same path data as src/icons/muga-mark.svg, annotated in its own
-     coordinate space so the labels scale with the mark. */
-  .hero-figure { position: relative; }
-  .signal { display: block; width: 100%; height: auto; }
-  .signal .stroke { stroke: var(--accent-ink); }
-  .signal .head { fill: var(--accent-ink); stroke: var(--accent-ink); }
-  .signal .base { stroke: var(--rule); }
-  .signal .tick { stroke: var(--rule-2); }
-  .signal .lbl { fill: var(--ink-3); font-family: var(--mono); font-size: 3.8px; letter-spacing: .2px; }
-  .signal .junk { fill: var(--ink-3); opacity: .5; font-family: var(--mono); font-size: 3.4px; letter-spacing: .3px; }
-  @media (max-width: 900px) {
-    .hero-top { grid-template-columns: 1fr; gap: 28px; }
-    .hero-figure { order: -1; max-width: 460px; }
-  }
+  .install { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; }
   .install[hidden] { display: none; }
+  .facts {
+    margin: 20px 0 0; font-family: var(--mono); font-size: 12px;
+    letter-spacing: .04em; color: var(--ink-3);
+  }
+
   /* .btn dresses both <a> and <button>. A <button> inherits neither the
      page font nor a zeroed border, so both are set here explicitly: without
      them the tool's Clean/Copy controls render in the UA font inside a 2px
@@ -157,54 +166,113 @@
     display: inline-flex; align-items: center; gap: 10px;
     background: var(--accent); color: #fff; text-decoration: none;
     font-family: inherit; border: 0; cursor: pointer;
-    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 10px;
-    transition: background .14s ease, border-color .14s ease;
+    font-weight: 600; font-size: 15.5px; padding: 14px 24px; border-radius: 8px;
+    transition: background .2s ease, border-color .2s ease;
   }
   .btn:hover { background: var(--accent-hi); color: #fff; }
   .btn .ico { flex: none; }
-  .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); box-shadow: none; }
+  .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-2); }
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--accent); color: var(--ink); }
   /* .btn sets display:inline-flex, which would otherwise override the UA
      [hidden] rule and leave a hidden button visible. Restore hidden
      semantics explicitly. */
   .btn[hidden] { display: none; }
-  .btn.bare { background: transparent; color: var(--ink-2); font-weight: 500; box-shadow: none; padding: 14px 20px; }
-  .btn.bare:hover { background: transparent; color: var(--ink); transform: none; }
+  .btn:disabled { opacity: .55; cursor: default; }
 
+  .hero-figure { position: relative; min-width: 0; }
+  .signal { display: block; width: 100%; height: auto; max-width: 520px; margin: 0 auto; }
+  .signal .stroke { stroke: var(--accent-ink); }
+  .signal .head { fill: var(--accent-ink); stroke: var(--accent-ink); }
+  .signal .pulse { stroke: #EFE6FB; opacity: 0; }
+  .signal .base { stroke: var(--rule-2); }
+  .signal .tick { stroke: var(--rule-2); }
+  .signal .lbl { fill: var(--ink-3); font-family: var(--mono); font-size: 3.8px; letter-spacing: .2px; }
+  .signal .junk { fill: var(--ink-3); font-family: var(--mono); font-size: 3.4px; letter-spacing: .3px; }
 
-  .bk-slot {
-    margin-top: 20px; padding-top: 16px;
-    border-top: 1px solid var(--rule-soft);
-    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
-    display: flex; align-items: baseline; justify-content: flex-start; gap: 8px;
+  /* The readout under the figure: the same link before and after, in mono. */
+  .readout {
+    margin-top: 8px; border-top: 1px dashed var(--rule-2); padding-top: 18px;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
   }
-  .bk-slot .bk-text {
-    color: var(--ink-2);
-    border-bottom: 1px dashed var(--rule-2); padding-bottom: 1px;
-    transition: opacity .35s ease;
+  .ro-row { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; align-items: baseline; }
+  .ro-row + .ro-row { margin-top: 12px; }
+  .ro-k { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .ro-k.good { color: var(--good); }
+  .ro-url { color: var(--ink); overflow-wrap: anywhere; }
+  .ro-url .sep { color: var(--ink-3); }
+  .ro-url .bad {
+    color: var(--bad);
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 100% 1.5px;
+    opacity: .7;
   }
-  .bk-slot .bk-text.fade { opacity: 0; }
+  .ro-url .good { color: var(--good); box-shadow: inset 0 -1.5px 0 var(--good); }
+  .ro-after .ro-url { font-size: 14px; }
+  .cnt {
+    display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0 70px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .cnt .a { font-size: 15px; letter-spacing: 0; color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--bad); }
+  .cnt .b { font-size: 22px; letter-spacing: 0; color: var(--good); font-weight: 600; }
 
-  /* ---------- demo terminal ---------- */
+  /* Loop: the pulse runs along the mark, the clutter strikes through and
+     fades, then the clean link lands. Pure CSS, and only when the visitor
+     has not asked for reduced motion; the static state is the end state. */
+  @media (prefers-reduced-motion: no-preference) {
+    .signal .pulse { animation: pulse var(--loop) ease-in-out infinite; }
+    .signal .junk { animation: junk var(--loop) ease-in-out infinite; }
+    .ro-url .bad { animation: strike var(--loop) ease-in-out infinite; }
+    .ro-after, .cnt { animation: land var(--loop) ease-out infinite; }
+  }
+  @keyframes pulse {
+    0%, 10% { stroke-dashoffset: 0; opacity: 0; }
+    14% { opacity: 1; }
+    46% { stroke-dashoffset: -90; opacity: 1; }
+    50%, 100% { stroke-dashoffset: -90; opacity: 0; }
+  }
+  @keyframes junk {
+    0%, 22% { opacity: .75; transform: translateY(0); }
+    40%, 88% { opacity: .12; transform: translateY(-3px); }
+    100% { opacity: .75; transform: translateY(0); }
+  }
+  @keyframes strike {
+    0%, 24% { background-size: 0 1.5px; opacity: 1; color: var(--ink-2); }
+    30% { color: var(--bad); }
+    42%, 88% { background-size: 100% 1.5px; opacity: .55; color: var(--bad); }
+    100% { background-size: 0 1.5px; opacity: 1; color: var(--ink-2); }
+  }
+  @keyframes land {
+    0%, 44% { opacity: 0; transform: translateY(6px); }
+    54%, 90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0); }
+  }
+
+  @media (max-width: 900px) {
+    .hero-top { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .hero-figure { max-width: 560px; }
+  }
+  @media (max-width: 480px) {
+    .ro-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .cnt { margin-left: 0; }
+    .readout { font-size: 12px; }
+  }
+
+  /* ---------- live tool ---------- */
   .demo {
-    position: relative; margin: 56px 0 0; max-width: none;
-    border: 1px solid var(--rule); border-radius: 12px;
+    position: relative; margin: 0;
+    border: 1px solid var(--rule); border-radius: 10px;
     background: var(--panel); overflow: hidden;
   }
   .demo-head {
     display: flex; align-items: center; gap: 14px;
-    padding: 12px 16px;
+    padding: 12px 18px;
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
     background: var(--bg-2);
     border-bottom: 1px solid var(--rule-soft);
   }
   .demo-head .ttl { color: var(--ink-2); letter-spacing: .02em; }
   .demo-head .label { margin-left: auto; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-    .wedge-card .v.strip, .wedge-card .v.strip::after { animation: none !important; }
-  }
+  .demo-head .lights { display: inline-flex; gap: 6px; }
+  .demo-head .lights i { width: 8px; height: 8px; border-radius: 50%; background: var(--rule-2); }
 
   /* ---------- demo terminal: always-visible live tool ----------
      #demo-tool is the FULL /clean tool, visible from page load and driven by
@@ -220,22 +288,24 @@
     margin-bottom: 10px;
   }
   #demo-tool input#url-input {
-    width: 100%; height: 46px;
+    width: 100%; height: 48px;
     font-family: var(--mono); font-size: 14px; color: var(--ink);
-    background: var(--bg); border: 1px solid var(--rule-2); border-radius: 10px;
+    background: var(--bg); border: 1px solid var(--rule-2); border-radius: 8px;
     padding: 12px 14px; line-height: 1.5;
   }
   #demo-tool input#url-input::placeholder { color: var(--ink-3); }
+  #demo-tool input#url-input:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   #demo-tool .tool-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   #demo-tool .tool-result { margin-top: 18px; }
   #demo-tool .result-message { font-size: 14.5px; color: var(--ink-2); margin: 0 0 14px; }
+  #demo-tool .result-message:empty { margin: 0; }
   #demo-tool .result-message.is-error { color: var(--bad); }
   #demo-tool .result-message.is-clean { color: var(--good); }
   #demo-tool .result-url-row { display: none; }
   #demo-tool .result-url-row.visible { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   #demo-tool .result-url-box {
     flex: 1 1 260px; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
-    background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 10px;
+    background: var(--bg); border: 1px solid var(--rule-soft); border-radius: 8px;
     padding: 13px 15px; word-break: break-all;
   }
   #demo-tool .length-bar { margin: 0 0 18px; }
@@ -264,7 +334,7 @@
   #demo-tool .param-insight .breakdown-params { font-family: var(--mono); font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
   #demo-tool .param-insight .breakdown-desc { font-size: 12.5px; color: var(--ink-2); }
   #demo-tool .unwrap-callout {
-    border: 1px solid var(--rule-2); border-radius: 12px; background: var(--panel-2);
+    border: 1px solid var(--rule-2); border-radius: 10px; background: var(--panel-2);
     padding: 14px 16px; margin: 18px 0 0;
   }
   #demo-tool .unwrap-callout[hidden] { display: none; }
@@ -273,220 +343,138 @@
   #demo-tool .report-block[hidden] { display: none; }
   #demo-tool .report-warning { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
 
-  /* ---------- stats: a hairline rail, not three floating cards ---------- */
-  .stats {
-    margin-top: 72px; display: flex; align-items: stretch;
-    border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft);
+  .try-grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 64px); align-items: start; }
+  .try-grid .section-head { margin-bottom: 0; }
+  .section-head .try-hint { margin-top: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); line-height: 1.7; }
+  @media (max-width: 900px) { .try-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---------- before / after: the same link in a chat ---------- */
+  .share-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); align-items: start; }
+  .chat-k { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
+  .chat-k.good { color: var(--accent-ink); }
+  .chat {
+    border: 1px solid var(--rule-2); border-radius: 10px; background: var(--panel);
+    padding: 16px;
   }
-  .stat { flex: 1 1 0; padding: 34px 32px; border-left: 1px solid var(--rule-soft); }
-  .stat:first-child { border-left: 0; padding-left: 0; }
-  .stat:last-child { padding-right: 0; }
-  .stat .num {
-    font-size: clamp(40px, 4.2vw, 54px); font-weight: 800;
-    letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums;
-  }
-  .stat .num .unit { color: var(--accent-ink); }
-  .stat .label {
-    margin-top: 12px; font-family: var(--mono); font-size: 11px;
-    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
-  }
-  .stat .desc { margin-top: 8px; color: var(--ink-2); font-size: 13.5px; line-height: 1.55; max-width: 32ch; }
+  .chat-who { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--rule-soft); font-weight: 600; font-size: 15px; }
+  .chat-who .av { width: 26px; height: 26px; border-radius: 50%; background: var(--rule-2); color: var(--ink-2); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+  .bubble { border-radius: 10px; padding: 12px 14px; max-width: 92%; }
+  .bubble.messy { background: var(--panel-2); border: 1px solid var(--rule-2); font-family: var(--mono); font-size: 13.5px; line-height: 1.65; color: var(--ink-2); overflow-wrap: anywhere; }
+  .bubble.clean { margin-left: auto; background: var(--accent); color: #fff; }
+  .bubble.clean .u { font-family: var(--mono); font-size: 14.5px; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .bubble .msg { display: block; margin-top: 4px; font-size: 12.5px; }
+  .bubble.messy .msg { font-family: var(--sans); color: var(--ink-3); }
+  .ruler { position: relative; margin-top: 36px; border-top: 1px dashed var(--rule-2); display: flex; justify-content: space-between; padding-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .ruler::before, .ruler::after { content: ""; position: absolute; top: -6px; width: 1px; height: 11px; background: var(--rule-2); }
+  .ruler::before { left: 0; } .ruler::after { right: 0; }
+  .ruler .good { color: var(--good); }
+  @media (max-width: 760px) { .share-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---------- what it does: hairline grid, no cards ---------- */
+  .cap-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+  .cap { padding: 30px 32px 34px 0; border-bottom: 1px solid var(--rule-soft); }
+  .cap:nth-child(even) { padding: 30px 0 34px 32px; border-left: 1px solid var(--rule-soft); }
+  .cap .n { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink); }
+  .cap h3 { margin: 14px 0 10px; font-size: clamp(20px, 2vw, 24px); font-weight: 700; letter-spacing: -.015em; line-height: 1.2; }
+  .cap p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.65; max-width: 48ch; }
+  .cap .desc { margin-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+  .cap .eg { margin-top: 14px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); line-height: 1.7; overflow-wrap: anywhere; }
+  .cap .eg .bad { color: var(--bad); text-decoration: line-through; opacity: .8; }
+  .cap .eg .good { color: var(--good); }
+  .cap .eg .arr { color: var(--ink-3); }
+  kbd { font-family: var(--mono); font-size: 12.5px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 1px 6px; }
   @media (max-width: 760px) {
-    .stats { flex-direction: column; }
-    .stat { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 26px 0; }
-    .stat:first-child { border-top: 0; padding-top: 0; }
+    .cap-grid { grid-template-columns: minmax(0, 1fr); }
+    .cap, .cap:nth-child(even) { padding: 26px 0 30px; border-left: 0; }
   }
-
-  /* ---------- sections ---------- */
-  .section { margin-top: 88px; }
-  .section-label {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--accent-ink); margin-bottom: 16px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .section-label::before { content: ""; width: 20px; height: 1px; background: var(--accent); }
-  h2 {
-    margin: 0 0 18px;
-    font-size: clamp(28px, 3.4vw, 40px); font-weight: 700;
-    letter-spacing: -.02em; line-height: 1.12; text-wrap: balance;
-  }
-  .section p { color: var(--ink-2); font-size: 16px; line-height: 1.65; max-width: 62ch; text-wrap: pretty; margin: 0 0 14px; }
-  .section p:last-child { margin-bottom: 0; }
-  .section p b { color: var(--ink); font-weight: 600; }
-  .section code {
-    font-family: var(--mono); font-size: 13.5px; color: var(--accent-soft);
-    background: var(--panel-2); padding: 1px 6px; border-radius: 5px;
-  }
-
-  /* Contained-block framing for content sections. A flatter background than
-     the nested .wedge-card/.trust-cell/.shot boxes so those still stand out
-     as the focal elements, not a jarring box-in-box. */
-  .wrap.section-frame {
-    border: 0; border-top: 1px solid var(--rule); border-radius: 0;
-    background: transparent;
-    padding: clamp(36px, 5vw, 56px) 28px 0;
-  }
-
-  /* ---------- scroll reveal + ambient motion (progressive enhancement) ----------
-     .reveal is only ever added by JS, and only right before JS also sets up
-     an IntersectionObserver to un-hide it. Without JS (or without
-     IntersectionObserver support) this class never appears, so every
-     section/card stays fully visible by default. */
-  .reveal {
-    opacity: 0; transform: translateY(14px);
-    transition: opacity .6s ease, transform .6s ease;
-  }
-  .reveal.is-visible { opacity: 1; transform: translateY(0); }
-
-  /* ---------- wedge ---------- */
-  /* min() lets the track drop under its 340px floor on narrow phones; without
-     it the floor plus .wrap's padding forces a 368px page and anything
-     narrower scrolls sideways. */
-  .wedge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 56px; align-items: start; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: var(--mono); font-size: 11.5px;
-    color: var(--good); background: rgba(76,195,138,.1);
-    border: 1px solid rgba(76,195,138,.3);
-    border-radius: 999px; padding: 2px 10px; vertical-align: middle;
-  }
-  .wedge-card {
-    border: 0; border-radius: 0;
-    background: transparent; padding: 0;
-    font-family: var(--mono); font-size: 13px;
-    box-shadow: none;
-  }
-  .wedge-card .header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 4px;
-    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-  }
-  .wedge-card .header .ttl { color: var(--ink); }
-  .wedge-card .header .meta { color: var(--ink-3); font-size: 11px; }
-  .wedge-card .row {
-    display: grid; grid-template-columns: 64px 1fr; gap: 20px;
-    padding: 13px 0; border-bottom: 1px solid var(--rule-soft);
-  }
-  .wedge-card .row:last-child { border-bottom: 0; }
-  .wedge-card .k { color: var(--ink-3); }
-  .wedge-card .v { color: var(--ink); word-break: break-all; }
-  .wedge-card .v.strip { color: var(--ink-3); opacity: .65; position: relative; }
-  .wedge-card .v.strip::after {
-    content: ""; position: absolute; left: 0; right: 0; top: 50%;
-    height: 1px; background: var(--accent-ink);
-  }
-  .wedge-card .v.keep-v { color: var(--good); }
-  .wedge-card .v.action { color: var(--accent-soft); }
-
-  /* Echoes the hero demo's junkFade/strikeIn keyframes: a one-shot "strike
-     it out" play when a wedge-card example first scrolls into view. */
-  .wedge-card.wedge-anim .v.strip { animation: junkFade 2.6s ease-out 1 both; }
-  .wedge-card.wedge-anim .v.strip::after { right: 100%; animation: strikeIn 2.6s ease-out 1 both; }
-
-  /* ---------- trust ---------- */
-  .trust-intro { margin-bottom: 36px; }
-  /* Three explicit columns, then a stack. With auto-fit the grid wrapped to
-     two columns around 800px and the wrapped cell kept the left rule and the
-     28px indent that only mid-row cells should carry. */
-  .trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
-  .trust-cell {
-    border: 0; border-left: 1px solid var(--rule-soft); border-radius: 0;
-    background: transparent; padding: 4px 0 0 28px;
-    transition: border-color .14s ease;
-  }
-  .trust-cell:first-child { border-left: 0; padding-left: 0; }
-  .trust-cell:hover { border-color: var(--rule-2); }
-  .trust-cell .ic {
-    display: inline-block; font-family: var(--mono); font-size: 11px;
-    letter-spacing: .14em; text-transform: uppercase;
-    color: var(--accent-ink); background: transparent;
-    border: 0; padding: 0; border-radius: 0; margin-bottom: 14px;
-  }
-  @media (max-width: 900px) {
-    .trust-grid { grid-template-columns: 1fr; }
-    .trust-cell { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 22px 0 0; margin-top: 22px; }
-    .trust-cell:first-child { border-top: 0; margin-top: 0; padding-top: 4px; }
-  }
-  .trust-cell h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
-  .trust-cell p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
 
   /* ---------- screenshots ---------- */
-  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 36px; }
-  .shot {
-    margin: 0; position: relative;
-    border: 1px solid var(--rule); border-radius: 14px;
-    background: var(--panel-2); aspect-ratio: 4 / 3; overflow: hidden;
+  .shots {
+    display: grid; grid-auto-flow: column; grid-auto-columns: min(560px, 82%);
+    gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+    padding-bottom: 14px; margin: 0;
+    scrollbar-color: var(--rule-2) transparent;
   }
-  .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .shot {
+    margin: 0; position: relative; scroll-snap-align: start;
+    border: 1px solid var(--rule); border-radius: 10px;
+    background: var(--panel-2); aspect-ratio: 16 / 10; overflow: hidden;
+  }
+  .shot img { width: 100%; height: 100%; object-fit: cover; }
   .shot figcaption {
     position: absolute; left: 10px; bottom: 10px;
-    font-family: var(--mono); font-size: 10.5px; color: var(--ink);
-    background: rgba(14,12,19,.8); padding: 4px 9px; border-radius: 6px;
-    border: 1px solid var(--rule); backdrop-filter: blur(4px);
+    font-family: var(--mono); font-size: 11px; color: var(--ink);
+    background: rgba(14,12,19,.85); padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--rule);
   }
-
-  /* ---------- screenshot lightbox (progressive enhancement, no deps) ---------- */
   .shots.is-enhanced .shot { cursor: zoom-in; }
-  .shot::after {
-    content: "\2922"; position: absolute; top: 8px; right: 10px;
-    font-size: 13px; line-height: 1; color: var(--ink);
-    background: rgba(14,12,19,.7); border: 1px solid var(--rule);
-    border-radius: 6px; padding: 3px 6px; opacity: 0;
-    transition: opacity .18s; pointer-events: none;
-  }
-  .shots.is-enhanced .shot:hover::after,
-  .shots.is-enhanced .shot:focus-visible::after { opacity: 1; }
   .shot:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
   .lightbox {
     position: fixed; inset: 0; z-index: 1000;
     display: none; align-items: center; justify-content: center;
     padding: clamp(16px, 4vw, 48px);
-    background: rgba(14,12,19,.92); backdrop-filter: blur(8px);
+    background: rgba(14,12,19,.94);
   }
   .lightbox.open { display: flex; }
   .lightbox-stage { position: relative; max-width: 1100px; width: 100%; text-align: center; }
   .lightbox-figure { margin: 0; }
   .lightbox-img {
-    max-width: 100%; max-height: 82vh; object-fit: contain;
-    border: 1px solid var(--rule-2); border-radius: 14px;
-    background: var(--panel-2); box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    max-width: 100%; max-height: 80vh; object-fit: contain; margin: 0 auto;
+    border: 1px solid var(--rule-2); border-radius: 10px; background: var(--panel-2);
   }
-  .lightbox-cap {
-    margin-top: 14px; font-family: var(--mono); font-size: 12px;
-    color: var(--ink-2); letter-spacing: .02em;
-  }
+  .lightbox-cap { margin-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); letter-spacing: .02em; }
   .lightbox-count { color: var(--ink-3); }
   .lightbox-close, .lightbox-nav {
     position: absolute; display: flex; align-items: center; justify-content: center;
     border: 1px solid var(--rule-2); border-radius: 50%;
-    background: rgba(20,17,27,.85); color: var(--ink); cursor: pointer;
-    line-height: 1; transition: background .18s, border-color .18s;
+    background: rgba(20,17,27,.9); color: var(--ink); cursor: pointer;
+    font-family: var(--sans); line-height: 1; transition: background .2s, border-color .2s;
   }
   .lightbox-nav { top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 24px; }
-  .lightbox-close { top: -6px; right: 4px; width: 40px; height: 40px; font-size: 22px; }
+  .lightbox-close { top: -8px; right: 4px; width: 40px; height: 40px; font-size: 22px; }
   .lightbox-prev { left: 6px; }
   .lightbox-next { right: 6px; }
   .lightbox-nav:hover, .lightbox-close:hover { background: var(--accent); border-color: var(--accent-hi); }
   .lightbox-close:focus-visible, .lightbox-nav:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   .lightbox[data-single="true"] .lightbox-nav { display: none; }
-  @media (prefers-reduced-motion: reduce) { .lightbox { backdrop-filter: none; } }
+
+  /* ---------- quiet by design ---------- */
+  /* Two fixed columns, then a stack. The cells carry no left rule, so the
+     wrap-alignment coupling the layout guard checks for does not apply. */
+  .trust-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 64px); border-top: 1px solid var(--rule); padding-top: 40px; }
+  .trust-cell { min-width: 0; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .pills li { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); border: 1px solid var(--rule-2); border-radius: 999px; padding: 5px 13px; display: inline-flex; align-items: center; gap: 8px; }
+  .pills li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
+  .quiet p { margin: 0 0 14px; color: var(--ink-2); font-size: 15px; line-height: 1.65; }
+  .quiet p:last-child { margin-bottom: 0; }
+  .quiet .links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: 13px; }
+  .quiet .links a { text-decoration: none; }
+  .quiet .links a:hover { text-decoration: underline; }
+  .quiet .fine { font-size: 13.5px; color: var(--ink-3); }
+  @media (max-width: 760px) { .trust-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---------- MUGA stands for... ---------- */
+  .stands { border-top: 1px solid var(--rule); padding-top: 40px; }
+  .stands .k { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
+  .bk-text {
+    display: block; min-height: 2.1em;
+    font-size: clamp(30px, 5vw, 56px); font-weight: 800; letter-spacing: -.035em; line-height: 1.02;
+    color: var(--ink); transition: opacity .15s ease;
+  }
+  .bk-text.fade { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { .bk-text { transition: none; } }
 
   /* ---------- final CTA ---------- */
-  .cta-panel {
-    position: relative; border: 0; border-top: 1px solid var(--rule); border-radius: 0;
-    background: transparent; padding: clamp(40px, 6vw, 64px) 0 0;
-    text-align: left; overflow: visible;
-  }
-  .cta-inner { position: relative; }
-  .cta-inner .mark-lg { color: var(--accent-ink); margin-bottom: 20px; }
-  .cta-inner h2 { margin-bottom: 14px; font-size: clamp(26px, 3.2vw, 38px); }
-  .cta-inner p { margin: 0 0 30px; color: var(--ink-2); font-size: 16px; max-width: 44ch; }
-  .cta-inner .install { margin-bottom: 0; }
+  .cta-panel { border-top: 1px solid var(--rule); padding-top: clamp(40px, 6vw, 64px); }
+  .cta-inner .mark-lg { color: var(--accent-ink); margin-bottom: 22px; display: block; }
+  .cta-inner h2 { margin-bottom: 12px; }
+  .cta-inner > p { margin: 0 0 8px; color: var(--ink-2); font-size: 16.5px; max-width: 46ch; }
 
-  /* three ways to use MUGA — always shows every option, for every visitor */
+  /* three ways to use MUGA: always shows every option, for every visitor */
   .ways {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0;
     margin-top: 32px; text-align: left;
     border-top: 1px solid var(--rule-soft);
   }
@@ -494,42 +482,41 @@
     position: relative; display: flex; flex-direction: column; gap: 9px;
     border: 0; border-left: 1px solid var(--rule-soft); border-radius: 0; background: transparent;
     padding: 26px 24px; text-decoration: none; color: var(--ink);
-    transition: background .16s ease;
+    transition: background .2s ease;
   }
   .way:first-child { border-left: 0; padding-left: 0; }
-  .way:hover { transform: none; background: var(--bg-2); color: var(--ink); }
-  .way:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+  .way:hover { background: var(--bg-2); color: var(--ink); }
+  .way:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
   .way-ico { color: var(--accent-ink); }
   .way-title { font-size: 16px; font-weight: 600; }
   .way-desc { flex: 1; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
   .way-cta { display: inline-flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--accent-ink); }
-  .way-cta .arr { transition: transform .16s ease; }
+  .way-cta .arr { transition: transform .15s ease; }
   .way:hover .way-cta .arr { transform: translateX(3px); }
   .way.is-you { box-shadow: inset 0 2px 0 0 var(--accent); background: var(--bg-2); }
   .way-badge {
     position: absolute; top: 27px; right: 24px;
     font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
     text-transform: uppercase; color: var(--accent-ink);
-    background: transparent; border: 0; border-radius: 0; padding: 0;
   }
-  @media (max-width: 620px) {
-    .ways { grid-template-columns: 1fr; }
+  @media (max-width: 760px) {
+    .ways { grid-template-columns: minmax(0, 1fr); }
     .way { border-left: 0; border-top: 1px solid var(--rule-soft); padding: 24px 0; }
     .way:first-child { border-top: 0; }
-    .way-badge { right: 0; }
+    .way.is-you { padding-left: 14px; padding-right: 14px; }
+    .way-badge { right: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .way:hover { transform: none; }
+    html { scroll-behavior: auto; }
     .way-cta .arr, .way:hover .way-cta .arr { transition: none; transform: none; }
   }
 
   /* ---------- footer ---------- */
-  footer { margin-top: 80px; padding-bottom: 48px; }
+  footer { margin-top: clamp(72px, 10vw, 120px); padding-bottom: 48px; }
   .footer-grid {
     border-top: 1px solid var(--rule-soft); padding-top: 44px;
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px;
+    display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 32px;
   }
-  .footer-about { min-width: 240px; }
   .footer-about p { font-size: 13px; color: var(--ink-3); margin: 12px 0 0; max-width: 300px; line-height: 1.6; }
   .footer-col h4 {
     font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
@@ -543,6 +530,17 @@
     margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--rule-soft);
     font-family: var(--mono); font-size: 12px; color: var(--ink-3);
   }
+  @media (max-width: 760px) { .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .footer-about { grid-column: 1 / -1; } }
+
+  /* ---------- scroll reveal (progressive enhancement) ----------
+     .reveal is only ever added by JS, right before JS also sets up an
+     IntersectionObserver to un-hide it. Without JS, or under reduced motion,
+     the class never appears and every section stays visible. */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -550,7 +548,7 @@
 <!-- Official Chrome and Firefox brand logos, inlined once as a <symbol>
      sprite (zero external requests, CSP-safe). Gradient IDs are namespaced
      so instances never collide. Referenced below via <use href="#logo-*">. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs>
 <symbol id="logo-chrome" viewBox="0 0 48 48"><defs><linearGradient id="chrome-a" x1="3.2173" y1="15" x2="44.7812" y2="15" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d93025"/><stop offset="1" stop-color="#ea4335"/></linearGradient><linearGradient id="chrome-b" x1="20.7219" y1="47.6791" x2="41.5039" y2="11.6837" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fcc934"/><stop offset="1" stop-color="#fbbc04"/></linearGradient><linearGradient id="chrome-c" x1="26.5981" y1="46.5015" x2="5.8161" y2="10.506" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1e8e3e"/><stop offset="1" stop-color="#34a853"/></linearGradient></defs><circle cx="24" cy="23.9947" r="12" style="fill:#fff"/><path d="M3.2154,36A24,24,0,1,0,12,3.2154,24,24,0,0,0,3.2154,36ZM34.3923,18A12,12,0,1,1,18,13.6077,12,12,0,0,1,34.3923,18Z" style="fill:none"/><path d="M24,12H44.7812a23.9939,23.9939,0,0,0-41.5639.0029L13.6079,30l.0093-.0024A11.9852,11.9852,0,0,1,24,12Z" style="fill:url(#chrome-a)"/><circle cx="24" cy="24" r="9.5" style="fill:#1a73e8"/><path d="M34.3913,30.0029,24.0007,48A23.994,23.994,0,0,0,44.78,12.0031H23.9989l-.0025.0093A11.985,11.985,0,0,1,34.3913,30.0029Z" style="fill:url(#chrome-b)"/><path d="M13.6086,30.0031,3.218,12.006A23.994,23.994,0,0,0,24.0025,48L34.3931,30.0029l-.0067-.0068a11.9852,11.9852,0,0,1-20.7778.007Z" style="fill:url(#chrome-c)"/></symbol>
 <symbol id="logo-firefox" viewBox="0 0 512 512"><defs><radialGradient id="firefox-g" cx="210%" cy="-100%" r="290%"><stop offset=".1" stop-color="#ffe226"/><stop offset=".79" stop-color="#ff7139"/></radialGradient><radialGradient id="firefox-c" cx="49%" cy="40%" r="128%" gradientTransform="matrix(.82 0 0 1 .088 0)"><stop offset=".3" stop-color="#960e18"/><stop offset=".35" stop-color="#b11927" stop-opacity=".74"/><stop offset=".43" stop-color="#db293d" stop-opacity=".34"/><stop offset=".5" stop-color="#f5334b" stop-opacity=".09"/><stop offset=".53" stop-color="#ff3750" stop-opacity="0"/></radialGradient><radialGradient id="firefox-d" cx="48%" cy="-12%" r="140%"><stop offset=".13" stop-color="#fff44f"/><stop offset=".53" stop-color="#ff980e"/></radialGradient><radialGradient id="firefox-e" cx="22.76%" cy="110.11%" r="100%"><stop offset=".35" stop-color="#3a8ee6"/><stop offset=".67" stop-color="#9059ff"/><stop offset="1" stop-color="#c139e6"/></radialGradient><radialGradient id="firefox-f" cx="52%" cy="33%" r="59%" gradientTransform="scale(.9 1)"><stop offset=".21" stop-color="#9059ff" stop-opacity="0"/><stop offset=".97" stop-color="#6e008b" stop-opacity=".6"/></radialGradient><radialGradient id="firefox-b" cx="87.4%" cy="-12.9%" r="128%" gradientTransform="matrix(.8 0 0 1 .178 .129)"><stop offset=".13" stop-color="#ffbd4f"/><stop offset=".28" stop-color="#ff980e"/><stop offset=".47" stop-color="#ff3750"/><stop offset=".78" stop-color="#eb0878"/><stop offset=".86" stop-color="#e50080"/></radialGradient><radialGradient id="firefox-h" cx="84%" cy="-41%" r="180%"><stop offset=".11" stop-color="#fff44f"/><stop offset=".46" stop-color="#ff980e"/><stop offset=".72" stop-color="#ff3647"/><stop offset=".9" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-i" cx="16.1%" cy="-18.6%" r="348.8%" gradientTransform="scale(1 .47) rotate(84 .279 -.297)"><stop offset="0" stop-color="#fff44f"/><stop offset=".3" stop-color="#ff980e"/><stop offset=".57" stop-color="#ff3647"/><stop offset=".74" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-j" cx="18.9%" cy="-42.5%" r="238.4%"><stop offset=".14" stop-color="#fff44f"/><stop offset=".48" stop-color="#ff980e"/><stop offset=".66" stop-color="#ff3647"/><stop offset=".9" stop-color="#e31587"/></radialGradient><radialGradient id="firefox-k" cx="159.3%" cy="-44.72%" r="313.1%"><stop offset=".09" stop-color="#fff44f"/><stop offset=".63" stop-color="#ff980e"/></radialGradient><linearGradient id="firefox-a" x1="87.25%" y1="15.5%" x2="9.4%" y2="93.1%"><stop offset=".05" stop-color="#fff44f"/><stop offset=".37" stop-color="#ff980e"/><stop offset=".53" stop-color="#ff3647"/><stop offset=".7" stop-color="#e31587"/></linearGradient><linearGradient id="firefox-l" x1="80%" y1="14%" x2="18%" y2="84%"><stop offset=".17" stop-color="#fff44f" stop-opacity=".8"/><stop offset=".6" stop-color="#fff44f" stop-opacity="0"/></linearGradient></defs><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0 .039.015.136.047.4C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484a120.249 120.249 0 00-66.142 25.488 71.355 71.355 0 00-6.225-4.7 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.442 26.913c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-.212 1.061-.324 1.586-.452 2.116-2.08 12.7-2.365 15-.022.177-.032.347-.053.524a229.066 229.066 0 00-3.9 33.157c0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746zM201.716 354.447c1.124.537 2.18 1.124 3.334 1.639.048.033.114.07.163.1a126.191 126.191 0 01-3.497-1.739zm55.053-144.93zm198.131-30.59l-.032-.233c.012.085.027.174.04.259z" fill="url(#firefox-a)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0-.058.011.048.036.226.012.085.027.174.04.259 22.675 61.47 10.322 123.978-7.479 162.175-27.539 59.1-94.215 119.67-198.576 116.716C136.1 454.651 36.766 370.988 18.223 261.41c-3.379-17.28 0-26.054 1.7-40.084-2.071 10.816-2.86 13.94-3.9 33.157 0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746z" fill="url(#firefox-b)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0-.058.011.048.036.226.012.085.027.174.04.259 22.675 61.47 10.322 123.978-7.479 162.175-27.539 59.1-94.215 119.67-198.576 116.716C136.1 454.651 36.766 370.988 18.223 261.41c-3.379-17.28 0-26.054 1.7-40.084-2.071 10.816-2.86 13.94-3.9 33.157 0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746z" fill="url(#firefox-c)"/><path d="M361.922 194.6c.524.368 1 .734 1.493 1.1a130.706 130.706 0 00-22.31-29.112C266.4 91.892 321.516 4.626 330.811.194c.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484 2.8-.194 5.592-.399 8.442-.399 45.051 0 84.289 24.77 105.301 61.487z" fill="url(#firefox-d)"/><path d="M256.772 209.514c-.393 5.978-21.514 26.593-28.9 26.593-68.339 0-79.432 41.335-79.432 41.335 3.027 34.81 27.261 63.475 56.611 78.643 1.339.692 2.694 1.317 4.05 1.935a132.768 132.768 0 007.059 2.886 106.743 106.743 0 0031.271 6.031c119.78 5.618 142.986-143.194 56.545-186.408 22.137-3.85 45.115 5.053 57.947 14.067-21.012-36.714-60.25-61.484-105.3-61.484-2.85 0-5.641.235-8.442.399a120.249 120.249 0 00-66.142 25.488c3.664 3.1 7.8 7.244 16.514 15.828 16.302 16.067 58.13 32.705 58.219 34.657z" fill="url(#firefox-e)"/><path d="M256.772 209.514c-.393 5.978-21.514 26.593-28.9 26.593-68.339 0-79.432 41.335-79.432 41.335 3.027 34.81 27.261 63.475 56.611 78.643 1.339.692 2.694 1.317 4.05 1.935a132.768 132.768 0 007.059 2.886 106.743 106.743 0 0031.271 6.031c119.78 5.618 142.986-143.194 56.545-186.408 22.137-3.85 45.115 5.053 57.947 14.067-21.012-36.714-60.25-61.484-105.3-61.484-2.85 0-5.641.235-8.442.399a120.249 120.249 0 00-66.142 25.488c3.664 3.1 7.8 7.244 16.514 15.828 16.302 16.067 58.13 32.705 58.219 34.657z" fill="url(#firefox-f)"/><path d="M170.829 151.036a244.042 244.042 0 014.981 3.3 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7 1.155-.033 36.014-.66 53.543 10.732z" fill="url(#firefox-g)"/><path d="M18.223 261.41C36.766 370.988 136.1 454.651 248.855 457.844c104.361 2.954 171.037-57.62 198.576-116.716 17.8-38.2 30.154-100.7 7.479-162.175l-.008-.026-.032-.233c-.025-.178-.04-.284-.036-.226 0 .039.015.136.047.4 8.524 55.661-19.79 109.584-64.051 146.044l-.133.313c-86.245 70.223-168.774 42.368-185.484 30.966a144.108 144.108 0 01-3.5-1.743c-50.282-24.029-71.054-69.838-66.6-109.124-42.457 0-56.934-35.809-56.934-35.809s38.119-27.179 88.358-3.541c46.53 21.893 90.228 3.543 90.233 3.541-.089-1.952-41.917-18.59-58.223-34.656-8.713-8.584-12.85-12.723-16.514-15.828a71.355 71.355 0 00-6.225-4.7 282.929 282.929 0 00-4.981-3.3c-17.528-11.392-52.388-10.765-53.543-10.735h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.442 26.919c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-8.65 37.842-4.44 57.199z" fill="url(#firefox-h)"/><path d="M341.105 166.587a130.706 130.706 0 0122.31 29.112c1.323.994 2.559 1.985 3.608 2.952 54.482 50.2 25.936 121.2 23.807 126.26 44.261-36.46 72.575-90.383 64.051-146.044C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1-9.291 4.428-64.407 91.694 10.298 166.389z" fill="url(#firefox-i)"/><path d="M367.023 198.651c-1.049-.967-2.285-1.958-3.608-2.952-.489-.368-.969-.734-1.493-1.1-12.832-9.014-35.81-17.917-57.947-14.067 86.441 43.214 63.235 192.026-56.545 186.408a106.743 106.743 0 01-31.271-6.031 134.51 134.51 0 01-7.059-2.886c-1.356-.618-2.711-1.243-4.05-1.935.048.033.114.07.163.1 16.71 11.4 99.239 39.257 185.484-30.966l.133-.313c2.129-5.054 30.675-76.057-23.807-126.258z" fill="url(#firefox-j)"/><path d="M148.439 277.443s11.093-41.335 79.432-41.335c7.388 0 28.509-20.615 28.9-26.593s-43.7 18.352-90.233-3.541c-50.239-23.638-88.358 3.541-88.358 3.541s14.477 35.809 56.934 35.809c-4.453 39.286 16.319 85.1 66.6 109.124 1.124.537 2.18 1.124 3.334 1.639-29.348-15.169-53.582-43.834-56.609-78.644z" fill="url(#firefox-k)"/><path d="M478.711 166.353c-10.445-25.124-31.6-52.248-48.212-60.821 13.52 26.505 21.345 53.093 24.335 72.936 0 .039.015.136.047.4C427.706 111.135 381.627 83.823 344 24.355c-1.9-3.007-3.805-6.022-5.661-9.2a73.716 73.716 0 01-2.646-4.972A43.7 43.7 0 01332.1.677a.626.626 0 00-.546-.644.818.818 0 00-.451 0c-.034.012-.084.051-.12.065-.053.021-.12.069-.176.1.027-.036.083-.117.1-.136-60.37 35.356-80.85 100.761-82.732 133.484 2.8-.194 5.592-.399 8.442-.399 45.053 0 84.291 24.77 105.3 61.484-12.832-9.014-35.81-17.917-57.947-14.067 86.441 43.214 63.235 192.026-56.545 186.408a106.743 106.743 0 01-31.271-6.031 134.51 134.51 0 01-7.059-2.886c-1.356-.618-2.711-1.243-4.05-1.935.048.033.114.07.163.1a144.108 144.108 0 01-3.5-1.743c1.124.537 2.18 1.124 3.334 1.639-29.35-15.168-53.584-43.833-56.611-78.643 0 0 11.093-41.335 79.432-41.335 7.388 0 28.509-20.615 28.9-26.593-.089-1.952-41.917-18.59-58.223-34.656-8.713-8.584-12.85-12.723-16.514-15.828a71.355 71.355 0 00-6.225-4.7 111.338 111.338 0 01-.674-58.732c-24.688 11.241-43.89 29.01-57.85 44.7h-.111c-9.527-12.067-8.855-51.873-8.312-60.184-.114-.515-7.107 3.63-8.023 4.255a175.073 175.073 0 00-23.486 20.12 210.478 210.478 0 00-22.435 26.916c0 .012-.007.026-.011.038 0-.013.007-.026.011-.038a202.838 202.838 0 00-32.247 72.805c-.115.521-.212 1.061-.324 1.586-.452 2.116-2.486 12.853-2.77 15.156-.022.177.021-.176 0 0a279.565 279.565 0 00-3.544 33.53c0 .41-.025.816-.025 1.227C16 388.418 123.6 496 256.324 496c118.865 0 217.56-86.288 236.882-199.63.407-3.076.733-6.168 1.092-9.271 4.777-41.21-.53-84.525-15.587-120.746zm-23.841 12.341c.012.085.027.174.04.259l-.008-.026-.032-.233z" fill="url(#firefox-l)"/></symbol>
 </defs></svg>
@@ -566,27 +564,28 @@
       <span class="ver">v3.1.0</span>
     </a>
     <nav class="nav-links" aria-label="Primary">
-      <a href="https://rules.muga.app/transparency.html">Transparency</a>
-      <a href="https://rules.muga.app/privacy-page.html">Privacy</a>
-      <a href="https://github.com/yocreoquesi/muga" class="gh" aria-label="GitHub repository">GitHub ↗</a>
+      <a href="#demo-tool">Try it</a>
+      <a class="opt" href="#how">What it does</a>
+      <a class="opt" href="https://rules.muga.app/transparency.html">Transparency</a>
+      <a href="https://github.com/yocreoquesi/muga" class="gh" aria-label="MUGA on GitHub">GitHub ↗</a>
     </nav>
   </div>
 </header>
 
 <main>
 
-  <section class="hero">
-    <div class="wrap hero-inner">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
       <div class="hero-top">
         <div class="hero-copy">
-          <p class="eyebrow">Browser extension &#183; Chrome &#183; Firefox</p>
+          <p class="eyebrow">URL cleaner &#183; Chrome &#183; Firefox</p>
 
-          <h1>Your links, <span class="mark">minus the tracking we know about.</span></h1>
+          <h1 id="hero-title">Just the link<span class="dot">.</span></h1>
+          <p class="descriptor">Links, without the clutter.</p>
 
           <p class="lede">
-            MUGA strips the tracking noise it recognises out of the links you open, without breaking pages.
-            And unlike most URL cleaners, it tries to keep the referral of whoever recommended
-            you the link, and leaves you in control.
+            MUGA cleans the links you open, copy and share, so they stay short, easy to read and
+            still open the same page. It keeps what the page needs and drops the extras it recognises.
           </p>
 
           <div class="install" id="hero-install">
@@ -598,24 +597,53 @@
               <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#logo-firefox"/></svg>
               Add to Firefox
             </a>
+            <a class="btn ghost" href="#demo-tool">Try it on a link</a>
           </div>
+          <p class="facts">Free &#183; Open source &#183; No telemetry</p>
         </div>
 
         <div class="hero-figure">
-          <svg class="signal" viewBox="-6 -22 122 112" fill="none" role="img"
-               aria-label="The MUGA mark read as a diagram: a noisy URL goes in, the tracking is cut, one clean link comes out.">
+          <svg class="signal" viewBox="-6 -22 122 104" fill="none" role="img"
+               aria-label="The MUGA mark read as a diagram: a messy link goes in, the clutter comes off, one clean link comes out.">
             <line class="base" x1="-4" y1="50" x2="114" y2="50" stroke-width="0.6" stroke-dasharray="2 3"/>
             <text class="junk" x="-4" y="-12">?utm_source=newsletter&amp;fbclid=IwAR2x</text>
             <path class="stroke" d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
             <path class="head" d="M 80 37 L 98 50 L 80 63 Z" stroke-width="2" stroke-linejoin="round"/>
+            <path class="pulse" d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" pathLength="100" stroke-width="3" stroke-dasharray="10 90" stroke-linecap="round" stroke-linejoin="round"/>
             <line class="tick" x1="24" y1="70" x2="24" y2="64" stroke-width="0.6"/>
             <line class="tick" x1="59" y1="70" x2="59" y2="64" stroke-width="0.6"/>
             <line class="tick" x1="95" y1="70" x2="95" y2="64" stroke-width="0.6"/>
-            <text class="lbl" x="24" y="79" text-anchor="middle">noisy in</text>
-            <text class="lbl" x="59" y="79" text-anchor="middle">tracking cut</text>
+            <text class="lbl" x="24" y="79" text-anchor="middle">messy in</text>
+            <text class="lbl" x="59" y="79" text-anchor="middle">clutter off</text>
             <text class="lbl" x="95" y="79" text-anchor="middle">clean out</text>
           </svg>
+
+          <div class="readout">
+            <div class="ro-row">
+              <span class="ro-k">before</span>
+              <span class="ro-url">https://shop.example/p/linen-shirt<span class="sep">?</span><span class="bad">utm_source=newsletter</span><span class="sep">&amp;</span><span class="bad">utm_medium=email</span><span class="sep">&amp;</span><span class="bad">utm_campaign=autumn_drop</span><span class="sep">&amp;</span><span class="good">size=m</span><span class="sep">&amp;</span><span class="bad">utm_content=hero_button</span><span class="sep">&amp;</span><span class="bad">fbclid=IwAR2xK9pQ7vLmZ3sT8</span><span class="sep">&amp;</span><span class="bad">gclid=Cj0KCQjw8rTBhD</span><span class="sep">&amp;</span><span class="bad">mc_eid=8f2a91c7</span></span>
+            </div>
+            <div class="ro-row ro-after">
+              <span class="ro-k good">after</span>
+              <span class="ro-url">https://shop.example/p/linen-shirt<span class="sep">?</span><span class="good">size=m</span></span>
+            </div>
+            <div class="cnt"><span class="a">193</span><span aria-hidden="true">→</span><span class="b">41</span><span>characters</span></div>
+          </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="try" aria-labelledby="try-title">
+    <div class="wrap try-grid">
+      <div class="section-head">
+        <div class="section-label">Try it</div>
+        <h2 id="try-title">Try it on <span class="sig">any link.</span></h2>
+        <p>
+          Paste a link with the clutter still attached. It is cleaned right here in your browser,
+          with the same cleaning engine the extension uses, and you see what came off and why.
+        </p>
+        <p class="try-hint">No install needed. Works on a phone too.</p>
       </div>
 
       <!-- Live tool terminal. The FULL /clean tool (#demo-tool) is visible from
@@ -625,17 +653,18 @@
            with the tool (see the bootstrap script near the end of this file).
            Keep the ID list below in sync with web/ui.js init() bindings; this
            markup and its styles are kept in sync with web/index.html. -->
-      <div class="demo" id="demo" aria-label="MUGA URL cleaner" style="width:100%;">
+      <div class="demo" id="demo" aria-label="MUGA URL cleaner">
         <div class="demo-head">
-          <span class="ttl">Try it on a real link</span>
-          <span class="label">muga · clean</span>
+          <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="ttl">Clean a link</span>
+          <span class="label">muga &#183; clean</span>
         </div>
 
         <div id="demo-tool">
-          <label class="field-label" for="url-input">URL to clean</label>
-          <input type="url" id="url-input" placeholder="https://example.com/page?utm_source=newsletter&#38;fbclid=abc123" spellcheck="false" autocomplete="off">
+          <label class="field-label" for="url-input">Link to clean</label>
+          <input type="url" id="url-input" placeholder="https://shop.example/p/linen-shirt?utm_source=newsletter&#38;size=m" spellcheck="false" autocomplete="off">
           <div class="tool-actions">
-            <button type="button" class="btn" id="clean-btn">Clean this URL</button>
+            <button type="button" class="btn" id="clean-btn">Clean this link</button>
           </div>
 
           <div class="tool-result">
@@ -643,7 +672,7 @@
 
             <div class="result-url-row" id="result-url-row">
               <div class="result-url-box" id="result-url-box"></div>
-              <button type="button" class="btn ghost" id="copy-btn" disabled>Copy cleaned URL</button>
+              <button type="button" class="btn ghost" id="copy-btn" disabled>Copy clean link</button>
             </div>
 
             <div class="length-bar" id="length-bar" hidden>
@@ -676,159 +705,164 @@
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          <div class="bk-slot" aria-live="polite">
-            <span>muga ≈</span>
-            <span class="bk-text" id="bk">Making URLs Good Again.</span>
+  <section class="section" id="share" aria-labelledby="share-title">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-label">Before / after</div>
+        <h2 id="share-title">Share links <span class="sig">people can read.</span></h2>
+        <p>
+          Most of a shared link is extras stuck on after the question mark. In a chat they wrap
+          across lines and hide where the link goes. MUGA keeps what the page needs, like the size
+          you picked, and drops the rest it recognises.
+        </p>
+      </div>
+
+      <div class="share-grid">
+        <div>
+          <p class="chat-k">without MUGA</p>
+          <div class="chat">
+            <div class="chat-who"><span class="av" aria-hidden="true">S</span>Sam</div>
+            <div class="bubble messy">shop.example/p/linen-shirt?utm_source=newsletter&amp;utm_medium=email&amp;utm_campaign=autumn_drop&amp;size=m&amp;utm_content=hero_button&amp;fbclid=IwAR2xK9pQ7vLmZ3sT8&amp;gclid=Cj0KCQjw8rTBhD&amp;mc_eid=8f2a91c7<span class="msg">the shirt I told you about</span></div>
+          </div>
+        </div>
+        <div>
+          <p class="chat-k good">with MUGA</p>
+          <div class="chat">
+            <div class="chat-who"><span class="av" aria-hidden="true">S</span>Sam</div>
+            <div class="bubble clean"><span class="u">shop.example/p/linen-shirt?size=m</span><span class="msg">the shirt I told you about</span></div>
           </div>
         </div>
       </div>
+      <div class="ruler" aria-hidden="true"><span>193 characters</span><span class="good">41 characters, same page</span></div>
     </div>
   </section>
 
-  <div class="wrap">
-    <div class="stats">
-      <div class="stat">
-        <div class="num">361<span class="unit">+</span></div>
-        <div class="label">Tracking patterns</div>
-        <div class="desc">utm_*, fbclid, gclid, mc_cid, msclkid and 356 more, removed at request time.</div>
-      </div>
-      <div class="stat">
-        <div class="num">100<span class="unit">%</span></div>
-        <div class="label">Open source</div>
-        <div class="desc">Every line is public under GPL v3. Read it, audit it, or fork it. Every build step is in the repo.</div>
-      </div>
-      <div class="stat">
-        <div class="num">0</div>
-        <div class="label">Telemetry</div>
-        <div class="desc">No analytics, no telemetry, no account. We are not interested in collecting any of that.</div>
-      </div>
-    </div>
-  </div>
-
-  <section class="section" id="creator-fair">
-    <div class="wrap wedge-grid section-frame">
-      <div>
-        <div class="section-label">The wedge</div>
-        <h2>Cleaning your links shouldn't cut off who recommended them.</h2>
-        <p>
-          When a reviewer, a creator or a newsletter shares a link, their referral is often how they get
-          credited for the recommendation, at no extra cost to you. Most cleaners strip it along with the
-          tracking. MUGA tries not to.
-        </p>
-        <p>
-          When MUGA recognizes a referral like that, it tries to leave it alone.
-          A toast for it is opt-in in Settings. It is a best-effort intention, not a guarantee.
-        </p>
-        <p>
-          And you stay in control: keep those referrals, or strip every third-party one if you prefer.
-        </p>
+  <section class="section" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-label">What it does</div>
+        <h2 id="how-title">Clean links <span class="sig">that still work.</span></h2>
+        <p>Cleaning starts the moment you install. Nothing to set up, and everything is one switch away in Settings.</p>
       </div>
 
-      <div class="wedge-card" aria-label="Example URL with creator referral preserved">
-        <div class="header">
-          <span class="ttl">muga · clean</span>
-          <span class="meta">referral kept</span>
+      <div class="cap-grid">
+        <div class="cap">
+          <span class="n">01 &#183; strip</span>
+          <h3>Strips the clutter</h3>
+          <p>Campaign tags, click IDs and mailing IDs come off the links you open, copy and share, before the page even loads.</p>
+          <div class="desc">utm_*, fbclid, gclid, mc_cid, msclkid and 356 more…</div>
         </div>
-        <div class="row"><span class="k">host</span><span class="v">shop.example.com</span></div>
-        <div class="row"><span class="k">path</span><span class="v">/p/AZ12345</span></div>
-        <div class="row"><span class="k">strip</span><span class="v strip">utm_source, utm_campaign, fbclid, gclid, ref_</span></div>
-        <div class="row"><span class="k">keep</span><span class="v keep-v">ref=creator</span></div>
-        <div class="row"><span class="k">action</span><span class="v action">strip the tracking, keep the referral, say so in the popup</span></div>
+        <div class="cap">
+          <span class="n">02 &#183; keep</span>
+          <h3>Keeps links working</h3>
+          <p>Search terms, filters and settings the page uses stay where they are, so the clean link opens the same page. If a site ever misbehaves, pause MUGA there with one click.</p>
+          <div class="eg"><span class="bad">utm_source=newsletter</span> <span class="arr">&#183;</span> <span class="good">size=m</span> stays</div>
+        </div>
+        <div class="cap">
+          <span class="n">03 &#183; reveal</span>
+          <h3>See where a link really goes</h3>
+          <p>Redirect wrappers open the page they point at, and short links are followed in your browser, so you land on a clean address. On desktop, hover a link and hold still to preview its real destination.</p>
+          <div class="eg">go.example/x7Kp2 <span class="arr">→</span> <span class="good">shop.example/p/linen-shirt</span></div>
+        </div>
+        <div class="cap">
+          <span class="n">04 &#183; copy</span>
+          <h3>Copy a clean link</h3>
+          <p>Right-click a link and choose Copy clean link. <kbd>Ctrl</kbd> + <kbd>C</kbd> tidies the links in your selection too, so what you paste is short and clear.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="hover-preview">
-    <div class="wrap wedge-grid section-frame">
-      <div>
-        <div class="section-label">Before you click</div>
-        <h2>See where a link really goes.</h2>
-        <p>
-          On desktop, hover a link and hold still for a moment. MUGA shows you its real
-          destination, already cleaned, right there. No click, no page load: the real
-          destination shows up right where you are already looking.
-        </p>
-        <p>
-          It only speaks up when it matters: links that bounce you through a redirect or a
-          wrapper before landing somewhere else. A plain link that goes where it says shows
-          nothing at all.
-        </p>
-        <p>
-          On by default on the desktop, and one switch to turn off in Settings.
-        </p>
-      </div>
-
-      <div class="wedge-card" aria-label="Example of the hover destination preview">
-        <div class="header">
-          <span class="ttl">muga · hover</span>
-          <span class="meta">desktop</span>
-        </div>
-        <div class="row"><span class="k">link</span><span class="v">l.facebook.com/l.php?u=...</span></div>
-        <div class="row"><span class="k">goes to</span><span class="v keep-v">merchant.example.com</span></div>
-        <div class="row"><span class="k">shown</span><span class="v action">the real cleaned destination, on hover, before you click</span></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap section-frame">
-      <div class="trust-intro">
-        <div class="section-label">Trust, not trust-us</div>
-        <h2>Read the source. Watch the network tab.</h2>
-        <p>Three claims, three verifiable receipts.</p>
-      </div>
-
-      <div class="trust-grid">
-        <div class="trust-cell">
-          <span class="ic">01 · open</span>
-          <h3>GPL v3, every line</h3>
-          <p>Full source on GitHub. Build it yourself, audit it, fork it. The same build script makes both store packages. <a href="https://github.com/yocreoquesi/muga">Repo →</a></p>
-        </div>
-        <div class="trust-cell">
-          <span class="ic">02 · quiet</span>
-          <h3>No telemetry, no analytics</h3>
-          <p>No analytics, no telemetry, no account. The one thing MUGA fetches on its own is a weekly signed rule list, with nothing about you in the request, and it is one switch to turn off. <a href="https://rules.muga.app/transparency.html">Transparency →</a></p>
-        </div>
-        <div class="trust-cell">
-          <span class="ic">03 · honest</span>
-          <h3>We document the tradeoffs</h3>
-          <p>MUGA never adds its own affiliate tag. By default it respects the original referral, and stripping third-party tags is an optional extra you control in Settings, with no change to your price. <a href="https://rules.muga.app/privacy-page.html">Privacy →</a></p>
-        </div>
+  <section class="section" id="screens" aria-labelledby="screens-title">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-label">In the browser</div>
+        <h2 id="screens-title">Quiet until <span class="sig">you look.</span></h2>
+        <p>MUGA works in the background. Open the popup to see what changed on the page you are on.</p>
       </div>
 
       <div class="shots" aria-label="Extension screenshots">
         <figure class="shot">
-          <img src="https://rules.muga.app/assets/cws-ss1-popup-amazon.png" alt="MUGA popup on a product page showing the preserved creator referral" loading="lazy">
-          <figcaption>popup · product page</figcaption>
+          <img src="https://rules.muga.app/assets/store-1-clean-links-1280x800.png" alt="A messy shop link cleaned by MUGA: 193 characters down to 41, and it still opens the same page" width="1280" height="800" loading="lazy">
+          <figcaption>clean links &#183; same page</figcaption>
         </figure>
         <figure class="shot">
-          <img src="https://rules.muga.app/assets/cws-ss4-toast.png" alt="Toast notification: Creator referral preserved" loading="lazy">
-          <figcaption>opt-in toast · referral preserved</figcaption>
+          <img src="https://rules.muga.app/assets/store-2-copy-and-share-1280x800.png" alt="Right-click a link and choose Copy clean link; the short, readable link lands in a chat" width="1280" height="800" loading="lazy">
+          <figcaption>copy and share</figcaption>
         </figure>
         <figure class="shot">
-          <img src="https://rules.muga.app/assets/cws-ss3-options.png" alt="MUGA options page with per-site rules" loading="lazy">
-          <figcaption>settings · per-site rules</figcaption>
+          <img src="https://rules.muga.app/assets/store-3-where-links-go-1280x800.png" alt="A redirect wrapper and a short link, each shown next to the clean address it really goes to" width="1280" height="800" loading="lazy">
+          <figcaption>redirects &#183; short links</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="https://rules.muga.app/assets/store-4-this-page-popup-1280x800.png" alt="MUGA popup showing the link before and after, what came off and how much shorter it got" width="1280" height="800" loading="lazy">
+          <figcaption>popup &#183; this page</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="https://rules.muga.app/assets/store-5-settings-1280x800.png" alt="MUGA settings page with right-click copy, short-link lookups, weekly rule updates and per-site pause" width="1280" height="800" loading="lazy">
+          <figcaption>settings</figcaption>
         </figure>
       </div>
     </div>
   </section>
 
-  <section class="section" id="get">
+  <section class="section" id="quiet" aria-labelledby="quiet-title">
+    <div class="wrap"><div class="trust-grid quiet">
+      <div class="trust-cell">
+        <div class="section-label">Yours</div>
+        <h2 id="quiet-title">Built for you, <span class="sig">not about you.</span></h2>
+        <ul class="pills">
+          <li>Free</li>
+          <li>Open source</li>
+          <li>No telemetry</li>
+        </ul>
+      </div>
+      <div class="trust-cell">
+        <p>
+          No analytics and no account. The one thing MUGA fetches on its own is a weekly signed list of
+          cleaning rules, with nothing about you in the request, and it is one switch to turn off.
+          Every line is public under GPL v3.
+        </p>
+        <p class="fine">
+          Creator links: when a link already carries a creator's referral tag, MUGA tries to leave it in
+          place by default, and it never adds a tag of its own. It is a best-effort intention, not a guarantee.
+        </p>
+        <p class="links">
+          <a href="https://rules.muga.app/transparency.html">Transparency →</a>
+          <a href="https://rules.muga.app/privacy-page.html">Privacy →</a>
+          <a href="https://github.com/yocreoquesi/muga">Source →</a>
+        </p>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" aria-label="What MUGA stands for">
+    <div class="wrap"><div class="stands">
+      <p class="k">MUGA stands for&#8230;</p>
+      <span class="bk-text" id="bk" aria-live="polite">Minus Useless Garbage Appended.</span>
+    </div></div>
+  </section>
+
+  <section class="section" id="get" aria-labelledby="get-title">
     <div class="wrap">
       <div class="cta-panel">
         <div class="cta-inner">
-          <svg class="mark-lg" viewBox="0 0 104 68" width="52" height="34" fill="none" aria-hidden="true">
+          <svg class="mark-lg" viewBox="0 0 104 68" width="56" height="37" fill="none" aria-hidden="true">
             <path d="M 12 56 C 12 8, 46 8, 52 46 L 62 22 L 72 50 L 84 50" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M 80 37 L 98 50 L 80 63 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
           </svg>
-          <h2>Clean your links today.</h2>
-          <p>Free and open source. Pick whichever way fits how you browse.</p>
+          <h2 id="get-title">Just the link<span class="sig">.</span></h2>
+          <p>Free for Chrome and Firefox. Pick whichever way fits how you browse.</p>
           <div class="ways">
             <a class="way" data-plat="chrome" href="https://chromewebstore.google.com/detail/pjdpeamhcjdhfijpmgamjdoplbnbajoh">
               <svg class="way-ico" width="26" height="26" aria-hidden="true"><use href="#logo-chrome"/></svg>
               <span class="way-title">Chrome &amp; Chromium</span>
-              <span class="way-desc">The full extension for Chrome, Edge, Brave and Opera. Cleans links as you browse.</span>
+              <span class="way-desc">The full extension for Chrome, Edge, Brave and Opera. Cleans links as you browse, copy and share.</span>
               <span class="way-cta">Add to Chrome <span class="arr" aria-hidden="true">→</span></span>
             </a>
             <a class="way" data-plat="firefox" href="https://addons.mozilla.org/firefox/addon/muga/">
@@ -844,7 +878,7 @@
               </svg>
               <span class="way-title">MUGA Clean (web)</span>
               <span class="way-desc">No install, any device. Paste a link, get the clean version. Runs right in your browser.</span>
-              <span class="way-cta">Open MUGA Clean <span class="arr" aria-hidden="true">→</span></span>
+              <span class="way-cta">Clean a link <span class="arr" aria-hidden="true">→</span></span>
             </a>
           </div>
         </div>
@@ -865,7 +899,7 @@
           </svg>
           <span class="name">muga.app</span>
         </a>
-        <p>Removes the tracking from your URLs. Tries to keep the referral of whoever recommended you the link. Built by an independent developer. Free and open source.</p>
+        <p>The URL cleaner for Chrome and Firefox. Links, without the clutter. Built by an independent developer. Free and open source.</p>
       </div>
       <div class="footer-col">
         <h4>Install</h4>
@@ -892,33 +926,35 @@
       </div>
     </div>
     <div class="footer-meta">
-      <span>© 2026 muga.app · Released under GPL v3</span>
+      <span>© 2026 muga.app &#183; Released under GPL v3</span>
       <span>v3.1.0 · published 2026-09-11</span>
     </div>
   </div>
 </footer>
 
 <script>
-  // Backronym rotator
+  // Backronym rotator: one line every few seconds. The fade is CSS, and it is
+  // switched off under prefers-reduced-motion; the text still changes.
   (function () {
     var lines = [
-      'Most URLs Get Abused.',
-      'Mercilessly Undoing Garbage Attachments.',
-      'Making URLs Good Again.'
+      'Minus Useless Garbage Appended.',
+      'My URLs, Gloriously Abridged.',
+      'Mostly Unneeded, Gone Automatically.'
     ];
     var el = document.getElementById('bk');
-    var i = 2;
+    if (!el) return;
+    var i = 0;
     setInterval(function () {
       el.classList.add('fade');
       setTimeout(function () {
         i = (i + 1) % lines.length;
         el.textContent = lines[i];
         el.classList.remove('fade');
-      }, 360);
+      }, 160);
     }, 4200);
   })();
 
-  // Platform-aware install CTA — progressive enhancement, no analytics.
+  // Platform-aware install CTA: progressive enhancement, no analytics.
   // Without JS the hero shows every option (Chrome + Firefox + the web tool)
   // so nothing is hidden from anyone. With JS it keeps only what the visitor
   // can act on right now up top: the extension for their own browser plus the
@@ -943,16 +979,14 @@
 
     if (isFirefox) {
       // Firefox on desktop or Android: the extension installs on both. Lead
-      // with Firefox; Chrome's button is not relevant here. The badge still
-      // resolves to the Firefox card in the "three ways" grid below.
+      // with Firefox; Chrome's button is not relevant here.
       hide(chrome);
       primary(firefox);
       youPlat = 'firefox';
     } else if (isMobile) {
       // iOS, Chrome for Android, other mobile browsers: no installable
-      // extension here, so the install row has nothing to lead with. The
-      // always-visible tool below is the call to action, and the badge points
-      // at the web card in the "three ways" grid.
+      // extension here, so the "Try it on a link" button, which stays, is the
+      // call to action, and the badge points at the web card below.
       hide(chrome); hide(firefox);
       youPlat = 'web';
     } else {
@@ -963,8 +997,8 @@
       youPlat = 'chrome';
     }
 
-    // If platform detection hid every install button (mobile with no
-    // installable extension), collapse the empty row so it leaves no gap.
+    // If platform detection hid every install button, collapse the empty row
+    // so it leaves no gap.
     var install = document.getElementById('hero-install');
     if (install) {
       var anyVisible = Array.prototype.some.call(
@@ -1113,13 +1147,13 @@
 
   // Console easter egg
   console.log(
-    "%cMUGA%c  Welcome to muga.app. View source, you'll like what you see.\nNo analytics. No third-party requests. No build step.\nhttps://github.com/yocreoquesi/muga",
+    "%cMUGA%c  Welcome to muga.app. View source, you'll like what you see.\nJust the link. No analytics, no account, no build step.\nhttps://github.com/yocreoquesi/muga",
     "background:#6A2BCF;color:#fff;padding:4px 8px;border-radius:4px;font-weight:600;",
     "color:#888;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;"
   );
 
-  // Screenshot lightbox — progressive enhancement, zero dependencies.
-  // If this fails, the thumbnails below stay fully functional and unchanged.
+  // Screenshot lightbox: progressive enhancement, zero dependencies. Built
+  // with createElement only. If this fails, the thumbnails stay as they are.
   (function () {
     var container = document.querySelector('.shots');
     if (!container) return;
@@ -1133,27 +1167,38 @@
 
     container.classList.add('is-enhanced');
 
-    var box = document.createElement('div');
-    box.className = 'lightbox';
-    box.setAttribute('role', 'dialog');
-    box.setAttribute('aria-modal', 'true');
-    box.setAttribute('aria-label', 'Screenshot viewer');
+    function make(tag, cls, attrs) {
+      var node = document.createElement(tag);
+      if (cls) node.className = cls;
+      Object.keys(attrs || {}).forEach(function (k) { node.setAttribute(k, attrs[k]); });
+      return node;
+    }
+
+    var box = make('div', 'lightbox', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Screenshot viewer' });
     if (items.length < 2) box.setAttribute('data-single', 'true');
-    box.innerHTML =
-      '<div class="lightbox-stage">' +
-        '<button class="lightbox-close" type="button" aria-label="Close">×</button>' +
-        '<button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous screenshot">‹</button>' +
-        '<figure class="lightbox-figure">' +
-          '<img class="lightbox-img" alt="">' +
-          '<figcaption class="lightbox-cap"><span class="lightbox-cap-text"></span><span class="lightbox-count"></span></figcaption>' +
-        '</figure>' +
-        '<button class="lightbox-nav lightbox-next" type="button" aria-label="Next screenshot">›</button>' +
-      '</div>';
+    var stage = make('div', 'lightbox-stage');
+    var closeBtn = make('button', 'lightbox-close', { type: 'button', 'aria-label': 'Close' });
+    closeBtn.textContent = '×';
+    var prevBtn = make('button', 'lightbox-nav lightbox-prev', { type: 'button', 'aria-label': 'Previous screenshot' });
+    prevBtn.textContent = '‹';
+    var nextBtn = make('button', 'lightbox-nav lightbox-next', { type: 'button', 'aria-label': 'Next screenshot' });
+    nextBtn.textContent = '›';
+    var figure = make('figure', 'lightbox-figure');
+    var imgEl = make('img', 'lightbox-img', { alt: '' });
+    var capEl = make('figcaption', 'lightbox-cap');
+    var capText = make('span', 'lightbox-cap-text');
+    var countEl = make('span', 'lightbox-count');
+    capEl.appendChild(capText);
+    capEl.appendChild(countEl);
+    figure.appendChild(imgEl);
+    figure.appendChild(capEl);
+    stage.appendChild(closeBtn);
+    stage.appendChild(prevBtn);
+    stage.appendChild(figure);
+    stage.appendChild(nextBtn);
+    box.appendChild(stage);
     document.body.appendChild(box);
 
-    var imgEl = box.querySelector('.lightbox-img');
-    var capText = box.querySelector('.lightbox-cap-text');
-    var countEl = box.querySelector('.lightbox-count');
     var cur = 0, lastFocus = null;
 
     function render() {
@@ -1166,7 +1211,7 @@
       cur = i; lastFocus = document.activeElement; render();
       box.classList.add('open');
       document.documentElement.style.overflow = 'hidden';
-      box.querySelector('.lightbox-close').focus();
+      closeBtn.focus();
     }
     function close() {
       box.classList.remove('open');
@@ -1185,9 +1230,9 @@
       });
     });
 
-    box.querySelector('.lightbox-close').addEventListener('click', close);
-    box.querySelector('.lightbox-prev').addEventListener('click', function () { go(-1); });
-    box.querySelector('.lightbox-next').addEventListener('click', function () { go(1); });
+    closeBtn.addEventListener('click', close);
+    prevBtn.addEventListener('click', function () { go(-1); });
+    nextBtn.addEventListener('click', function () { go(1); });
     box.addEventListener('click', function (e) { if (e.target === box) close(); });
     document.addEventListener('keydown', function (e) {
       if (!box.classList.contains('open')) return;
@@ -1197,67 +1242,10 @@
     });
   })();
 
-  // Stat count-up — progressive enhancement, no dependencies.
-  // The static markup already shows the final numbers (361+, 100%, 0), so if
-  // IntersectionObserver or requestAnimationFrame is unavailable, or the
-  // visitor prefers reduced motion, this does nothing and those numbers stay
-  // exactly as written. Only when it can also observe and animate does it
-  // reset a number to 0 first, so nothing is ever left stuck mid-count.
-  (function () {
-    if (typeof IntersectionObserver === 'undefined' || !window.requestAnimationFrame) return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    var statsRow = document.querySelector('.stats');
-    if (!statsRow) return;
-
-    var counters = [];
-    Array.prototype.forEach.call(statsRow.querySelectorAll('.num'), function (numEl) {
-      var textNode = null;
-      for (var i = 0; i < numEl.childNodes.length; i++) {
-        var node = numEl.childNodes[i];
-        if (node.nodeType === 3 && node.nodeValue.trim() !== '') { textNode = node; break; }
-      }
-      if (!textNode) return;
-      var target = parseInt(textNode.nodeValue.trim(), 10);
-      if (isNaN(target)) return;
-      counters.push({ node: textNode, target: target });
-    });
-    if (!counters.length) return;
-
-    var DURATION = 1100;
-
-    function runCount(counter) {
-      var start = null;
-      function step(ts) {
-        if (start === null) start = ts;
-        var progress = Math.min((ts - start) / DURATION, 1);
-        var eased = 1 - Math.pow(1 - progress, 3);
-        counter.node.nodeValue = String(Math.round(counter.target * eased));
-        if (progress < 1) window.requestAnimationFrame(step);
-        else counter.node.nodeValue = String(counter.target);
-      }
-      window.requestAnimationFrame(step);
-    }
-
-    // Only zero the numbers out once the observer is actually wired, so a
-    // failure between here and observe() can never leave them blank.
-    counters.forEach(function (counter) { counter.node.nodeValue = '0'; });
-
-    var statsObserver = new IntersectionObserver(function (entries, obs) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        counters.forEach(runCount);
-        obs.unobserve(entry.target);
-      });
-    }, { threshold: 0.4 });
-    statsObserver.observe(statsRow);
-  })();
-
-  // Scroll-reveal entrances + wedge-card strike echo — progressive
-  // enhancement, no dependencies. The .reveal/.wedge-anim classes are only
-  // ever added here, right before this same code also observes the element,
-  // so without IntersectionObserver (or under reduced motion) nothing is
-  // ever hidden and every section/card stays fully visible by default.
+  // Scroll-reveal entrances: progressive enhancement, no dependencies. The
+  // .reveal class is only ever added here, right before this same code also
+  // observes the element, so without IntersectionObserver (or under reduced
+  // motion) nothing is ever hidden.
   (function () {
     if (typeof IntersectionObserver === 'undefined') return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -1265,14 +1253,12 @@
     var revealObserver = new IntersectionObserver(function (entries, obs) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        var el = entry.target;
-        obs.unobserve(el);
-        el.classList.add('is-visible');
-        if (el.classList.contains('wedge-card')) el.classList.add('wedge-anim');
+        obs.unobserve(entry.target);
+        entry.target.classList.add('is-visible');
       });
-    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
-    ['.section-frame', '.stat', '.trust-cell', '.way', '.wedge-card'].forEach(function (selector) {
+    ['.section-head', '.share-grid', '.cap', '.quiet', '.stands', '.way'].forEach(function (selector) {
       var els = document.querySelectorAll(selector);
       Array.prototype.forEach.call(els, function (el, i) {
         el.classList.add('reveal');
