@@ -683,6 +683,42 @@ hostname is any merchant domain
 
 ---
 
+## Income Access (Paysafe)
+
+**Surface**
+
+- Redirect host: `*.adsrv.eacdn.com` — a white-labeled subdomain per operator (e.g. `wlneteller.adsrv.eacdn.com`, `wlpinnacle.adsrv.eacdn.com`), not one shared redirect host. Same wildcard shape as Impact's `*.pxf.io`: one advertiser per subdomain. Now in `REDIRECT_NETWORK_PATTERNS` (`btag` as `landingParams`, #1482).
+- Merchant landing: any Income Access-onboarded operator — primarily iGaming/casino (poker, sportsbook, casino) affiliate programs.
+- Endpoint shape: `https://wl<brand>.adsrv.eacdn.com/C.ashx?btag=a_<siteId>b_<bannerId>c_&affid=<affId>&siteid=<siteId>&adid=<bannerId>&c=<acId>`.
+
+**Click flow (inferred — public docs/forum evidence only, no partner-account verification yet)**
+
+1. User clicks an Income Access-wrapped link.
+2. Browser hits `wl<brand>.adsrv.eacdn.com/C.ashx`.
+3. Income Access logs the click and issues a redirect to the operator landing page with `?btag=<attribution>` appended.
+4. The operator's own landing-page tag reads `btag` from the URL and stores it in a first-party cookie.
+5. At conversion, the operator's tag reads the cookie and posts the conversion back to Income Access.
+
+**Attribution mechanism**
+
+`btag` is Income Access's affiliate attribution tag: the browser is redirected to the operator's own domain (not a third-party merchant), carrying `btag` in the query string, and the operator's own tag on that landing page reads it to place the attribution cookie. Universal-strip at `document_start` (as a global `TRACKING_PARAMS` entry, marked "vendor unverified" since #1338) removed it before that tag could read it, killing the creator's commission on every install unconditionally — the same defect class the sscid fix (#1443) addressed for ShareASale.
+
+**Param table**
+
+| Param | Verdict | Notes |
+|---|---|---|
+| `btag` | **required-at-landing** | Income Access affiliate attribution tag. Promoted from `TRACKING_PARAMS` to `REDIRECT_NETWORK_PATTERNS.income-access.landingParams` in #1482 (maintainer decision 2026-09-27). |
+| `affid`, `siteid`, `adid`, `c` (in the `C.ashx` redirect URL) | n/a (redirect-internal) | Affiliate / site / banner / account identifiers in the redirect URL itself, not on the landing page. |
+
+**Verification status**
+
+- ✅ `btag` is Income Access's documented attribution param, and the `C.ashx?btag=` link shape is confirmed by public forum/vendor evidence (GPWA.org tracking threads, Paysafe Affiliates' own "retiring Classic Banner tracking links" announcement).
+- ✅ `*.adsrv.eacdn.com` white-label redirect domain — confirmed by the same evidence (`wlneteller.adsrv.eacdn.com`, `wlpinnacle.adsrv.eacdn.com` observed).
+- ⚠️ Cookie TTL / lookback window — **[NEEDS PARTNER-ACCOUNT VERIFICATION]**. Income Access does not publish a universal default; it is operator-configurable, as is typical for iGaming affiliate programs.
+- ⚠️ The other "#1338 vendor unverified" tag-like names (`ftag`, `winflncrtag`, `ldtag_cl`) were re-checked against the same criterion during #1482 triage; no public evidence tying them to a specific affiliate network was found (unlike `btag`'s well-documented Income Access evidence above), so they were left unchanged rather than moved on suspicion alone.
+
+---
+
 ## Auto-Injectors
 
 Categorically distinct from every network above: a redirect network's landing

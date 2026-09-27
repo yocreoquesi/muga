@@ -30,6 +30,7 @@ import { test, describe, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import * as DNR_IDS from "../../src/lib/dnr-ids.js";
 import { ownedDynamicRanges } from "../../src/background/dnr-teardown.js";
+import { PRESERVED_BY_HOST } from "../../src/rules/preserve-params.data.js";
 
 // ── Stub chrome + fetch BEFORE importing dnr-sync.js ─────────────────────────
 
@@ -337,5 +338,138 @@ describe("#1461 — syncCustomParamsDNR on Firefox: remove-only, never adds", ()
       fakeDnr.calls[0].addRules[0].action.redirect.transform.queryTransform.removeParams,
       ["my_custom_param"],
     );
+  });
+});
+
+// ── #1477 — rule 1000 must never strip a host's preserveParams ──────────────
+
+describe("#1477 — syncCustomParamsDNR excludes hosts that preserve a requested param", () => {
+  // Self-contained: does not rely on the file-level beforeEach's ordering
+  // relative to other describe blocks (e.g. the Firefox block above installs
+  // its own manifest_version:2 stub per-test, not via beforeEach). Reset both
+  // the fake DNR call log and the browser-mode stub explicitly here so this
+  // block's expectations hold regardless of what ran before it.
+  beforeEach(() => {
+    fakeDnr = makeFakeDnr();
+    installChromeStub();
+  });
+
+  test("a non-conflicting param keeps rule 1000's old shape (no excludedRequestDomains)", async () => {
+    await dnrSync.syncCustomParamsDNR(["my_custom_param"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    assert.strictEqual(rule.condition.excludedRequestDomains, undefined);
+    assert.strictEqual(rule.condition.urlFilter, "*");
+  });
+
+  test("'k' never yields a rule 1000 that matches amazon.com (AGENTS.md: DNR must not strip preserveParams)", async () => {
+    await dnrSync.syncCustomParamsDNR(["k"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+
+    assert.deepStrictEqual(rule.action.redirect.transform.queryTransform.removeParams, ["k"]);
+    assert.ok(Array.isArray(rule.condition.excludedRequestDomains), "expected excludedRequestDomains to be set");
+    assert.ok(
+      rule.condition.excludedRequestDomains.includes("amazon.com"),
+      "amazon.com preserves 'k' (search keywords) and must be excluded from rule 1000",
+    );
+  });
+
+  // Literal, independent of PRESERVED_BY_HOST — deriving "expected" from the
+  // same source the code under test reads from proves only that the code
+  // copied its input, not that the copy is correct. These hosts are pinned
+  // by hand from src/rules/domain-rules.json's amazon.* preserveParams
+  // entries (#1477's own "k breaks Amazon search" example).
+  test("a small literal set of Amazon marketplaces that preserve 'k' are all excluded", async () => {
+    await dnrSync.syncCustomParamsDNR(["k"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    const expected = ["amazon.com", "amazon.de", "amazon.co.uk", "amazon.es", "amazon.fr", "amazon.it"];
+
+    for (const host of expected) {
+      assert.ok(
+        rule.condition.excludedRequestDomains.includes(host),
+        `expected ${host} to be excluded from rule 1000 (preserves 'k')`,
+      );
+    }
+  });
+
+  test("a mix of a conflicting and a non-conflicting param excludes the host from BOTH — DNR fires at most once per request, so a partial strip is not expressible; the content script (which already skips preserved params) covers the rest on that host", async () => {
+    await dnrSync.syncCustomParamsDNR(["k", "my_custom_param"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+
+    assert.deepStrictEqual(rule.action.redirect.transform.queryTransform.removeParams, ["k", "my_custom_param"]);
+    assert.ok(rule.condition.excludedRequestDomains.includes("amazon.com"));
+  });
+
+  test("a param nobody preserves never triggers the exclusion scan's output", async () => {
+    await dnrSync.syncCustomParamsDNR(["totally_unique_param_xyz"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    assert.strictEqual(rule.condition.excludedRequestDomains, undefined);
+  });
+
+  // Content-script path: on a host excluded from rule 1000, the network layer
+  // does nothing for customParams at all — processUrl (stripTrackingParams)
+  // is what actually delivers "strip the non-conflicting param, keep the
+  // conflicting one" for that host. Proves the DNR exclusion does not leave
+  // `my_custom_param` unstripped on amazon.com, only that `k` stays untouched.
+  test("processUrl on amazon.com still strips the non-conflicting custom param while keeping 'k' (content-script path)", async () => {
+    const { processUrl } = await import("../../src/lib/cleaner.js");
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    // domainRules is NOT loaded automatically by processUrl (it defaults to
+    // []); the caller (service worker / content script / options preview)
+    // is responsible for threading it through. amazon.com's "k" preserve
+    // only takes effect when this is actually passed, exactly as every real
+    // caller does.
+    const domainRules = require("../../src/rules/domain-rules.json");
+    const prefs = {
+      enabled: true,
+      onboardingDone: true,
+      whitelist: [],
+      blacklist: [],
+      customParams: ["k", "my_custom_param"],
+    };
+    const result = processUrl("https://www.amazon.com/s?k=shoes&my_custom_param=x", prefs, domainRules);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking, ["my_custom_param"]);
+    assert.equal(result.cleanUrl, "https://www.amazon.com/s?k=shoes");
+  });
+});
+
+// ── #1477 (native-review advisory) — excludedRequestDomains input is a valid
+// DNR requestDomain, so a future bad domain-rules.json entry cannot take
+// down the whole rule 1000 registration ────────────────────────────────────
+
+describe("#1477 — isValidDnrRequestDomain()", () => {
+  test("accepts plain lowercase dotted hostnames", () => {
+    for (const host of ["amazon.com", "www.example.co.uk", "a.b.c.d"]) {
+      assert.equal(dnrSync.isValidDnrRequestDomain(host), true, `expected ${host} to be valid`);
+    }
+  });
+
+  test("rejects wildcards, ports, protocols, uppercase, and bare labels", () => {
+    for (const host of [
+      "*.example.com",
+      "example.com:443",
+      "https://example.com",
+      "Example.com",
+      "localhost",
+      "",
+      "-bad.com",
+      "bad-.com",
+      "bad..com",
+      null,
+      undefined,
+      42,
+    ]) {
+      assert.equal(dnrSync.isValidDnrRequestDomain(host), false, `expected ${JSON.stringify(host)} to be invalid`);
+    }
+  });
+
+  test("every PRESERVED_BY_HOST key is a valid DNR requestDomain", () => {
+    const keys = Object.keys(PRESERVED_BY_HOST);
+    assert.ok(keys.length > 0, "test fixture sanity: PRESERVED_BY_HOST must not be empty");
+    for (const host of keys) {
+      assert.ok(dnrSync.isValidDnrRequestDomain(host), `PRESERVED_BY_HOST key "${host}" is not a valid DNR requestDomain`);
+    }
   });
 });

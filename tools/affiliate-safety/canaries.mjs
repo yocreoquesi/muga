@@ -111,4 +111,6 @@ export const LANDING_CANARIES = Object.freeze([
   { name: "tradedoubler", landingHost: "merchant.com", referrer: "https://clk.tradedoubler.com/click?p=1&a=2&url=https%3A%2F%2Fmerchant.com", mustPreserve: ["tduid"], network: "tradedoubler" },
   // #1443: sscid promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.shareasale.
   { name: "shareasale", landingHost: "merchant.com", referrer: "https://www.shareasale.com/r.cfm?b=1&u=2&m=3&urllink=https%3A%2F%2Fmerchant.com", mustPreserve: ["sscid"], network: "shareasale" },
+  // #1482: btag promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.income-access.
+  { name: "income-access", landingHost: "www.pokerstars.com", referrer: "https://wlneteller.adsrv.eacdn.com/C.ashx?btag=a_1b_2c_", mustPreserve: ["btag"], network: "income-access" },
 ]);

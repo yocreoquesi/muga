@@ -239,6 +239,28 @@ export const REDIRECT_NETWORK_PATTERNS = deepFreeze([
       "blocked — analogous to Awin's `awc`. Universal strip would kill creator " +
       "attribution on every ITP/partitioned-cookie install.",
   },
+  {
+    id: "income-access",
+    name: "Income Access (Paysafe)",
+    group: "Income Access",
+    // Income Access white-labels a redirect subdomain per operator
+    // (wl<brand>.adsrv.eacdn.com — e.g. wlneteller, wlpinnacle) rather than
+    // running one shared redirect host like Awin or ShareASale. Same wildcard
+    // shape as Impact's *.pxf.io: one advertiser per subdomain.
+    redirectHosts: ["*.adsrv.eacdn.com"],
+    landingParams: ["btag"],
+    type: "redirect-network",
+    references: ["docs/affiliate-networks-matrix.md#income-access-paysafe"],
+    notes:
+      "Promoted from TRACKING_PARAMS in #1482 (same class as sscid/#1443): " +
+      "`btag` is Income Access's (Paysafe) affiliate attribution tag — " +
+      "tracking links redirect through *.adsrv.eacdn.com/C.ashx?btag=..., and " +
+      "the operator's own landing-page tag reads BTAG from the URL to place " +
+      "its attribution cookie. Universal strip removed it before that tag " +
+      "could read it, killing creator commission on every install regardless " +
+      "of stripAllAffiliates. Primarily used by iGaming/casino affiliate " +
+      "programs (poker, sportsbook, casino operators).",
+  },
 ]);
 
 /**
