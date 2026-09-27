@@ -333,6 +333,161 @@ export function buildManifest() {
   return manifest;
 }
 
+// ── computeTailoredDomainState / resolvePathRuleHostBase / buildPathRuleSpecs
+// (#1490) — placed BEFORE buildDnrRules' own docblock so that docblock stays
+// immediately adjacent to `export function buildDnrRules() {` below (a JSDoc
+// comment only attaches to the declaration it is directly above; separating
+// them made checkJs fall back to inferring buildDnrRules' return type from
+// its body instead of using the documented `@returns {Array}`, which broke
+// typecheck at every call site that reads `.condition.requestDomains` off a
+// rule that isn't the global/profile shape). ─────────────────────────────
+
+/**
+ * Computes which domains diverge from the global TRACKING_PARAMS rule
+ * (`tailoredDomains`) and, for those with something to strip, each one's
+ * COMPLETE removeParams set (`removeParamsByDomain`) plus the ordered
+ * `perDomain` list buildDnrRules groups into profile rules.
+ *
+ * Extracted from buildDnrRules (#1490) so `resolvePathRuleHostBase` can be
+ * exercised with a synthetic `domainRules` array in tests instead of only
+ * through the real src/rules/domain-rules.json file. Pure function — same
+ * logic as before extraction, just parameterized instead of closed over
+ * buildDnrRules' locals.
+ *
+ * @param {Array<object>} domainRules - domain-rules.json entries (or a
+ *   synthetic equivalent for tests)
+ * @param {Set<string>} guard - lowercased AFFILIATE_PARAM_GUARD
+ * @param {Set<string>} deny - lowercased REMOTE_PARAM_DENYLIST
+ * @param {string[]} trackingParams - TRACKING_PARAMS (or a synthetic list)
+ * @returns {{
+ *   tailoredDomains: Set<string>,
+ *   removeParamsByDomain: Map<string, string[]>,
+ *   perDomain: Array<{domain: string, removeParams: string[]}>
+ * }}
+ */
+export function computeTailoredDomainState(domainRules, guard, deny, trackingParams) {
+  const trackingLc = new Set(trackingParams.map((p) => p.toLowerCase()));
+
+  // See buildDnrRules' body comment (below, at its own callsite before
+  // extraction) for the full rationale — kept there since it documents the
+  // whole per-domain-profile design, not just this helper.
+  const tailoredDomains = new Set(); // every tailored domain — all excluded from global
+  const perDomain = []; // { domain, removeParams } — only those with something to strip
+  for (const rule of domainRules) {
+    if (typeof rule.domain !== "string") continue;
+    const preserveLc = new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()));
+    const preservesTracked = [...preserveLc].some((p) => trackingLc.has(p));
+
+    // Extra strips: params a host's profile strips that are unsafe site-wide
+    // (absent from trackingParams), minus anything preserved/guarded/denied.
+    const extraStrips = (rule.stripParams ?? []).filter((p) => {
+      const lc = p.toLowerCase();
+      return !trackingLc.has(lc) && !preserveLc.has(lc) && !guard.has(lc) && !deny.has(lc);
+    });
+
+    if (!preservesTracked && extraStrips.length === 0) continue; // global covers it
+
+    // Tailored: must be excluded from the global rule so it never double-matches.
+    tailoredDomains.add(rule.domain);
+
+    // Complete set for this host: all trackingParams minus its preserves, then
+    // its extra strips (sorted+deduped, disjoint from the base by construction).
+    const base = trackingParams.filter((p) => !preserveLc.has(p.toLowerCase()));
+    const removeParams = [...base, ...[...new Set(extraStrips)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))];
+    // A domain that preserves EVERY tracking param (and adds no extra strips) has
+    // nothing to strip: it stays excluded from the global rule (above) but gets no
+    // profile rule, so NO DNR rule matches it and all its params survive.
+    if (removeParams.length === 0) continue;
+    perDomain.push({ domain: rule.domain, removeParams });
+  }
+
+  const removeParamsByDomain = new Map(perDomain.map((d) => [d.domain, d.removeParams]));
+  return { tailoredDomains, removeParamsByDomain, perDomain };
+}
+
+/**
+ * The removeParams set Chrome's OWN priority-1 rule applies to `domain`
+ * today — a tailored ancestor's rule if one exists (walking up label by
+ * label, mirroring Chrome's subdomain-inclusive requestDomains/
+ * excludedRequestDomains matching), else the global trackingParams rule.
+ * See buildDnrRules' "Path-scoped strip rules" comment block for the full
+ * rationale (#1326, #1467). Extracted (#1490) as a pure function of its
+ * inputs so it can be tested with controlled `tailoredDomains`/
+ * `removeParamsByDomain` instead of only via the real rules file.
+ *
+ * @param {string} domain
+ * @param {Set<string>} tailoredDomains
+ * @param {Map<string, string[]>} removeParamsByDomain
+ * @param {string[]} trackingParams - fallback when no tailored ancestor exists
+ * @returns {string[]}
+ */
+export function resolvePathRuleHostBase(domain, tailoredDomains, removeParamsByDomain, trackingParams) {
+  let d = domain;
+  for (;;) {
+    if (tailoredDomains.has(d)) return removeParamsByDomain.get(d) ?? [];
+    const dot = d.indexOf(".");
+    if (dot === -1) return [...trackingParams];
+    d = d.slice(dot + 1);
+  }
+}
+
+/**
+ * Builds the path-scoped rule specs (pre-id, pre-sort-cap) that buildDnrRules
+ * turns into DNR rules: one `{domain, prefix, removeParams}` per
+ * (domain, pathPrefixes-group, prefix) tuple in every `domainRules` entry
+ * that carries `pathStrips`. `removeParams` is `resolvePathRuleHostBase`'s
+ * result for that domain UNION the group's own params (guard/deny-filtered,
+ * deduped against the host base). See buildDnrRules' "Path-scoped strip
+ * rules" comment block for the full rationale (#1326, #1467).
+ *
+ * Extracted (#1490) — same logic as before extraction — so a test can prove
+ * a `pathStrips` entry naming a param its own governing ancestor preserves
+ * would actually surface in `removeParams` (there is no preserve-vs-pathStrips
+ * check today; only hostBase/guard/deny are filtered out).
+ *
+ * @param {Array<object>} domainRules
+ * @param {Set<string>} tailoredDomains
+ * @param {Map<string, string[]>} removeParamsByDomain
+ * @param {string[]} trackingParams
+ * @param {Set<string>} guard - lowercased AFFILIATE_PARAM_GUARD
+ * @param {Set<string>} deny - lowercased REMOTE_PARAM_DENYLIST
+ * @returns {Array<{domain: string, prefix: string, removeParams: string[]}>}
+ */
+export function buildPathRuleSpecs(domainRules, tailoredDomains, removeParamsByDomain, trackingParams, guard, deny) {
+  const byCodepoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  const pathRuleSpecs = [];
+  for (const rule of domainRules) {
+    if (typeof rule.domain !== "string") continue;
+    const pathStrips = rule.pathStrips;
+    if (!Array.isArray(pathStrips) || pathStrips.length === 0) continue;
+
+    const hostBase = resolvePathRuleHostBase(rule.domain, tailoredDomains, removeParamsByDomain, trackingParams);
+    const hostBaseLc = new Set(hostBase.map((p) => p.toLowerCase()));
+
+    for (const group of pathStrips) {
+      const seen = new Set();
+      const addition = (group.params ?? []).filter((p) => {
+        const lc = p.toLowerCase();
+        if (seen.has(lc) || hostBaseLc.has(lc)) return false;
+        seen.add(lc);
+        return !guard.has(lc) && !deny.has(lc);
+      });
+      const removeParams = [...hostBase, ...addition.sort(byCodepoint)];
+
+      for (const prefix of group.pathPrefixes ?? []) {
+        pathRuleSpecs.push({ domain: rule.domain, prefix, removeParams });
+      }
+    }
+  }
+
+  // Deterministic, independent of domainRules' own iteration order (a future
+  // reorder of the source array must not reshuffle ids).
+  pathRuleSpecs.sort(
+    (a, b) => byCodepoint(a.domain, b.domain) || byCodepoint(a.prefix, b.prefix)
+  );
+  return pathRuleSpecs;
+}
+
 /**
  * Builds the DNR rule array (tracking-params.json format).
  * Pure function — no file I/O beyond reading domain-rules.json.
@@ -375,7 +530,6 @@ export function buildDnrRules() {
 
   const guard = new Set([...AFFILIATE_PARAM_GUARD].map((s) => s.toLowerCase()));
   const deny = new Set([...REMOTE_PARAM_DENYLIST].map((s) => s.toLowerCase()));
-  const trackingLc = new Set(TRACKING_PARAMS.map((p) => p.toLowerCase()));
 
   // Codepoint comparator — locale-independent so rule ordering (and thus the
   // 300+i ids) is byte-identical across environments, keeping the compile:rules
@@ -393,67 +547,37 @@ export function buildDnrRules() {
   // TRACKING_PARAMS: it preserves a tracked param (a subset) and/or contributes
   // extra strips not already global (a superset). Domains matching neither stay
   // under the global rule.
-  const tailoredDomains = new Set(); // every tailored domain — all excluded from global
-  const perDomain = []; // { domain, removeParams } — only those with something to strip
-  for (const rule of domainRules) {
-    if (typeof rule.domain !== "string") continue;
-    const preserveLc = new Set((rule.preserveParams ?? []).map((p) => p.toLowerCase()));
-    const preservesTracked = [...preserveLc].some((p) => trackingLc.has(p));
-
-    // Extra strips: params a host's profile strips that are unsafe site-wide
-    // (absent from TRACKING_PARAMS), minus anything preserved/guarded/denied.
-    // Guard/deny are safety nets against a future edit leaking an affiliate or
-    // nav key, and they stay exactly as strict as before.
-    //
-    // This used to be gated on AMAZON_HOST_RE, which made "covered per-host in
-    // domain-rules.json" mean two different things depending on the host: on
-    // amazon.* the profile reached the network layer, and everywhere else it
-    // did not. A param in a non-Amazon host's stripParams but not in
-    // TRACKING_PARAMS was in NO DNR rule at all, so it was only cleaned after
-    // the page loaded, by the content script's history.replaceState.
-    //
-    // That asymmetry is what blocked #1228. Its whole premise is that a global
-    // entry is redundant once the param is covered per-host, and for every
-    // non-Amazon host that premise was false: dropping the global entry
-    // downgraded the param from pre-request stripping to post-load rewriting.
-    // The first outbound request would still carry it, which is precisely what
-    // DNR exists to prevent.
-    //
-    // Removing the gate costs rules, not safety: 18 rules become 91 across 127
-    // hosts, far inside Chrome's static-ruleset budget, and every one is still
-    // requestDomains-scoped and complete-per-host. Nested tailored hosts (a
-    // profile for maps.google.com under one for google.com) are handled by the
-    // existing exclusion logic below, and the ONE-RULE-PER-HOST test proves the
-    // result still matches exactly one rule per request.
-    const extraStrips = (rule.stripParams ?? []).filter((p) => {
-      const lc = p.toLowerCase();
-      return !trackingLc.has(lc) && !preserveLc.has(lc) && !guard.has(lc) && !deny.has(lc);
-    });
-
-    if (!preservesTracked && extraStrips.length === 0) continue; // global covers it
-
-    // Tailored: must be excluded from the global rule so it never double-matches.
-    tailoredDomains.add(rule.domain);
-
-    // Complete set for this host: all TRACKING_PARAMS minus its preserves, then
-    // its extra strips. TRACKING_PARAMS source order is preserved for byte
-    // stability; extras are sorted+deduped and are disjoint from the base (they
-    // are, by construction, not in TRACKING_PARAMS).
-    const base = TRACKING_PARAMS.filter((p) => !preserveLc.has(p.toLowerCase()));
-    const removeParams = [...base, ...[...new Set(extraStrips)].sort(byCodepoint)];
-    // A domain that preserves EVERY tracking param (and adds no extra strips) has
-    // nothing to strip: it stays excluded from the global rule (above) but gets no
-    // profile rule, so NO DNR rule matches it and all its params survive. Emitting
-    // an empty-removeParams rule would be invalid DNR; falling back to the global
-    // rule would strip exactly what it wanted to preserve.
-    if (removeParams.length === 0) continue;
-    perDomain.push({ domain: rule.domain, removeParams });
-  }
-
-  // Reused by resolvePathRuleHostBase (#1326, #1467) to build each path rule's
-  // COMPLETE set: a tailored domain's own removeParams, looked up while walking
-  // up from the path rule's domain toward the nearest tailored ancestor.
-  const removeParamsByDomain = new Map(perDomain.map((d) => [d.domain, d.removeParams]));
+  //
+  // This used to be gated on AMAZON_HOST_RE, which made "covered per-host in
+  // domain-rules.json" mean two different things depending on the host: on
+  // amazon.* the profile reached the network layer, and everywhere else it did
+  // not. A param in a non-Amazon host's stripParams but not in TRACKING_PARAMS
+  // was in NO DNR rule at all, so it was only cleaned after the page loaded, by
+  // the content script's history.replaceState.
+  //
+  // That asymmetry is what blocked #1228. Its whole premise is that a global
+  // entry is redundant once the param is covered per-host, and for every
+  // non-Amazon host that premise was false: dropping the global entry
+  // downgraded the param from pre-request stripping to post-load rewriting.
+  // The first outbound request would still carry it, which is precisely what
+  // DNR exists to prevent.
+  //
+  // Removing the gate costs rules, not safety: 18 rules become 91 across 127
+  // hosts, far inside Chrome's static-ruleset budget, and every one is still
+  // requestDomains-scoped and complete-per-host. Nested tailored hosts (a
+  // profile for maps.google.com under one for google.com) are handled by the
+  // existing exclusion logic below, and the ONE-RULE-PER-HOST test proves the
+  // result still matches exactly one rule per request.
+  //
+  // Delegated to computeTailoredDomainState (#1490) — a pure function of its
+  // inputs, so resolvePathRuleHostBase's dependency (removeParamsByDomain) can
+  // be built from a synthetic domainRules set in tests, not only this file.
+  const { tailoredDomains, removeParamsByDomain, perDomain } = computeTailoredDomainState(
+    domainRules,
+    guard,
+    deny,
+    TRACKING_PARAMS
+  );
 
   // Group domains that share an identical removeParams set into one rule.
   const bySig = new Map(); // JSON(removeParams) -> { removeParams, domains: Set }
@@ -612,45 +736,15 @@ export function buildDnrRules() {
   // (the pre-#1467 bug) silently dropped every extra per-host strip and could
   // silently widen past a per-host preserve whenever a tailored ancestor
   // existed.
-  const resolvePathRuleHostBase = (domain) => {
-    let d = domain;
-    for (;;) {
-      if (tailoredDomains.has(d)) return removeParamsByDomain.get(d) ?? [];
-      const dot = d.indexOf(".");
-      if (dot === -1) return [...TRACKING_PARAMS];
-      d = d.slice(dot + 1);
-    }
-  };
-
-  const pathRuleSpecs = [];
-  for (const rule of domainRules) {
-    if (typeof rule.domain !== "string") continue;
-    const pathStrips = rule.pathStrips;
-    if (!Array.isArray(pathStrips) || pathStrips.length === 0) continue;
-
-    const hostBase = resolvePathRuleHostBase(rule.domain);
-    const hostBaseLc = new Set(hostBase.map((p) => p.toLowerCase()));
-
-    for (const group of pathStrips) {
-      const seen = new Set();
-      const addition = (group.params ?? []).filter((p) => {
-        const lc = p.toLowerCase();
-        if (seen.has(lc) || hostBaseLc.has(lc)) return false;
-        seen.add(lc);
-        return !guard.has(lc) && !deny.has(lc);
-      });
-      const removeParams = [...hostBase, ...addition.sort(byCodepoint)];
-
-      for (const prefix of group.pathPrefixes ?? []) {
-        pathRuleSpecs.push({ domain: rule.domain, prefix, removeParams });
-      }
-    }
-  }
-
-  // Deterministic, independent of domainRules' own iteration order (a future
-  // reorder of the source array must not reshuffle ids).
-  pathRuleSpecs.sort(
-    (a, b) => byCodepoint(a.domain, b.domain) || byCodepoint(a.prefix, b.prefix)
+  // Delegated to buildPathRuleSpecs (#1490, extracted above buildDnrRules) —
+  // same logic, now a pure function of its inputs.
+  const pathRuleSpecs = buildPathRuleSpecs(
+    domainRules,
+    tailoredDomains,
+    removeParamsByDomain,
+    TRACKING_PARAMS,
+    guard,
+    deny
   );
 
   if (pathRuleSpecs.length > DNR_PATH_SCOPED_MAX_RULES) {
