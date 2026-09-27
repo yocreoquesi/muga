@@ -828,6 +828,27 @@ export function processUrl(rawUrl, prefs, domainRules = [], canonicalBundle, fre
   const { rawUrl: unwrappedRawUrl, url, creatorReferralPreserved, pathAffiliateUnwrapped, wrapperUnwrapped } = unwrapStep;
   rawUrl = unwrappedRawUrl;
 
+  // Step 1b — Signed-URL choke point, re-checked AFTER unwrap (#1476).
+  //
+  // The Step 0b guard above only sees the URL the user actually navigated to
+  // (or clicked/copied). unwrapAndExtract can replace rawUrl with a redirect
+  // wrapper's destination, the canonical-extractor result, or an AMP resolve
+  // target — a presigned URL reached THROUGH any of those (e.g. a Gmail
+  // "google.com/url?q=<Azure SAS>" or "l.facebook.com/l.php?u=<S3 SigV4>"
+  // link) never went through Step 0b at all, so its signature got stripped
+  // exactly like #1200 before the fix, just one hop later.
+  //
+  // Mirrors the #1096 exempt-destination branch below: the unwrap itself is
+  // still honored (rawUrl/url already reflect it) — only the strip is
+  // skipped, surfaced as "cleaned" (not "untouched") because the URL did
+  // change relative to what the user clicked. When unwrap did NOT change
+  // anything, rawUrl here is identical to the Step 0b input, which already
+  // returned "untouched" above — so this branch only ever fires on a URL
+  // that changed through unwrap.
+  if (isSignedUrl(rawUrl)) {
+    return buildReturnPayload("cleaned", rawUrl, [], null, { creatorReferralPreserved });
+  }
+
   // #1095: strip a single trailing dot before this hostname feeds ANY
   // matching below (getPatternsForHost, domainMatches via blacklist/
   // whitelist, handleAffiliatePipeline's ourTag lookups, …). Mirrors the

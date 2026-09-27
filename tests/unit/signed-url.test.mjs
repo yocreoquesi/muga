@@ -182,6 +182,69 @@ describe("#1200 — the DNR regex mirrors the runtime rule", () => {
   });
 });
 
+describe("#1476 — signed-URL guard survives a redirect-wrapper unwrap", () => {
+  // The #1200 guard only ran on the pre-unwrap rawUrl. A signed URL reached
+  // THROUGH a wrapper (Gmail/Google's google.com/url, Facebook's
+  // l.facebook.com/l.php, and the same class of the other 26 unwrapped
+  // wrappers) skipped it entirely: unwrapAndExtract replaced rawUrl with the
+  // real destination and nothing re-checked it before the strip steps ran.
+  const S3_SIGV4 =
+    "https://bucket.s3.amazonaws.com/f.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256" +
+    "&X-Amz-Credential=a&X-Amz-Date=20260101T000000Z&X-Amz-Expires=300" +
+    "&X-Amz-SignedHeaders=host&X-Amz-Signature=0123456789abcdef0123456789abcdef" +
+    "&utm_source=x";
+
+  // GITHUB_ARTIFACT_SAS alone has no strippable field (spr etc. are not in
+  // TRACKING_PARAMS), so a test using it bare would pass even with the #1476
+  // defect still present — it would prove nothing. Appending a genuine
+  // tracking param is what makes the assertion meaningful.
+  const AZURE_SAS_WITH_UTM = GITHUB_ARTIFACT_SAS + "&utm_source=newsletter";
+
+  it("google.com/url wrapping an Azure SAS URL: cleaned (unwrapped), but the signed query survives", () => {
+    const wrapped = "https://www.google.com/url?q=" + encodeURIComponent(AZURE_SAS_WITH_UTM) + "&sa=D";
+    const result = processUrl(wrapped, PREFS);
+
+    assert.equal(result.action, "cleaned", "unwrap must still apply — only the strip is skipped");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    const params = new URL(result.cleanUrl).searchParams;
+    for (const field of ["sv", "spr", "se", "sr", "sp", "sig", "utm_source"]) {
+      assert.ok(params.has(field), `SAS field "${field}" was stripped after unwrap`);
+    }
+  });
+
+  it("l.facebook.com/l.php wrapping an S3 SigV4 URL: X-Amz-Signature survives, utm_source is NOT removed", () => {
+    const wrapped = "https://l.facebook.com/l.php?u=" + encodeURIComponent(S3_SIGV4);
+    const result = processUrl(wrapped, PREFS);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    const params = new URL(result.cleanUrl).searchParams;
+    assert.ok(params.has("X-Amz-Signature"), "X-Amz-Signature was stripped after unwrap — signature invalidated");
+    assert.ok(params.has("utm_source"), "utm_source must NOT be removed once the destination is recognized as signed");
+  });
+
+  it("l.facebook.com/l.php wrapping the Azure SAS URL: same protection", () => {
+    const wrapped = "https://l.facebook.com/l.php?u=" + encodeURIComponent(AZURE_SAS_WITH_UTM);
+    const result = processUrl(wrapped, PREFS);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    const params = new URL(result.cleanUrl).searchParams;
+    assert.ok(params.has("sig"), "sig was stripped after unwrap");
+    assert.ok(params.has("utm_source"), "utm_source must NOT be removed once the destination is recognized as signed");
+  });
+
+  it("a wrapped, UNSIGNED destination is still cleaned normally (no over-broad exemption)", () => {
+    const wrapped = "https://www.google.com/url?q=" +
+      encodeURIComponent("https://shop.example/product?utm_source=newsletter&size=m") + "&sa=D";
+    const result = processUrl(wrapped, PREFS);
+
+    const params = new URL(result.cleanUrl).searchParams;
+    assert.ok(!params.has("utm_source"), "an unsigned wrapped destination must still be stripped");
+    assert.ok(params.has("size"));
+  });
+});
+
 // #1338: `spr` had no upstream evidence as a tracking param in either source,
 // global or anchored, and stripping it is what broke the #1200 downloads. The
 // signed-URL guard stays as the second line; the strip list must not name it.
