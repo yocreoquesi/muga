@@ -144,7 +144,6 @@ export const TRACKING_PARAM_CATEGORIES = {
       "action_type_map",
       "tw_medium",
       "tw_profile_id",
-      "btag",
       "erid",
       "external_click_id",
       "ftag",

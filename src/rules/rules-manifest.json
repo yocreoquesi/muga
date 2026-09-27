@@ -419,10 +419,6 @@
       "category": "email"
     },
     {
-      "param": "btag",
-      "category": "ads"
-    },
-    {
       "param": "click_id",
       "category": "ads"
     },
