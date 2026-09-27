@@ -25,6 +25,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -139,13 +140,10 @@ describe("#1390 — Recent activity: Clear button and clear-on-disable", () => {
   test("renderActivityLedgerPanel shows a distinct disabled empty state, not ledger_empty, when attributionLedgerEnabled is false", () => {
     const start = optionsJs.indexOf("async function renderActivityLedgerPanel(");
     assert.ok(start !== -1);
-    let depth = 0, i = optionsJs.indexOf("{", start);
-    const bodyStart = i;
-    for (; i < optionsJs.length; i++) {
-      if (optionsJs[i] === "{") depth++;
-      else if (optionsJs[i] === "}") { depth--; if (depth === 0) break; }
-    }
-    const body = optionsJs.slice(bodyStart, i + 1);
+    // Brace matching skips strings/comments/regexes (#1491 item 4).
+    const bodyStart = optionsJs.indexOf("{", start);
+    const bodyEnd = findMatchingBrace(optionsJs, bodyStart);
+    const body = optionsJs.slice(bodyStart, bodyEnd + 1);
     assert.match(body, /attributionLedgerEnabled/, "must read attributionLedgerEnabled from prefs");
     assert.match(
       body,

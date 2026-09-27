@@ -25,6 +25,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -154,19 +155,13 @@ describe("options.js — renderSuspiciousParamsActivity does not interleave over
   function getRenderFnBody() {
     const start = optionsJs.indexOf("async function renderSuspiciousParamsActivity(");
     assert.ok(start !== -1, "renderSuspiciousParamsActivity must exist");
-    // Find this function's closing brace by bracket depth, not the first
-    // "\n}" (the function body itself contains several nested blocks).
-    let depth = 0;
-    let i = optionsJs.indexOf("{", start);
-    const bodyStart = i;
-    for (; i < optionsJs.length; i++) {
-      if (optionsJs[i] === "{") depth++;
-      else if (optionsJs[i] === "}") {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
-    return optionsJs.slice(bodyStart, i + 1);
+    // Find this function's closing brace by brace matching that skips
+    // strings/comments/regexes, not the first "\n}" (the function body
+    // itself contains several nested blocks) and not raw brace counting,
+    // which the same construct can miscount (#1491 item 4).
+    const bodyStart = optionsJs.indexOf("{", start);
+    const bodyEnd = findMatchingBrace(optionsJs, bodyStart);
+    return optionsJs.slice(bodyStart, bodyEnd + 1);
   }
 
   test("uses a module-scoped run counter with an isStale() guard", () => {

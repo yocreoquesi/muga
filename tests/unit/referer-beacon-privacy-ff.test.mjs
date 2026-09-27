@@ -10,6 +10,19 @@
  * predicates (imported, not reimplemented), plus source guards confirming the
  * production service-worker.js actually wires the real listener functions
  * with the same predicate/fail-open/registration shape.
+ *
+ * #1491 item 2 (native review, accepted tradeoff): the behavioral coverage
+ * above exercises computeSuppressRefererDecision/computeBlockBeaconDecision
+ * — copies of the two listeners' gate logic — not the production
+ * onBeforeSendHeadersSuppressReferer/onBeforeRequestBlockBeacons functions
+ * themselves. Only the `indexOf` source guards further down (see the
+ * "production service-worker.js wiring" describe block) link the copy back
+ * to the real listeners, by checking they contain the same gate/predicate
+ * calls in the same order — not by executing the real functions. This is
+ * accepted for now: the service worker's module-scope chrome.* calls and
+ * top-level listener registration make it un-importable in Node. Revisit if
+ * the listeners are ever extracted into an importable module (see #1266
+ * item 5's dnr-sync.js split for the established precedent on doing that).
  */
 
 import { test, describe } from "node:test";

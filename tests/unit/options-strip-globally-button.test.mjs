@@ -29,6 +29,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
@@ -132,15 +133,11 @@ function getStripHandlerBody() {
   assert.ok(fnStart !== -1, "buildStripGloballyButton must exist");
   const clickStart = optionsSrc.indexOf('btn.addEventListener("click"', fnStart);
   assert.ok(clickStart !== -1, "the button must have a click handler");
-  // Bracket-depth scan from the handler's opening brace to its matching close.
-  let depth = 0;
-  let i = optionsSrc.indexOf("{", clickStart);
-  const bodyStart = i;
-  for (; i < optionsSrc.length; i++) {
-    if (optionsSrc[i] === "{") depth++;
-    else if (optionsSrc[i] === "}") { depth--; if (depth === 0) break; }
-  }
-  return optionsSrc.slice(bodyStart, i + 1);
+  // Brace matching from the handler's opening brace to its matching close,
+  // skipping strings/comments/regexes (#1491 item 4).
+  const bodyStart = optionsSrc.indexOf("{", clickStart);
+  const bodyEnd = findMatchingBrace(optionsSrc, bodyStart);
+  return optionsSrc.slice(bodyStart, bodyEnd + 1);
 }
 
 test("disables the button before attempting the write, so a double-click can't fire twice", () => {

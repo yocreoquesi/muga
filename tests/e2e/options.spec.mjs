@@ -690,3 +690,87 @@ test.describe("Options — 'View Aggressive privacy settings' works with Advance
     await expect(page.locator("#section-aggressive-privacy")).toBeFocused();
   });
 });
+
+// #1491 item 3: handleDevModeChange's checkbox-revert path (setDevMode()
+// rejects -> checkbox reverts, and revealAggressivePrivacySection() skips
+// the scroll/focus) had no test. Worse, setDevMode() used to swallow its
+// own storage error internally and could never actually reject, so the
+// revert branch was unreachable dead code — fixed alongside this test (see
+// src/lib/storage.js setDevMode() and src/options/options.js
+// handleDevModeChange()).
+test.describe("Options — dev-mode save failure reverts the checkbox (#1491 item 3)", () => {
+  test.afterEach(async ({ context, extensionId }) => {
+    await seedStorage(context, extensionId, {
+      sync: { blacklist: [], stripAllAffiliates: false },
+      local: { referrerBeaconNoticeShown: false, devMode: false },
+    });
+  });
+
+  test("toggling #dev-mode directly, when the storage write fails, reverts the checkbox and keeps Advanced hidden", async ({ optionsPage: page }) => {
+    const devToolsCard = page.locator("#dev-tools-card");
+    const devModeToggle = page.locator("#dev-mode");
+    await expect(devToolsCard).toBeHidden();
+    await expect(devModeToggle).not.toBeChecked();
+
+    // Force every chrome.storage.local.set() to fail from here on,
+    // simulating a genuine local-storage write error (matches the
+    // chrome.storage.sync.set failure-injection pattern used above for the
+    // blacklist audit b5-3 test, but for the local area setDevMode() uses).
+    await page.evaluate(() => {
+      chrome.storage.local.set = (items, cb) => {
+        chrome.runtime.lastError = { message: "simulated local storage failure" };
+        try { cb && cb(); } finally { delete chrome.runtime.lastError; }
+      };
+    });
+
+    // The checkbox input is visually hidden by CSS (.toggle input is
+    // opacity:0) — click it in-page, like setCheckbox() does, rather than
+    // through Playwright's locator.click() which requires visibility.
+    await page.evaluate(() => document.getElementById("dev-mode").click());
+
+    // The checkbox briefly shows checked (optimistic UI), then reverts once
+    // the failed write resolves — assert the SETTLED state.
+    await expect(devModeToggle).not.toBeChecked();
+    await expect(devToolsCard).toBeHidden();
+
+    const stored = await page.evaluate(
+      () => new Promise((resolve) => chrome.storage.local.get({ devMode: false }, resolve))
+    );
+    expect(stored.devMode).toBe(false);
+  });
+
+  test("clicking the strip-affiliates nudge link, when the storage write fails, reverts the checkbox and never reveals or focuses the section", async ({ optionsPage: page }) => {
+    const devToolsCard = page.locator("#dev-tools-card");
+    const devModeToggle = page.locator("#dev-mode");
+    await expect(devToolsCard).toBeHidden();
+    await expect(devModeToggle).not.toBeChecked();
+
+    await setCheckbox(page, "strip-affiliates", true);
+    const nudge = page.locator("#strip-affiliates-nudge");
+    await expect(nudge).toBeVisible();
+
+    // Only fail the write AFTER the nudge is up, so revealing the nudge
+    // itself (a chrome.storage.sync write via setPrefs) is unaffected.
+    await page.evaluate(() => {
+      chrome.storage.local.set = (items, cb) => {
+        chrome.runtime.lastError = { message: "simulated local storage failure" };
+        try { cb && cb(); } finally { delete chrome.runtime.lastError; }
+      };
+    });
+
+    await page.locator("#nudge-aggressive-privacy-link").click();
+
+    // The checkbox must settle back to unchecked, Advanced must stay
+    // hidden, and the section must NEVER become visible or receive focus
+    // (revealAggressivePrivacySection()'s `if (!devModeEl.checked) return;`
+    // guard must fire).
+    await expect(devModeToggle).not.toBeChecked();
+    await expect(devToolsCard).toBeHidden();
+    await expect(page.locator("#section-aggressive-privacy")).not.toBeFocused();
+
+    const stored = await page.evaluate(
+      () => new Promise((resolve) => chrome.storage.local.get({ devMode: false }, resolve))
+    );
+    expect(stored.devMode).toBe(false);
+  });
+});

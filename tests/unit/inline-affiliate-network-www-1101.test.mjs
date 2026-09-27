@@ -30,6 +30,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
@@ -42,21 +43,14 @@ function extractConstArraySource(src, name) {
   return match[0];
 }
 
-/** Extracts a top-level `function <name>(...) { ... }` block via brace matching. */
+/** Extracts a top-level `function <name>(...) { ... }` block via brace
+ *  matching that skips strings/comments/regexes (#1491 item 4). */
 function extractFunctionSource(src, name) {
   const idx = src.indexOf(`function ${name}`);
   assert.ok(idx !== -1, `${name} must be defined as a function`);
-  let depth = 0;
-  let started = false;
-  let i = idx;
-  for (; i < src.length; i++) {
-    if (src[i] === "{") { depth++; started = true; }
-    else if (src[i] === "}") {
-      depth--;
-      if (started && depth === 0) { i++; break; }
-    }
-  }
-  return src.slice(idx, i);
+  const openBrace = src.indexOf("{", idx);
+  const closeBrace = findMatchingBrace(src, openBrace);
+  return src.slice(idx, closeBrace + 1);
 }
 
 /** Builds a callable isInlineAffiliateRedirectNetwork bound to the real source. */

@@ -175,7 +175,6 @@ jobs:
         # reports "failure" and the job still proceeds to the independently
         # best-effort CWS submission, matching how AMO/CWS already behave
         # elsewhere in this job.
-        id: amo-unpack
         continue-on-error: true
         run: |
           mkdir -p "$RUNNER_TEMP/amo-source"

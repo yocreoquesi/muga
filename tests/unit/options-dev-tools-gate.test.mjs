@@ -32,6 +32,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
@@ -194,20 +195,13 @@ describe("options.html — Developer tools lives outside the Advanced/dev-mode g
 });
 
 describe("options.js — syncDevTools and syncDevToolsPanel never cross-reference each other's ids", () => {
+  // Brace matching skips strings/comments/regexes (#1491 item 4).
   function extractFunctionBody(source, name) {
     const start = source.indexOf(`function ${name}(`);
     assert.ok(start !== -1, `function ${name} must exist in options.js`);
     const braceStart = source.indexOf("{", start);
-    let depth = 0;
-    let i = braceStart;
-    for (; i < source.length; i++) {
-      if (source[i] === "{") depth++;
-      else if (source[i] === "}") {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
-    return source.slice(start, i + 1);
+    const braceEnd = findMatchingBrace(source, braceStart);
+    return source.slice(start, braceEnd + 1);
   }
 
   const syncDevToolsBody = extractFunctionBody(optionsJs, "syncDevTools");

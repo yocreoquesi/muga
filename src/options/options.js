@@ -2299,23 +2299,26 @@ function initExportImport() {
  * Advanced panel to it. This is the single shared path for every write to
  * the devMode pref: the checkbox's own "change" listener (init()) and
  * revealAggressivePrivacySection() (#1479) both call it instead of poking
- * setDevMode()/syncDevTools() separately, so a setDevMode() rejection
- * cannot leave one of the two paths' UI disagreeing with storage — on
- * failure the checkbox (and therefore the panel) reverts to the value
- * that's actually persisted.
+ * setDevMode()/syncDevTools() separately, so a failed write cannot leave
+ * one of the two paths' UI disagreeing with storage — on failure the
+ * checkbox (and therefore the panel) reverts to the value that's actually
+ * persisted.
+ *
+ * #1491 item 3: setDevMode() never actually rejects (it swallows its own
+ * storage error and used to resolve with `undefined` either way), so a
+ * try/catch here could never reach its catch block — the revert path
+ * described above was dead code. setDevMode() now resolves to a boolean
+ * (matching setPrefs()'s convention) and this gates on that instead.
  */
 async function handleDevModeChange() {
   const devModeEl = document.getElementById("dev-mode");
   if (!devModeEl) return;
   const checked = devModeEl.checked;
-  try {
-    await setDevMode(checked);
-    syncDevTools();
-  } catch (err) {
-    console.error("[MUGA] save devMode:", err);
+  const saved = await setDevMode(checked);
+  if (!saved) {
     devModeEl.checked = !checked;
-    syncDevTools();
   }
+  syncDevTools();
 }
 
 /**
