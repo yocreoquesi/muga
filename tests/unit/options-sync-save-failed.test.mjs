@@ -21,6 +21,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 import { TRANSLATIONS } from "../../src/lib/i18n.js";
 import { SUPPORTED_LANGS } from "../../src/lib/i18n.js";
@@ -29,17 +30,13 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, "../..");
 const optionsJs = readFileSync(join(ROOT, "src/options/options.js"), "utf8");
 
+// Brace matching skips strings/comments/regexes (#1491 item 4).
 function getFunctionBody(fnSignature) {
   const start = optionsJs.indexOf(fnSignature);
   assert.ok(start !== -1, `${fnSignature} must exist in options.js`);
-  let depth = 0;
-  let i = optionsJs.indexOf("{", start);
-  const bodyStart = i;
-  for (; i < optionsJs.length; i++) {
-    if (optionsJs[i] === "{") depth++;
-    else if (optionsJs[i] === "}") { depth--; if (depth === 0) break; }
-  }
-  return optionsJs.slice(bodyStart, i + 1);
+  const bodyStart = optionsJs.indexOf("{", start);
+  const bodyEnd = findMatchingBrace(optionsJs, bodyStart);
+  return optionsJs.slice(bodyStart, bodyEnd + 1);
 }
 
 describe("sync_save_failed: i18n key exists and is non-empty in all supported locales", () => {

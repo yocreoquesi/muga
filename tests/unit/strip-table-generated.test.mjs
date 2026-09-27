@@ -18,6 +18,7 @@ import { join, dirname } from "node:path";
 
 import { HOT_PATH_STRIP_ROWS } from "../../src/lib/hot-path-strip.js";
 import { buildManagedBlock } from "../../tools/generate-strip-table.mjs";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -44,17 +45,9 @@ function extractStripTable(src, label) {
   const decl = src.indexOf("const STRIP = Object.freeze({");
   assert.ok(decl !== -1, `${label} must declare const STRIP = Object.freeze({ ... })`);
   const open = src.indexOf("{", decl);
-  let depth = 0;
-  let i = open;
-  for (; i < src.length; i++) {
-    if (src[i] === "{") depth++;
-    else if (src[i] === "}") {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-  assert.ok(i < src.length, `${label}: unbalanced braces in STRIP table`);
-  return src.slice(open, i + 1);
+  // Brace matching skips strings/comments/regexes (#1491 item 4).
+  const close = findMatchingBrace(src, open);
+  return src.slice(open, close + 1);
 }
 
 function readContentScript(relPath) {

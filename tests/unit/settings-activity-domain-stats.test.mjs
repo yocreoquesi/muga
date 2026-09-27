@@ -24,6 +24,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -140,16 +141,13 @@ describe("options.js — renders the Activity domain-stats table", () => {
   test("gates the data view, not the panel/switch, on prefs.domainStats (#1351 per-panel + #1473 keep-switch-visible)", () => {
     const fnStart = optionsJs.indexOf("async function renderDomainStatsActivity(");
     assert.ok(fnStart !== -1, "renderDomainStatsActivity must exist");
-    // Bracket-depth walk (not the first "\n}") since the body now contains
-    // a nested if-block of its own (the domainStats-off early return).
-    let depth = 0;
-    let i = optionsJs.indexOf("{", fnStart);
-    const bodyStart = i;
-    for (; i < optionsJs.length; i++) {
-      if (optionsJs[i] === "{") depth++;
-      else if (optionsJs[i] === "}") { depth--; if (depth === 0) break; }
-    }
-    const fnBody = optionsJs.slice(bodyStart, i + 1);
+    // Brace matching (not the first "\n}") since the body now contains a
+    // nested if-block of its own (the domainStats-off early return), and
+    // not raw brace counting, which the same construct can miscount if a
+    // brace ever lands inside a string/comment/regex (#1491 item 4).
+    const bodyStart = optionsJs.indexOf("{", fnStart);
+    const bodyEnd = findMatchingBrace(optionsJs, bodyStart);
+    const fnBody = optionsJs.slice(bodyStart, bodyEnd + 1);
     // #1351 moved the hide from the whole #section-activity to just this
     // panel's data view, so a sibling panel (suspicious-params) with
     // content is never hidden by the domainStats pref being off.

@@ -17,6 +17,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { findMatchingBrace } from "./helpers/source-scan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "../..");
@@ -74,22 +75,11 @@ function parseInlineStrings(src) {
   const startIdx = src.indexOf("const STRINGS = {");
   assert.ok(startIdx >= 0, "cleaner.js must contain 'const STRINGS = {'");
 
-  // Walk to find the matching closing brace at the top level of STRINGS
-  let depth = 0;
-  let objStart = src.indexOf("{", startIdx);
-  let i = objStart;
-  let objEnd = -1;
-  while (i < src.length) {
-    if (src[i] === "{") depth++;
-    else if (src[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        objEnd = i + 1;
-        break;
-      }
-    }
-    i++;
-  }
+  // Walk to find the matching closing brace at the top level of STRINGS,
+  // skipping braces inside strings/comments/regexes rather than counting
+  // raw `{`/`}` characters (#1491 item 4).
+  const objStart = src.indexOf("{", startIdx);
+  const objEnd = findMatchingBrace(src, objStart) + 1;
   assert.ok(objEnd > 0, "cleaner.js STRINGS object must be closed with }");
 
   const objText = src.slice(objStart, objEnd);
