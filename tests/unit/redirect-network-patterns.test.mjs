@@ -41,13 +41,14 @@ const EXPECTED_NETWORKS = [
   "tradetracker",
   "tradedoubler",
   "shareasale",
+  "income-access",
 ];
 
 describe("REDIRECT_NETWORK_PATTERNS — shape", () => {
-  test("is a frozen array with 11 entries (matrix v1.0 + #695 Tradedoubler + #1443 ShareASale)", () => {
+  test("is a frozen array with 12 entries (matrix v1.0 + #695 Tradedoubler + #1443 ShareASale + #1482 Income Access)", () => {
     assert.ok(Array.isArray(REDIRECT_NETWORK_PATTERNS));
     assert.ok(Object.isFrozen(REDIRECT_NETWORK_PATTERNS));
-    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 11);
+    assert.strictEqual(REDIRECT_NETWORK_PATTERNS.length, 12);
   });
 
   test("contains every expected network id, no duplicates", () => {
@@ -162,14 +163,23 @@ describe("REDIRECT_NETWORK_PATTERNS — per-network content matches matrix v1.0"
     assert.deepStrictEqual([...n.redirectHosts].sort(), ["shareasale.com", "www.shareasale.com"]);
     assert.deepStrictEqual(n.landingParams, ["sscid"]);
   });
+
+  test("income-access: *.adsrv.eacdn.com (wildcard, white-label per operator) → btag", () => {
+    const n = pick("income-access");
+    assert.deepStrictEqual(n.redirectHosts, ["*.adsrv.eacdn.com"]);
+    assert.deepStrictEqual(n.landingParams, ["btag"]);
+  });
 });
 
 describe("REDIRECT_NETWORK_PATTERNS — invariants across the table", () => {
-  test("only Impact uses the wildcard primitive (single source of truth)", () => {
+  test("only Impact and Income Access use the wildcard primitive (both white-label per advertiser/operator)", () => {
     const wildcards = REDIRECT_NETWORK_PATTERNS.flatMap(n =>
       n.redirectHosts.filter(h => h.startsWith("*.")).map(h => `${n.id}:${h}`),
     );
-    assert.deepStrictEqual(wildcards, ["impact-radius:*.pxf.io"]);
+    assert.deepStrictEqual(
+      [...wildcards].sort(),
+      ["impact-radius:*.pxf.io", "income-access:*.adsrv.eacdn.com"].sort(),
+    );
   });
 
   test("no entry carries an ourTag field (drop-affiliate-injection PR 1b: dead data removed)", () => {
@@ -247,6 +257,22 @@ describe("getRedirectNetworkForRedirectHost() — wildcard *.pxf.io", () => {
   });
 });
 
+describe("getRedirectNetworkForRedirectHost() — wildcard *.adsrv.eacdn.com (#1482)", () => {
+  test("matches Income Access white-label subdomains", () => {
+    assert.strictEqual(getRedirectNetworkForRedirectHost("wlneteller.adsrv.eacdn.com")?.id, "income-access");
+    assert.strictEqual(getRedirectNetworkForRedirectHost("wlpinnacle.adsrv.eacdn.com")?.id, "income-access");
+  });
+
+  test("does NOT match the bare apex adsrv.eacdn.com", () => {
+    assert.strictEqual(getRedirectNetworkForRedirectHost("adsrv.eacdn.com"), null);
+  });
+
+  test("does NOT match deceptive lookalikes", () => {
+    assert.strictEqual(getRedirectNetworkForRedirectHost("notadsrv.eacdn.com"), null);
+    assert.strictEqual(getRedirectNetworkForRedirectHost("adsrv.eacdn.com.evil.com"), null);
+  });
+});
+
 describe("getRedirectNetworkForRedirectHost() — defensive normalization", () => {
   test("strips www. prefix", () => {
     assert.strictEqual(getRedirectNetworkForRedirectHost("www.prf.hn")?.id, "partnerize");
@@ -302,7 +328,7 @@ describe("getLandingParamsForReferrer()", () => {
   });
 });
 
-describe("getAllLandingParams() — union across all 11 networks (#1443)", () => {
+describe("getAllLandingParams() — union across all 12 networks (#1443, #1482)", () => {
   test("returns a Set", () => {
     assert.ok(getAllLandingParams() instanceof Set);
   });
@@ -322,7 +348,7 @@ describe("getAllLandingParams() — union across all 11 networks (#1443)", () =>
     assert.ok(union.has("sscid"));
   });
 
-  test("includes at least one landingParam from all other 8 networks", () => {
+  test("includes at least one landingParam from every network", () => {
     const union = getAllLandingParams();
     for (const network of REDIRECT_NETWORK_PATTERNS) {
       for (const p of network.landingParams) {

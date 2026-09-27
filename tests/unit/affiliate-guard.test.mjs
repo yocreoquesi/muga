@@ -97,9 +97,10 @@ describe("affiliate-guard", () => {
       }
     });
 
-    it("preserve set has exactly 33 unique names (update comment if manifest sync changes count)", () => {
-      // update if manifest sync changes count (#1443: +1 for ShareASale sscid)
-      assert.equal(set.size, 33);
+    it("preserve set has exactly 34 unique names (update comment if manifest sync changes count)", () => {
+      // update if manifest sync changes count (#1443: +1 for ShareASale sscid;
+      // #1482: +1 for Income Access btag)
+      assert.equal(set.size, 34);
     });
   });
 

@@ -461,6 +461,29 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     assert.equal(cleanUrl, "https://www.merchant-shop.com/product/1?sscid=a1k7_abcd1");
   });
 
+  // #1482: btag promoted from TRACKING_PARAMS to REDIRECT_NETWORK_PATTERNS.income-access,
+  // same class as sscid/#1443. btag is Income Access's (Paysafe) affiliate
+  // attribution tag; universal-strip removed it before the operator's landing
+  // page tag could read it, killing creator commission unconditionally.
+  test("preserves btag (Income Access affiliate tag — same class as #1443)", () => {
+    const { action, cleanUrl } = processUrl(
+      "https://www.pokerstars.com/?btag=a_123b_45c_",
+      PREFS
+    );
+    assert.equal(action, "untouched");
+    assert.equal(cleanUrl, "https://www.pokerstars.com/?btag=a_123b_45c_");
+  });
+
+  test("preserves btag but strips utm_* alongside (mixed URL still cleaned)", () => {
+    const { cleanUrl, removedTracking } = processUrl(
+      "https://www.pokerstars.com/?btag=a_123b_45c_&utm_source=affiliate",
+      PREFS
+    );
+    assert.ok(!removedTracking.includes("btag"), "btag must be preserved (Scenario B — existing creator tag)");
+    assert.ok(removedTracking.includes("utm_source"));
+    assert.equal(cleanUrl, "https://www.pokerstars.com/?btag=a_123b_45c_");
+  });
+
   // #1443 maintainer decision (2026-09-24): under stripAllAffiliates, strip
   // the REDIRECT_NETWORK_PATTERNS landingParams of ALL 11 networks (awc,
   // irclickid, cjevent, sscid, ...); by default they stay preserved exactly
@@ -477,6 +500,11 @@ describe("Scenario A (extended) — new tracking params (#17)", () => {
     );
     assert.equal(new URL(sscidResult.cleanUrl).searchParams.has("sscid"), false);
     assert.equal(new URL(awcResult.cleanUrl).searchParams.has("awc"), false);
+    const btagResult = processUrl(
+      "https://www.pokerstars.com/?btag=a_123b_45c_",
+      { ...PREFS, stripAllAffiliates: true }
+    );
+    assert.equal(new URL(btagResult.cleanUrl).searchParams.has("btag"), false);
   });
 
 });

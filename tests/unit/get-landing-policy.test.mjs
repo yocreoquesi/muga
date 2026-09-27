@@ -157,6 +157,23 @@ describe("processUrl integration — matrix params preserved on first-touch", ()
     assert.equal(u.searchParams.get("utm_source"), null, "utm_source still strippable");
   });
 
+  // #1482: Income Access white-labels a subdomain per operator
+  // (wl<brand>.adsrv.eacdn.com), the same wildcard shape Impact uses for
+  // *.pxf.io — a bare "adsrv.eacdn.com" referrer is never actually seen.
+  test("Income Access referrer (white-label subdomain) preserves btag; co-strips utm_* (#1482)", () => {
+    const { cleanUrl } = processUrl(
+      "https://www.pokerstars.com/?btag=a_123b_45c_&utm_source=affiliate",
+      PREFS,
+      [],
+      undefined,
+      undefined,
+      "https://wlneteller.adsrv.eacdn.com/C.ashx?btag=a_123b_45c_",
+    );
+    const u = new URL(cleanUrl);
+    assert.equal(u.searchParams.get("btag"), "a_123b_45c_", "btag must survive on first-touch");
+    assert.equal(u.searchParams.get("utm_source"), null, "utm_source still strippable");
+  });
+
   test("unknown referrer → no preservation; utm_* still stripped", () => {
     const { cleanUrl } = processUrl(
       "https://merchant.com/p?utm_source=email",

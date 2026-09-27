@@ -479,7 +479,12 @@ export const TRACKING_PARAMS = [
   "beyond_uzmcvid",               // vendor unverified (#1338)
   // ucx_ref removed (maintainer decision 2026-09-24, #1338): no vendor
   // evidence after a real search.
-  "btag",                         // vendor unverified (#1338)
+  // btag removed (maintainer decision 2026-09-27, #1482): Income Access
+  // (Paysafe) affiliate attribution tag, now declared in
+  // REDIRECT_NETWORK_PATTERNS.income-access.landingParams like
+  // awc/irclickid/sscid — preserved by default, stripped under
+  // stripAllAffiliates; universal-strip would kill creator attribution for
+  // every user regardless of that choice (same class as sscid/#1443).
   "cm_cr",                        // vendor unverified (#1338)
   "cm_me",                        // vendor unverified (#1338)
   "cmpid",                        // vendor unverified (#1338)
@@ -674,8 +679,9 @@ export const TRACKING_PARAM_CATEGORIES = {
       "action_object_map", "action_ref_map", "action_type_map",
       "tw_medium", "tw_profile_id",
       // A8.net `a8` excluded per matrix v1.0.
-      "btag", "erid", "external_click_id", "ftag",
+      "erid", "external_click_id", "ftag",
       // sscid excluded per REDIRECT_NETWORK_PATTERNS.shareasale (#1443).
+      // btag excluded per REDIRECT_NETWORK_PATTERNS.income-access (#1482).
       "jmtyclid", "maf", "rtkcid",
       "usqp", "vs_campaign_id",
       "link_source",
