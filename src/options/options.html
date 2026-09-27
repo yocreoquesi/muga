@@ -151,8 +151,13 @@
           </div>
           <button class="add-btn" id="reset-stats-btn" data-i18n="stats_reset_btn">Reset stats</button>
         </div>
-        <strong class="list-group-title" data-i18n="domain_stats_label">Where the most noise comes from</strong>
-        <div id="domain-stats-list"></div>
+        <!-- #1473: only this data view hides when recording is off. The
+             switch row and Reset stats above stay visible so the feature
+             can always be re-enabled and lifetime stats always be reset. -->
+        <div id="domain-stats-view">
+          <strong class="list-group-title" data-i18n="domain_stats_label">Where the most noise comes from</strong>
+          <div id="domain-stats-list"></div>
+        </div>
       </div>
       <!-- #1351: the FREQUENCY subgroup of the popup's old "Suspicious
            params" section (cross-site flags, storage-backed, no page
@@ -172,9 +177,14 @@
           </label>
           <label class="toggle"><input type="checkbox" id="cross-site-frequency" aria-labelledby="cross-site-frequency-label"><span class="slider"></span></label>
         </div>
-        <strong class="list-group-title" data-i18n="suspicious_params_frequency_group">Across sites you've visited</strong>
-        <p class="hint" data-i18n="suspicious_params_settings_hint"></p>
-        <div id="suspicious-params-settings-list"></div>
+        <!-- #1473: only this data view hides when detection is off. The
+             switch row above stays visible so the feature can always be
+             re-enabled. -->
+        <div id="suspicious-params-view">
+          <strong class="list-group-title" data-i18n="suspicious_params_frequency_group">Across sites you've visited</strong>
+          <p class="hint" data-i18n="suspicious_params_settings_hint"></p>
+          <div id="suspicious-params-settings-list"></div>
+        </div>
       </div>
       <!-- #1352 (maintainer decision on the issue): the popup's two
            ledgers — "This session" (popup.js's former showHistory) and
@@ -480,7 +490,7 @@
       <!-- Advanced: Aggressive privacy (referer-beacon-privacy PR 4, D5).
            Both toggles unchecked by default; wired via the existing
            bindToggle() helper alongside the other Advanced controls. -->
-      <h2 class="mt-16" id="section-aggressive-privacy" data-i18n="section_aggressive_privacy">Aggressive privacy</h2>
+      <h2 class="mt-16" id="section-aggressive-privacy" data-i18n="section_aggressive_privacy" tabindex="-1">Aggressive privacy</h2>
       <div class="card">
         <div class="row">
           <div class="row-label">

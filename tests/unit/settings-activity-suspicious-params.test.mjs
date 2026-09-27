@@ -75,13 +75,17 @@ describe("options.js — renders the Activity suspicious-params (frequency) pane
     assert.match(optionsJs, /async function\s+renderSuspiciousParamsActivity\s*\(/);
   });
 
-  test("gates the panel on crossSiteFrequencyEnabled", () => {
+  // #1473: the panel (switch row) itself must stay visible regardless of
+  // crossSiteFrequencyEnabled, so the switch can always be re-enabled from
+  // the UI. Only the data view underneath gates on the pref.
+  test("gates the data view (not the panel/switch) on crossSiteFrequencyEnabled", () => {
     const fnStart = optionsJs.indexOf("async function renderSuspiciousParamsActivity(");
     assert.ok(fnStart !== -1);
     const fnEnd = optionsJs.indexOf("\nasync function ", fnStart + 1);
     const fnBody = optionsJs.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
     assert.match(fnBody, /crossSiteFrequencyEnabled/);
-    assert.match(fnBody, /panel\.hidden\s*=\s*!enabled/);
+    assert.match(fnBody, /panel\.hidden\s*=\s*false/, "the panel/switch must always stay visible (#1473)");
+    assert.match(fnBody, /view\.hidden\s*=\s*!enabled/, "only the data view gates on the pref (#1473)");
     assert.match(fnBody, /updateActivitySectionVisibility\(\)/);
   });
 
