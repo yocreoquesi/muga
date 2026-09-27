@@ -104,7 +104,7 @@ export default Object.freeze({
   bl_placeholder: "mysite.com  or  amazon.es::tag::youtuber-21",
   wl_placeholder: "mysite.com  or  amazon.es::tag::creator-21",
   bl_hint: "Domain only (e.g. <code>mysite.com</code>): strips all params on that site.<br>Domain::param::value (e.g. <code>amazon.es::tag::youtuber-21</code>): strips one specific affiliate tag.<br>Domain::param::* (e.g. <code>amazon.es::pid::*</code>): strips a param regardless of its value.<br><br>Priority: an entry in Protected tags & domains always wins over one in Blocked domains for the same parameter.",
-  wl_hint: "Accepts a domain (e.g. <code>mysite.com</code>): MUGA won't touch any affiliate on that site.<br>Or <code>domain::param::value</code> (e.g. <code>amazon.es::tag::creator-21</code>): protects one specific tag.<br>Or <code>domain::param::*</code> (e.g. <code>amazon.es::tag::*</code>): protects a param regardless of its value.<br><br>Priority: an entry in Protected tags & domains always wins over one in Blocked domains for the same parameter.",
+  wl_hint: "Accepts a domain (e.g. <code>mysite.com</code>): pauses all MUGA URL cleaning on that site, the same as the popup's Pause cleaning button. It's not limited to affiliates.<br>Or <code>domain::param::value</code> (e.g. <code>amazon.es::tag::creator-21</code>): keeps cleaning active, but protects one specific tag.<br>Or <code>domain::param::*</code> (e.g. <code>amazon.es::tag::*</code>): keeps cleaning active, but protects a param regardless of its value.<br><br>Priority: an entry in Protected tags & domains always wins over one in Blocked domains for the same parameter.",
   add_btn: "+ Add",
   empty_list: "No entries yet.",
   muga_disabled: "MUGA is disabled",
