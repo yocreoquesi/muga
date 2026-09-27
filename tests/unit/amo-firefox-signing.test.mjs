@@ -16,7 +16,11 @@
  * GitHub release firefox.zip and (via the bug above) the AMO XPI.
  *
  * These guards fail red on the un-fixed pipeline and must stay green:
- * they assert the shape of the fix, not just today's exact wording.
+ * they assert the shape of the fix, not just today's exact wording. The
+ * AMO-signing assertions below are scoped to the specific steps that do the
+ * signing (extracted from the workflow YAML) rather than the whole file, so
+ * an unrelated `dist/firefox` mention elsewhere in release.yml can't make
+ * them pass for the wrong reason.
  *
  * Run with: npm test
  */
@@ -34,35 +38,137 @@ function readFile(relPath) {
   return readFileSync(join(ROOT, relPath), "utf8");
 }
 
+/**
+ * Extracts one GitHub Actions step's YAML block (from its `- name:` line up
+ * to, but not including, the next sibling step at the same indentation) so
+ * assertions can be tied to the step that actually does the work, instead
+ * of matching anywhere in the whole workflow file.
+ *
+ * @param {string} yml - Full workflow file content.
+ * @param {string} stepName - Exact `name:` value of the step to extract.
+ * @returns {string} The step's YAML text, from its `- name:` line onward.
+ */
+function extractStep(yml, stepName) {
+  const marker = `- name: ${stepName}`;
+  const idx = yml.indexOf(marker);
+  assert.ok(idx !== -1, `release.yml has no step named "${stepName}"`);
+  const lineStart = yml.lastIndexOf("\n", idx) + 1;
+  const indent = yml.slice(lineStart, idx);
+  const rest = yml.slice(idx);
+  const nextStepRe = new RegExp(`\\n${indent}- (name|uses):`);
+  const nextIdx = rest.slice(marker.length).search(nextStepRe);
+  return nextIdx === -1 ? rest : rest.slice(0, marker.length + nextIdx);
+}
+
+// Matches `--source-dir` pointing straight at the repo's raw src/, in every
+// shape web-ext accepts: `=` or a space, quoted or not, with or without a
+// leading `./`, with or without a trailing slash.
+const RAW_SRC_LITERAL_RE = /--source-dir[= ]"?(\.\/)?src\/?"?(\s|$)/;
+
+/**
+ * Finds every `--source-dir` usage in `text` that goes through a shell
+ * variable ($VAR or ${VAR}) rather than a literal path, and returns the
+ * variable names — so callers can resolve what each one actually points at
+ * (variable indirection is exactly how the real fix passes `$AMO_SOURCE_DIR`,
+ * and exactly how a regression could quietly reintroduce raw src/).
+ *
+ * @param {string} text
+ * @returns {string[]} Variable names, in order of appearance.
+ */
+function findSourceDirVarUsages(text) {
+  const re = /--source-dir[= ]"?\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?"?/g;
+  return [...text.matchAll(re)].map((m) => m[1]);
+}
+
+/**
+ * Finds the last `VARNAME=value` assignment of `varName` in `yml`. Matches
+ * both a plain shell assignment and one embedded in a quoted string (the
+ * shape release.yml uses to write $GITHUB_ENV: `echo "VAR=value" >>
+ * "$GITHUB_ENV"`), since both are `VARNAME=<value>` as literal text either
+ * way.
+ *
+ * @param {string} yml
+ * @param {string} varName
+ * @returns {string|null} The raw (still possibly quoted) assigned value, or null.
+ */
+function lastVarAssignment(yml, varName) {
+  const re = new RegExp(`\\b${varName}=([^\\s"']+|"[^"]*"|'[^']*')`, "g");
+  let last = null;
+  for (const m of yml.matchAll(re)) last = m[1];
+  return last;
+}
+
+/**
+ * Normalizes a shell path literal for comparison: strips surrounding
+ * quotes, a leading `./`, and a trailing `/`.
+ *
+ * @param {string|null} value
+ * @returns {string|null}
+ */
+function normalizeDirLiteral(value) {
+  if (!value) return value;
+  return value.replace(/^["']|["']$/g, "").replace(/^\.\//, "").replace(/\/$/, "");
+}
+
 describe("AMO Firefox signing does not use raw src/ (#1481)", () => {
   const releaseYml = readFile(".github/workflows/release.yml");
+  const unpackStep = extractStep(releaseYml, "Unpack the built Firefox artifact for AMO signing");
+  const signStep = extractStep(releaseYml, "Submit to Firefox AMO");
 
-  test("release.yml has an AMO submission step", () => {
-    assert.match(
-      releaseYml,
-      /web-ext sign/,
-      "release.yml must still submit to AMO via `web-ext sign`"
-    );
+  test("release.yml has an AMO submission step that calls web-ext sign", () => {
+    assert.match(signStep, /web-ext sign/, "the 'Submit to Firefox AMO' step must call `web-ext sign`");
   });
 
-  test("web-ext sign is never invoked with --source-dir=src/ or --source-dir src/", () => {
-    const rawSrcDir = /--source-dir[= ]"?src\/?"?(\s|$)/;
+  test("the AMO sign step's --source-dir is never a raw src/ literal (src/, ./src, with or without a trailing slash)", () => {
     assert.ok(
-      !rawSrcDir.test(releaseYml),
-      "release.yml must not sign raw src/ for AMO — src/ still contains live test seams " +
-      "(lib/test-fixtures.js, the __MUGA_TRUSTED_KEYS__ override) and build-only files " +
-      "that tools/strip-test-seams.mjs strips for the Chrome build and the GitHub release. " +
-      "Sign the already-built, already-stripped dist/firefox artifact instead (#1481)."
+      !RAW_SRC_LITERAL_RE.test(signStep),
+      "the 'Submit to Firefox AMO' step must not sign raw src/ — src/ still contains live " +
+      "test seams (lib/test-fixtures.js, the __MUGA_TRUSTED_KEYS__ override) and build-only " +
+      "files that tools/strip-test-seams.mjs strips for the Chrome build and the GitHub " +
+      "release. Sign the already-built, already-stripped dist/firefox artifact instead (#1481)."
     );
   });
 
-  test("the AMO sign step signs the built dist/firefox artifact, not a fresh unstripped copy", () => {
+  test("the AMO sign step's --source-dir variable never resolves (indirectly) to raw src/", () => {
+    const varNames = findSourceDirVarUsages(signStep);
+    assert.ok(
+      varNames.length > 0,
+      "expected --source-dir in the 'Submit to Firefox AMO' step to be passed via a shell " +
+      "variable (e.g. $AMO_SOURCE_DIR) rather than a bare literal — if that changed " +
+      "intentionally, the raw-src literal check above already covers a hardcoded path"
+    );
+    for (const varName of varNames) {
+      const resolved = normalizeDirLiteral(lastVarAssignment(releaseYml, varName));
+      assert.notEqual(
+        resolved,
+        "src",
+        `--source-dir variable "${varName}" resolves to raw src/ (assigned: ${lastVarAssignment(releaseYml, varName)}) ` +
+        "— variable indirection must not be used to smuggle a raw src/ sign back in (#1481)."
+      );
+    }
+  });
+
+  test("the Unpack step derives the AMO source from dist/firefox and exports AMO_SOURCE_DIR", () => {
     assert.match(
-      releaseYml,
+      unpackStep,
       /dist\/firefox/,
-      "release.yml's AMO submission must reference the dist/firefox build artifact " +
-      "produced by `npm run build:firefox` (the same strip-test-seams output shipped " +
-      "in the GitHub release), so AMO gets an identical, already-stripped artifact (#1481)."
+      "the 'Unpack the built Firefox artifact for AMO signing' step must read from " +
+      "dist/firefox — the build:firefox artifact produced earlier in this job (the same " +
+      "strip-test-seams output shipped in the GitHub release), not a fresh unstripped copy (#1481)."
+    );
+    assert.match(
+      unpackStep,
+      /AMO_SOURCE_DIR=/,
+      "the Unpack step must export AMO_SOURCE_DIR so the sign step below can consume it"
+    );
+  });
+
+  test("the Submit to Firefox AMO step signs $AMO_SOURCE_DIR — the artifact the Unpack step just produced", () => {
+    assert.match(
+      signStep,
+      /--source-dir="\$AMO_SOURCE_DIR"/,
+      "the 'Submit to Firefox AMO' step must sign $AMO_SOURCE_DIR, tying it to the Unpack " +
+      "step's dist/firefox extraction above rather than deriving its own separate path (#1481)."
     );
   });
 });
@@ -82,9 +188,9 @@ describe("with-firefox-manifest.sh never backs up inside src/ (#1481)", () => {
   });
 
   test("cleanup restores src/manifest.json on exit, interrupt, and a closed pipe", () => {
-    // The PIPE trap matters: `npm run lint | head` closes the pipe early, and
-    // without it the script dies before restoring, leaving the swapped MV2
-    // manifest sitting in src/manifest.json (memory lesson — never pipe lint).
+    // `npm run lint | head` closes the pipe early; without a PIPE trap the
+    // script dies before restoring, leaving the swapped MV2 manifest sitting
+    // in src/manifest.json — this is why `npm run lint` must never be piped.
     assert.match(
       script,
       /trap cleanup EXIT INT TERM PIPE/,
