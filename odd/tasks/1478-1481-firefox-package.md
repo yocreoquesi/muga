@@ -77,9 +77,33 @@ Fix two audit findings (2026-09-27, audited at ebda114), both targeted at the
 - `git status --short` clean at the end.
 
 ## Progress
-See commits below. Route: direct inline (single writer already assigned to
-this bounded worktree task by the orchestrator; no further sub-delegation
-needed — all files understood from exploration above).
+Route: direct inline (single writer already assigned to this bounded
+worktree task; all files understood from exploration above, no further
+sub-delegation needed).
+
+- T1/T2 (#1478): commit 17f4ab9 `fix(firefox): drop unused optional data
+  collection permission`. RED observed (new config-integrity assertion
+  failed against unfixed manifest.v2.json), then GREEN (29/29 pass).
+- T3/T4 (#1481): RED observed two ways —
+  1. `tests/unit/amo-firefox-signing.test.mjs` failed against the unfixed
+     `release.yml` (raw `--source-dir=src/`) and unfixed
+     `with-firefox-manifest.sh` (`BACKUP="src/manifest.v3.json"`).
+  2. Reproduced the real #1481 bug end-to-end: temporarily restored the
+     pre-fix script, ran `npm run build:firefox`, confirmed the built zip
+     really did contain a stray `manifest.v3.json` (3480 bytes), and that
+     `tests/integration/release-zip-hygiene.test.mjs`'s new forbidden-path
+     entry caught it (RED).
+  Then applied both fixes (mktemp backup outside `src/`;
+  `release.yml`'s AMO step now unzips the already-built, already-stripped
+  `dist/firefox/*.zip` into `$RUNNER_TEMP` and signs that, dropping the
+  manifest-swap wrapper for that step entirely) and re-ran everything GREEN:
+  unit guard 5/5, `npm run build:firefox` produces a clean zip (146 files,
+  no `manifest.v3.json`, no `newicon.png`, `lib/test-fixtures.js` is the
+  470-byte inert stub), `src/manifest.json` back to MV3 afterward,
+  integration hygiene test 6/6, and a local simulation of the AMO unzip
+  step confirmed the resulting source dir has `manifest_version: 2` and no
+  stray files.
 
 ## Next step
-Run full verification suite and report red→green evidence.
+Run full repo-wide verification suite (typecheck, lint:js, lint, test,
+test:integration) and commit the #1481 changes.

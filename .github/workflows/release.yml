@@ -161,6 +161,19 @@ jobs:
       - name: Inject release notes into AMO metadata
         run: bash scripts/prepare-amo-metadata.sh "${{ steps.version.outputs.VERSION }}"
 
+      - name: Unpack the built Firefox artifact for AMO signing
+        # AMO must receive exactly the artifact already produced above by
+        # `npm run build:firefox` — the same tools/strip-test-seams.mjs output
+        # that ships in the GitHub release — not a fresh sign of raw src/.
+        # Signing raw src/ shipped live test seams (lib/test-fixtures.js, the
+        # __MUGA_TRUSTED_KEYS__ override) and stray build-only files to real
+        # Firefox users on AMO (#1481). `dist/firefox` already has the MV2
+        # manifest baked in, so no manifest swap wrapper is needed here.
+        run: |
+          mkdir -p "$RUNNER_TEMP/amo-source"
+          unzip -q "dist/firefox/muga-${{ steps.version.outputs.VERSION }}-firefox.zip" -d "$RUNNER_TEMP/amo-source"
+          echo "AMO_SOURCE_DIR=$RUNNER_TEMP/amo-source" >> "$GITHUB_ENV"
+
       - name: Submit to Firefox AMO
         id: amo
         continue-on-error: true
@@ -170,9 +183,8 @@ jobs:
           # from a real failure (auth, network, schema). web-ext sign exits
           # non-zero in both cases — only the message tells us which.
           set +e
-          OUTPUT=$(bash scripts/with-firefox-manifest.sh \
-            npx web-ext sign \
-              --source-dir=src/ \
+          OUTPUT=$(npx web-ext sign \
+              --source-dir="$AMO_SOURCE_DIR" \
               --channel=listed \
               --amo-metadata=amo-metadata.json \
               --upload-source-code=muga-source.zip \

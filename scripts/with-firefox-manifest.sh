@@ -4,7 +4,12 @@
 set -euo pipefail
 
 SRC="src/manifest.json"
-BACKUP="src/manifest.v3.json"
+# The backup lives OUTSIDE src/ on purpose (#1481): tools/strip-test-seams.mjs
+# copies --source-dir wholesale before stripping, so a backup left inside
+# src/ (the old src/manifest.v3.json) leaked into every build that runs
+# through this wrapper while it sat there — build:firefox's dist/firefox
+# artifact (and, via the pre-#1481 raw-src AMO sign, the published XPI too).
+BACKUP="$(mktemp)"
 
 cleanup() {
   if [ -f "$BACKUP" ]; then
