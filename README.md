@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/badge/version-3.1.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
-# MUGA: URL Cleaner. Remove tracking
+# MUGA: URL Cleaner. Just the link.
 
 ### Install now
 

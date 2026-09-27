@@ -43,8 +43,8 @@ describe("AMO listing — built from the real store-listing document", () => {
 
   it("reads the AMO summary, not the Chrome Web Store short description", () => {
     // The two sections carry different copy. The CWS one is the manifest
-    // description; the AMO one is longer and mentions "without breaking pages".
-    assert.match(listing.summary["en-US"], /without breaking pages/);
+    // description; the AMO one is longer and mentions creator credit.
+    assert.match(listing.summary["en-US"], /tries to preserve creator credit/);
     assert.notEqual(listing.summary["en-US"], MANIFEST.description);
   });
 

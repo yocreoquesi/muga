@@ -120,7 +120,7 @@ const RETIRED_CLAIMS = [
     label: 'the retired "denoise extension" identity',
     pattern: /denoise extension/i,
     why: [
-      'The product identity is the store name: "MUGA: URL Cleaner. Remove tracking".',
+      'The product identity is the store name: "MUGA: URL Cleaner. Just the link.".',
       "See the manifest's own name and description for the canonical wording.",
     ],
   },

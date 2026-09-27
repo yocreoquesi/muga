@@ -15,7 +15,7 @@
  *      reports it at `web-ext lint` time, which is the last gate before a
  *      release. Catching it here fails in one second instead.
  *   5. manifest.json (MV3) and manifest.v2.json (MV2) descriptions are both
- *      exactly equal to the #1272 canonical-vocabulary pitch string.
+ *      exactly equal to the #1472 canonical-vocabulary pitch string.
  *   6. That same pitch string appears verbatim in docs/store-listing.md under
  *      the Chrome Web Store "Short description" heading.
  *   7. The pitch string is no longer than the 132-character Chrome cap.
@@ -128,11 +128,12 @@ describe("manifest name store limits", () => {
   });
 });
 
-describe("canonical vocabulary pitch string (#1272)", () => {
-  // Single source of truth: the exact 130-character store-summary string
-  // agreed in issue #1272. Both manifests and the Chrome short description
-  // must match this verbatim.
-  const PITCH = "Strips tracking from URLs and tries to preserve creator credit. Unwraps redirects, reveals short links. Open source, no telemetry.";
+describe("canonical vocabulary pitch string (#1472)", () => {
+  // Single source of truth: the exact store-summary string agreed in issue
+  // #1472, which renamed the listing to lead with cleaning links instead of
+  // tracking removal. Both manifests and the Chrome short description must
+  // match this verbatim.
+  const PITCH = "Cleans the links you open, copy and share so they stay short. Removes tracking, unwraps redirects. Open source, no telemetry.";
 
   const chromeShortDescription = (() => {
     const match = storeListing.match(

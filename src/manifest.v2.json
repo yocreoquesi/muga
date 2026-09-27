@@ -1,10 +1,10 @@
 {
   "manifest_version": 2,
-  "name": "MUGA: URL Cleaner. Remove tracking",
+  "name": "MUGA: URL Cleaner. Just the link.",
   "short_name": "MUGA",
   "version": "3.1.0",
-  "version_name": "3.0.0",
-  "description": "Strips tracking from URLs and tries to preserve creator credit. Unwraps redirects, reveals short links. Open source, no telemetry.",
+  "version_name": "3.1.0",
+  "description": "Cleans the links you open, copy and share so they stay short. Removes tracking, unwraps redirects. Open source, no telemetry.",
 
   "permissions": [
     "storage",
