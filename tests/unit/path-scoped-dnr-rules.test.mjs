@@ -192,6 +192,49 @@ describe("path-scoped DNR rules — structure (#1326)", () => {
   });
 });
 
+// ── hostBase must match the ancestor rule Chrome actually applies (#1467) ──
+//
+// A path-scoped rule's domain may itself be untailored (no domain-rules.json
+// entry with preserveParams/stripParams of its own — only pathStrips), e.g.
+// search.naver.com, cc.naver.com, lcs.naver.com under naver.com, and
+// ca.indeed.com under indeed.com. Outside the path rule's own prefix, Chrome
+// still fires SOME priority-1 rule on that host — requestDomains/
+// excludedRequestDomains matching is subdomain-inclusive, so the nearest
+// tailored ANCESTOR's profile rule (or, absent one, the global rule) applies.
+// The path rule must carry that rule's COMPLETE removeParams UNION its own
+// path-scoped params, or the ancestor's extra strips/preserves are silently
+// dropped/widened on the path prefix (#1467).
+
+describe("every path-scoped rule's removeParams is a superset of the ancestor rule Chrome applies outside its prefix (#1467)", () => {
+  const priority1Rules = TRACKING_PARAMS_JSON.filter((r) => (r.priority ?? 1) === 1);
+
+  for (const rule of pathRules) {
+    const [domain] = rule.condition.requestDomains;
+    const prefix = rule.condition.urlFilter.replace(/^\|\|[^/]+/, "");
+
+    test(`rule ${rule.id} (${domain}${prefix}) covers every param the ancestor rule strips`, () => {
+      // Probed OUTSIDE the path rule's own prefix — this must resolve to
+      // whichever single priority-1 (profile or global) rule fires there.
+      const probeUrl = `https://${domain}/`;
+      const matching = priority1Rules.filter((r) => conditionMatches(r, probeUrl, domain));
+      assert.equal(
+        matching.length,
+        1,
+        `expected exactly one priority-1 rule to match ${domain} outside "${prefix}", got [${matching.map((r) => r.id)}]`,
+      );
+
+      const ancestorParams = new Set(removeOf(matching[0]).map((p) => p.toLowerCase()));
+      const pathParams = new Set(removeOf(rule).map((p) => p.toLowerCase()));
+      const missing = [...ancestorParams].filter((p) => !pathParams.has(p));
+      assert.deepEqual(
+        missing,
+        [],
+        `path-scoped rule ${rule.id} (${domain}${prefix}) is missing params the ancestor rule (id ${matching[0]?.id}) strips: ${missing.join(", ")}`,
+      );
+    });
+  }
+});
+
 // ── Deliverable 3: google.com /search, /webhp, /maps ────────────────────────
 
 describe("google.com path-scoped strips — verified against src/rules/tracking-params.json (#1326)", () => {

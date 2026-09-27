@@ -492,11 +492,14 @@ instances where a PATH-scoped rule (`#1326`, a different rule mechanism
 entirely — narrow `pathPrefixes` predicate, not a host-anchor) matches a
 subdomain (`ca.indeed.com`, `cc.naver.com`, `lcs.naver.com`,
 `search.naver.com`) that is NOT excluded from its ancestor's domain-profile
-rule — a potential double-match on Chrome's tie-break, but a structurally
-different bug class (path-rule vs. domain-profile-rule priority, not a
-missing-param gap) and pre-existing, unrelated to the `stripParams`
-completeness question asked here. Not touched; a maintainer decision if it
-needs its own fix.
+rule — a structurally different bug class (path-rule vs. domain-profile-rule
+priority, not a missing-param gap) and pre-existing, unrelated to the
+`stripParams` completeness question asked here. Not touched; a maintainer
+decision if it needs its own fix. **Correction (#1467):** this is not a tie —
+`DNR_PATH_SCOPED_PRIORITY` (3) is above every priority-1 profile rule, so the
+path rule deterministically wins on its prefix; the actual defect (fixed in
+#1467) was the path rule's `hostBase` falling back to raw global params
+instead of resolving the nearest tailored ancestor.
 
 **New guard test**, extending the existing `dnr-rules-sync.test.mjs`
 (not duplicating it — that file already has the exact-match, no-double-
