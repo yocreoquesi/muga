@@ -87,6 +87,36 @@ export function hasDNR() {
   return typeof globalThis.chrome !== "undefined" && typeof globalThis.chrome.declarativeNetRequest !== "undefined";
 }
 
+// #1477 (native-review advisory): PRESERVED_BY_HOST keys feed straight into
+// a DNR rule's excludedRequestDomains below. Chrome rejects the ENTIRE
+// updateDynamicRules() call — not just the offending entry — if any one
+// domain in that array is malformed, which would silently break rule 1000
+// for every user, not just the one host with the bad entry. Today all 189
+// PRESERVED_BY_HOST keys are plain, generator-produced hostnames
+// (rule.domain.toLowerCase() in tools/generate-rules.mjs), so this can't
+// fire yet, but domain-rules.json is hand-edited and that invariant is not
+// enforced anywhere upstream — this is the guard against a future bad entry
+// reaching a live DNR call. Deliberately conservative (requires at least one
+// dot, standard DNS label shape) rather than trying to mirror Chrome's exact
+// canonicalization rules.
+const DNR_HOSTNAME_LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * Is `host` a plain, lowercase, dotted hostname usable as a DNR
+ * `requestDomains`/`excludedRequestDomains` entry? No wildcards, no
+ * protocol, no port, no leading/trailing dot, standard per-label DNS shape.
+ *
+ * @param {string} host
+ * @returns {boolean}
+ */
+export function isValidDnrRequestDomain(host) {
+  if (typeof host !== "string" || host.length === 0 || host.length > 253) return false;
+  if (host !== host.toLowerCase()) return false;
+  const labels = host.split(".");
+  if (labels.length < 2) return false;
+  return labels.every(label => DNR_HOSTNAME_LABEL_RE.test(label));
+}
+
 export async function syncCustomParamsDNR(customParams) {
   if (!hasDNR()) return;
   try {
@@ -157,7 +187,8 @@ export async function syncCustomParamsDNR(customParams) {
     const normalizedSet = new Set(normalized);
     const excludedRequestDomains = Object.entries(PRESERVED_BY_HOST)
       .filter(([, preserved]) => preserved.some(p => normalizedSet.has(p)))
-      .map(([host]) => host);
+      .map(([host]) => host.trim().toLowerCase())
+      .filter(isValidDnrRequestDomain);
 
     const condition = { urlFilter: "*", resourceTypes: ["main_frame"] };
     if (excludedRequestDomains.length > 0) {

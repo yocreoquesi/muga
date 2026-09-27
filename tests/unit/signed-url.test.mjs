@@ -239,9 +239,10 @@ describe("#1476 — signed-URL guard survives a redirect-wrapper unwrap", () => 
       encodeURIComponent("https://shop.example/product?utm_source=newsletter&size=m") + "&sa=D";
     const result = processUrl(wrapped, PREFS);
 
-    const params = new URL(result.cleanUrl).searchParams;
-    assert.ok(!params.has("utm_source"), "an unsigned wrapped destination must still be stripped");
-    assert.ok(params.has("size"));
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking, ["utm_source"]);
+    assert.equal(result.cleanUrl, "https://shop.example/product?size=m");
+    assert.equal(new URL(result.cleanUrl).hostname, "shop.example", "must actually land on the unwrapped destination host");
   });
 });
 
