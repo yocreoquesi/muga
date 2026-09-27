@@ -777,7 +777,7 @@ async function initAffiliateNudge(prefs) {
   const linkBtn = document.getElementById("nudge-aggressive-privacy-link");
   if (linkBtn) {
     linkBtn.addEventListener("click", () => {
-      document.getElementById("section-aggressive-privacy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      revealAggressivePrivacySection();
     });
   }
 }
@@ -827,7 +827,7 @@ async function initBlocklistMigrationNotice(prefs) {
     notice.hidden = true;
   });
   document.getElementById("blocklist-migration-notice-link")?.addEventListener("click", () => {
-    document.getElementById("section-aggressive-privacy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    revealAggressivePrivacySection();
   });
 }
 
@@ -2290,6 +2290,28 @@ function initExportImport() {
     }
     fileInput.value = "";
   });
+}
+
+/**
+ * Reveals the Aggressive privacy section (#1479): it lives inside the
+ * dev-mode-gated Advanced card, so a plain scrollIntoView() is a no-op
+ * while Advanced is off (the default). Both the strip-affiliates nudge
+ * link and the blocklist migration notice link route through this: turn
+ * Advanced on (checkbox + persisted pref + syncDevTools), then scroll and
+ * move focus to the section heading so keyboard/screen-reader users land
+ * on it too, matching the DOM/a11y focus-management pattern used for
+ * other dynamically-revealed sections in this file.
+ */
+function revealAggressivePrivacySection() {
+  const devModeEl = document.getElementById("dev-mode");
+  if (devModeEl && !devModeEl.checked) {
+    devModeEl.checked = true;
+    setDevMode(true).catch(err => console.error("[MUGA] save devMode:", err));
+    syncDevTools();
+  }
+  const section = document.getElementById("section-aggressive-privacy");
+  section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  section?.focus();
 }
 
 /** Shows/hides the Advanced settings panel based on the dev-mode pref. */
