@@ -161,6 +161,37 @@ jobs:
       - name: Inject release notes into AMO metadata
         run: bash scripts/prepare-amo-metadata.sh "${{ steps.version.outputs.VERSION }}"
 
+      - name: Unpack the built Firefox artifact for AMO signing
+        # AMO must receive exactly the artifact already produced above by
+        # `npm run build:firefox` — the same tools/strip-test-seams.mjs output
+        # that ships in the GitHub release — not a fresh sign of raw src/.
+        # Signing raw src/ shipped live test seams (lib/test-fixtures.js, the
+        # __MUGA_TRUSTED_KEYS__ override) and stray build-only files to real
+        # Firefox users on AMO (#1481). `dist/firefox` already has the MV2
+        # manifest baked in, so no manifest swap wrapper is needed here.
+        #
+        # Best-effort (continue-on-error), paired with the AMO submission
+        # step below: if this fails, that step's own $AMO_SOURCE_DIR guard
+        # reports "failure" and the job still proceeds to the independently
+        # best-effort CWS submission, matching how AMO/CWS already behave
+        # elsewhere in this job.
+        id: amo-unpack
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/amo-source"
+          # Glob the artifact rather than re-deriving the "Rename build
+          # artifacts" step's filename here — this step should track
+          # whatever build:firefox (plus that rename) actually produced,
+          # not drift from it if that naming ever changes (#1481).
+          shopt -s nullglob
+          zips=(dist/firefox/*.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one dist/firefox/*.zip, found ${#zips[@]}: ${zips[*]:-none}"
+            exit 1
+          fi
+          unzip -q "${zips[0]}" -d "$RUNNER_TEMP/amo-source"
+          echo "AMO_SOURCE_DIR=$RUNNER_TEMP/amo-source" >> "$GITHUB_ENV"
+
       - name: Submit to Firefox AMO
         id: amo
         continue-on-error: true
@@ -170,9 +201,13 @@ jobs:
           # from a real failure (auth, network, schema). web-ext sign exits
           # non-zero in both cases — only the message tells us which.
           set +e
-          OUTPUT=$(bash scripts/with-firefox-manifest.sh \
-            npx web-ext sign \
-              --source-dir=src/ \
+          if [ -z "${AMO_SOURCE_DIR:-}" ]; then
+            echo "::error::AMO_SOURCE_DIR is unset — the Firefox artifact unpack step above did not succeed, refusing to sign"
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          OUTPUT=$(npx web-ext sign \
+              --source-dir="$AMO_SOURCE_DIR" \
               --channel=listed \
               --amo-metadata=amo-metadata.json \
               --upload-source-code=muga-source.zip \

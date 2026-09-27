@@ -38,6 +38,12 @@ const ROOT  = join(__dir, "..", "..");
 const FORBIDDEN_PATTERNS = [
   { regex: /^_metadata\//,            label: "Chrome-generated DNR ruleset cache (_metadata/)" },
   { regex: /-src\.mjs$/,              label: "ESM bundle source (-src.mjs)" },
+  // #1481: scripts/with-firefox-manifest.sh backed up src/manifest.json to
+  // src/manifest.v3.json INSIDE src/, and strip-test-seams.mjs copies
+  // --source-dir wholesale before stripping, so the backup leaked into the
+  // built artifact whenever that wrapper ran mid-copy. Fixed by moving the
+  // backup outside src/ (mktemp) — this guard keeps it from coming back.
+  { regex: /^manifest\.v3\.json$/,    label: "stray MV2-swap manifest backup (manifest.v3.json, #1481)" },
 ];
 
 function listZipEntries(zipPath) {

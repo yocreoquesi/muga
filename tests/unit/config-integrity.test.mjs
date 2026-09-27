@@ -249,6 +249,22 @@ describe("manifest.json integrity", () => {
     assert.ok(dcp.required.length > 0, "data_collection_permissions.required must not be empty");
   });
 
+  // #1478: `optional` declares a data-collection type the user is asked to
+  // opt into (technicalAndInteraction shows a toggle in the install flow
+  // itself). MUGA collects nothing, so declaring an optional category is a
+  // real listing/install-prompt mismatch against the "no telemetry" copy,
+  // not just an unused field — it must stay absent or empty.
+  test("MV2 data_collection_permissions has no optional categories (#1478)", () => {
+    const dcp = mv2.browser_specific_settings?.gecko?.data_collection_permissions;
+    assert.ok(dcp, "manifest.v2.json must have data_collection_permissions");
+    assert.ok(
+      dcp.optional === undefined || (Array.isArray(dcp.optional) && dcp.optional.length === 0),
+      "data_collection_permissions.optional must be absent or empty — no code path in " +
+      "MUGA reads or requests a data-collection permission, so declaring one shows " +
+      "Firefox users an install-time opt-in toggle that does nothing (#1478)."
+    );
+  });
+
   test("MV2 has gecko_android settings", () => {
     const android = mv2.browser_specific_settings?.gecko_android;
     assert.ok(android, "manifest.v2.json must have gecko_android for Firefox Android support");

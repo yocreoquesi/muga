@@ -108,8 +108,7 @@
       "id": "muga@yocreoquesi.github.io",
       "strict_min_version": "129.0",
       "data_collection_permissions": {
-        "required": ["none"],
-        "optional": ["technicalAndInteraction"]
+        "required": ["none"]
       }
     },
     "gecko_android": {
