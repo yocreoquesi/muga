@@ -74,3 +74,11 @@ disabled it, violating AGENTS.md's "every user-facing feature must check
   each instead of 3) — service-worker.js is not importable in Node, no
   behavioral proxy exists for "the gate exists in production at this exact
   position."
+
+## Commits
+
+- T1 (#1474): `c1b3fb3` — fix(sw): keep remote-rules fetch from re-arming
+  DNR while disabled (#1474)
+- T2 (#1475): this commit (see `git log --oneline -1` on the branch tip) —
+  fix(sw): gate Firefox Referer suppression and beacon blocking on
+  disabled/onboarding state (#1475)

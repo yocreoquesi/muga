@@ -462,6 +462,18 @@ function onBeforeNavigateStrip(details) {
 function onBeforeSendHeadersSuppressReferer(details) {
   if (!cachedPrefs) { getPrefsWithCache(); return; }
 
+  // #1475: a disabled or not-yet-onboarded extension must not strip the
+  // Referer header — mirrors the gate onBeforeNavigateStrip already gets for
+  // free via computeNavigationStrip (cleaner.js), and the gate
+  // applyDnrState's gate-closed branch enforces on Chrome for the equivalent
+  // DNR rules (dnr-sync.js tears down suppressReferer, blockBeacons,
+  // blocklistReferer and blocklistBeacons there — "always aggressive on this
+  // domain" still yields to "extension not accepted / disabled"). Reads the
+  // already-warm cache (AGENTS.md: never read storage in a hot path without
+  // one), so this costs nothing extra on the hot path. Checked before the URL
+  // parse below, same as the blacklist/pref short-circuit right after it.
+  if (!cachedPrefs.enabled || !cachedPrefs.onboardingDone) return;
+
   // #1422: this listener sees EVERY request on Firefox, and with the default
   // settings (suppressReferer off, empty blocklist) it can never act. Answer
   // that case before parsing the URL or walking the allowlist. Same verdict
@@ -510,6 +522,13 @@ function onBeforeSendHeadersSuppressReferer(details) {
  */
 function onBeforeRequestBlockBeacons(details) {
   if (!cachedPrefs) { getPrefsWithCache(); return; }
+
+  // #1475: same disabled-state gate as onBeforeSendHeadersSuppressReferer
+  // above — a disabled or not-yet-onboarded extension must not cancel beacon
+  // requests, matching Chrome's gate-closed teardown of the equivalent DNR
+  // rules (dnr-sync.js) and every other user-facing feature's guard
+  // (AGENTS.md). Checked before the URL parse below.
+  if (!cachedPrefs.enabled || !cachedPrefs.onboardingDone) return;
 
   let host;
   try {
