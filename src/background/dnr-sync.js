@@ -30,6 +30,7 @@
 import { getFullyExemptDomains, getFullyBlacklistedDomains } from "../lib/cleaner.js";
 import { TRACKING_PARAM_CATEGORIES } from "../lib/affiliates.js";
 import { getRemoteParams } from "../lib/storage.js";
+import { PRESERVED_BY_HOST } from "../rules/preserve-params.data.js";
 import {
   DNR_CUSTOM_PARAMS_RULE_ID,
   DNR_REMOTE_PARAMS_RULE_ID,
@@ -128,6 +129,41 @@ export async function syncCustomParamsDNR(customParams) {
       });
       return;
     }
+    // #1477: AGENTS.md — "DNR rules must NOT strip params that domain-rules.json
+    // marks as preserveParams. Conflicting params must be handled by the
+    // content script only." Rule 1000 had no excludedRequestDomains at all, so
+    // a user-added custom param colliding with a host's own preserveParams
+    // (e.g. `k` on amazon.* — search keywords) was stripped network-side even
+    // though processUrl (stripTrackingParams) already skips preserved params
+    // and the remote channel already guards the same case (filterAgainstPreserved
+    // in remote-rules.js).
+    //
+    // Chrome fires AT MOST ONE redirect rule per request (#1021, "one rule per
+    // request, complete per host"), so a scoped rule cannot carry a PARTIAL
+    // removeParams list for a conflicting host — it would either still strip
+    // the preserved param (wrong) or need a second, higher-priority rule
+    // duplicating every OTHER custom param for that host (fragile, and this
+    // list is user-authored and unbounded, unlike the remote channel's
+    // bounded, generator-built scoped rules in remote-rules.js). The simpler,
+    // AGENTS.md-literal fix: exclude the whole host from rule 1000 and let the
+    // content script (which already knows which params are safe on that host)
+    // handle ALL of this host's custom-param stripping instead — DNR does
+    // nothing there, not a wrong partial strip.
+    //
+    // Hosts are gathered from PRESERVED_BY_HOST rather than the flat
+    // PRESERVED_PARAMS union, because only a host that ITSELF declares the
+    // param needs excluding — excluding by param name alone would exclude
+    // every host for a param that is only ever preserved on one of them.
+    const normalizedSet = new Set(normalized);
+    const excludedRequestDomains = Object.entries(PRESERVED_BY_HOST)
+      .filter(([, preserved]) => preserved.some(p => normalizedSet.has(p)))
+      .map(([host]) => host);
+
+    const condition = { urlFilter: "*", resourceTypes: ["main_frame"] };
+    if (excludedRequestDomains.length > 0) {
+      condition.excludedRequestDomains = excludedRequestDomains;
+    }
+
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [DNR_CUSTOM_PARAMS_RULE_ID],
       addRules: [{
@@ -137,7 +173,7 @@ export async function syncCustomParamsDNR(customParams) {
           type: "redirect",
           redirect: { transform: { queryTransform: { removeParams: normalized } } },
         },
-        condition: { urlFilter: "*", resourceTypes: ["main_frame"] },
+        condition,
       }],
     });
   } catch (err) {

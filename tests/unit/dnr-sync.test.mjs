@@ -30,6 +30,7 @@ import { test, describe, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import * as DNR_IDS from "../../src/lib/dnr-ids.js";
 import { ownedDynamicRanges } from "../../src/background/dnr-teardown.js";
+import { PRESERVED_BY_HOST } from "../../src/rules/preserve-params.data.js";
 
 // ── Stub chrome + fetch BEFORE importing dnr-sync.js ─────────────────────────
 
@@ -337,5 +338,56 @@ describe("#1461 — syncCustomParamsDNR on Firefox: remove-only, never adds", ()
       fakeDnr.calls[0].addRules[0].action.redirect.transform.queryTransform.removeParams,
       ["my_custom_param"],
     );
+  });
+});
+
+// ── #1477 — rule 1000 must never strip a host's preserveParams ──────────────
+
+describe("#1477 — syncCustomParamsDNR excludes hosts that preserve a requested param", () => {
+  test("a non-conflicting param keeps rule 1000's old shape (no excludedRequestDomains)", async () => {
+    await dnrSync.syncCustomParamsDNR(["my_custom_param"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    assert.strictEqual(rule.condition.excludedRequestDomains, undefined);
+    assert.strictEqual(rule.condition.urlFilter, "*");
+  });
+
+  test("'k' never yields a rule 1000 that matches amazon.com (AGENTS.md: DNR must not strip preserveParams)", async () => {
+    await dnrSync.syncCustomParamsDNR(["k"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+
+    assert.deepStrictEqual(rule.action.redirect.transform.queryTransform.removeParams, ["k"]);
+    assert.ok(Array.isArray(rule.condition.excludedRequestDomains), "expected excludedRequestDomains to be set");
+    assert.ok(
+      rule.condition.excludedRequestDomains.includes("amazon.com"),
+      "amazon.com preserves 'k' (search keywords) and must be excluded from rule 1000",
+    );
+  });
+
+  test("every host PRESERVED_BY_HOST declares for 'k' ends up excluded", async () => {
+    await dnrSync.syncCustomParamsDNR(["k"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    const expectedHosts = Object.entries(PRESERVED_BY_HOST)
+      .filter(([, params]) => params.includes("k"))
+      .map(([host]) => host);
+
+    assert.ok(expectedHosts.length > 0, "test fixture sanity: at least one host must preserve 'k'");
+    assert.deepStrictEqual(
+      [...rule.condition.excludedRequestDomains].sort(),
+      [...expectedHosts].sort(),
+    );
+  });
+
+  test("a mix of a conflicting and a non-conflicting param excludes the host from BOTH — DNR fires at most once per request, so a partial strip is not expressible; the content script (which already skips preserved params) covers the rest on that host", async () => {
+    await dnrSync.syncCustomParamsDNR(["k", "my_custom_param"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+
+    assert.deepStrictEqual(rule.action.redirect.transform.queryTransform.removeParams, ["k", "my_custom_param"]);
+    assert.ok(rule.condition.excludedRequestDomains.includes("amazon.com"));
+  });
+
+  test("a param nobody preserves never triggers the exclusion scan's output", async () => {
+    await dnrSync.syncCustomParamsDNR(["totally_unique_param_xyz"]);
+    const rule = fakeDnr.calls[0].addRules[0];
+    assert.strictEqual(rule.condition.excludedRequestDomains, undefined);
   });
 });
