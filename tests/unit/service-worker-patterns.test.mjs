@@ -875,6 +875,30 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
     assert.notStrictEqual(remoteRulesOff.reason, "disabled");
     assert.notStrictEqual(onboarding.reason, "disabled");
   });
+
+  // #1491 item 1: forceFetchRemoteRules() above is a hand-written mirror —
+  // it proves the GATE LOGIC is correct in isolation, but nothing pinned
+  // that the REAL handler in service-worker.js still calls that logic in
+  // that order. A prior native review flagged this as untested: someone
+  // could remove or reorder the real `if (!prefs.enabled)` early return
+  // (e.g. move it after the remoteRulesEnabled/onboarding checks, or drop
+  // it) and every test above would keep passing against the mirror alone.
+  //
+  // This is a single, anchored, comment-tolerant regex (not a full brace
+  // extraction) specifically to stay within the #824 source-grep ratchet's
+  // "one new swSource assertion" guidance — see BASELINE's comment on this
+  // file for the +1 bump this test required.
+  test("the real FORCE_FETCH_REMOTE_RULES handler's FIRST statement after getPrefs() is still `if (!prefs.enabled)` (#1491 item 1)", () => {
+    assert.match(
+      swSource,
+      /if \(message\.type === "FORCE_FETCH_REMOTE_RULES"\) \{[\s\S]{0,900}?const prefs = await getPrefs\(\);(?:\s*\/\/[^\r\n]*)*\s*if \(!prefs\.enabled\)/,
+      "the FIRST statement after `const prefs = await getPrefs();` in the real FORCE_FETCH_REMOTE_RULES " +
+      "handler (service-worker.js) must be `if (!prefs.enabled)` — only whitespace/comments may sit " +
+      "between them. Moving this early return after another check, or removing it, lets a disabled " +
+      "MUGA install fetch remote rules; forceFetchRemoteRules() above is a re-implementation and " +
+      "cannot catch drift in the shipped handler (#1491 item 1)."
+    );
+  });
 });
 
 // ── #1474 follow-up: _remoteRulesDeps requires a REAL gate ──────────────────
