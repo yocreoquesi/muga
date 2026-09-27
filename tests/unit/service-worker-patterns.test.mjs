@@ -660,9 +660,12 @@ describe("T2.3 — Message handler source patterns", () => {
 
   test("ENABLE_REMOTE_RULES handler triggers immediate runRemoteRulesFetch", () => {
     const enablePos = swSource.indexOf('"ENABLE_REMOTE_RULES"');
-    // Window widened (600 → 1200) after the handler grew a per-device override
-    // reconcile step + comment ahead of the immediate fetch (#888 write path).
-    const enableBlock = swSource.slice(enablePos, enablePos + 1200);
+    // Window widened (600 → 1200 → 1600) after the handler grew a per-device
+    // override reconcile step + comment ahead of the immediate fetch (#888
+    // write path), then a fresh-prefs re-read + gateOpen comment (#1474
+    // defense-in-depth: the immediate fetch must not re-arm DNR while the
+    // extension is disabled, see _remoteRulesDeps()).
+    const enableBlock = swSource.slice(enablePos, enablePos + 1600);
     assert.ok(
       enableBlock.includes("runRemoteRulesFetch"),
       "ENABLE handler must call runRemoteRulesFetch for immediate first fetch (REQ-OPT-3)"
@@ -696,11 +699,13 @@ describe("T2.3 — Message handler source patterns", () => {
   test("all remote-rules message handlers return true (keep channel open)", () => {
     // All three handlers must return true per the onMessage invariant.
     // Each handler uses an IIFE pattern; the status handler grew with v1.10.1
-    // explanatory comments so give the window enough headroom.
+    // explanatory comments so give the window enough headroom. Widened
+    // 1800 → 2000: ENABLE_REMOTE_RULES's own "return true" moved further out
+    // after its #1474 fresh-prefs re-read + gateOpen comment.
     for (const msgType of ["ENABLE_REMOTE_RULES", "DISABLE_REMOTE_RULES", "GET_REMOTE_RULES_STATUS"]) {
       const pos = swSource.indexOf(`"${msgType}"`);
       assert.ok(pos !== -1, `${msgType} handler must exist`);
-      const block = swSource.slice(pos, pos + 1800);
+      const block = swSource.slice(pos, pos + 2000);
       assert.ok(block.includes("return true"), `${msgType} handler must return true`);
     }
   });

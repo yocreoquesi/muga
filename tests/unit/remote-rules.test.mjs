@@ -1134,6 +1134,42 @@ describe("mergeIntoCache — writes params + meta to storage", () => {
     const healed = await storage.get({ remoteRulesMeta: {} });
     assert.strictEqual(healed.remoteRulesMeta.version, 5, "a later valid payload at the same version must succeed after self-heal");
   });
+
+  // #1474 defense-in-depth: gateOpen:false must write the cache but NEVER a
+  // DNR rule, regardless of what the caller already checked. This is what
+  // lets a wake that fires while the extension is disabled still cache the
+  // fetched payload (so reconcileRemoteDnrRule in dnr-sync.js can rebuild
+  // rule 1001 and the scoped range from it the instant the gate reopens)
+  // without ever re-arming DNR while disabled.
+  test("gateOpen:false writes the cache but issues NO dnr.updateDynamicRules call", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    const params = ["utm_gate_test"];
+    const meta = { version: 3, fetchedAt: "2026-09-27T00:00:00Z", paramCount: params.length, lastError: null, published: null };
+
+    await mergeIntoCache(params, meta, { storage, dnr, gateOpen: false });
+
+    assert.strictEqual(dnr._calls.length, 0, "no DNR rule may be written while the gate is closed (#1474)");
+    const stored = await storage.get({ remoteParams: [], remoteRulesMeta: {} });
+    assert.deepEqual(stored.remoteParams, params, "the cache must still be written so a later gate-open reconcile can rebuild the rule");
+    assert.deepEqual(stored.remoteRulesMeta, meta);
+  });
+
+  test("gateOpen:false still advances the version cleanly (no throw, no poisoning)", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    await mergeIntoCache(["utm_gate2"], { version: 7, fetchedAt: null, paramCount: 1, lastError: null, published: null }, { storage, dnr, gateOpen: false });
+    const stored = await storage.get({ remoteRulesMeta: {} });
+    assert.strictEqual(stored.remoteRulesMeta.version, 7);
+    assert.strictEqual(dnr._calls.length, 0);
+  });
+
+  test("gateOpen defaults to true when omitted (back-compat for every existing caller)", async () => {
+    const storage = makeStorageFake();
+    const dnr = makeDnrFake();
+    await mergeIntoCache(["utm_default_gate"], { version: 1, fetchedAt: null, paramCount: 1, lastError: null, published: null }, { storage, dnr });
+    assert.ok(dnr._calls.length > 0, "omitting gateOpen must preserve the pre-#1474 DNR-writing behavior");
+  });
 });
 
 // ── mergeIntoCache — remoteRulesChangelog (#984) ────────────────────────────────

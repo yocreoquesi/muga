@@ -75,6 +75,19 @@ export async function maybeFetchRemoteRules(deps) {
     // overlays the per-device consent record (onboardingDone / consentVersion /
     // consentDate), which the consent gate below needs.
     const prefs = await getPrefs();
+    // Master disabled-state gate (#1474). Every user-facing feature must check
+    // prefs.enabled && prefs.onboardingDone before acting (AGENTS.md). Without
+    // this, onStartup/onInstalled run applyDnrState's gate-closed branch (which
+    // tears down DNR rule 1001, the 3100-5099 scoped range and the allow rules
+    // for a disabled extension, #921) and THEN this wake path, so a due weekly
+    // fetch re-adds 1001 and the scoped range right after the teardown — params
+    // get stripped at the network layer, allowlisted sites included, while the
+    // user believes MUGA is off. Skipping the fetch itself (not just the DNR
+    // write) is also the privacy-consistent choice here: this is the same
+    // consent-gated egress the `shouldOpenOnboarding` check below already
+    // blocks pre-consent, and "disabled" must mean "no outbound requests",
+    // exactly like every other network-touching feature in this codebase.
+    if (!prefs.enabled) return;
     if (!prefs.remoteRulesEnabled) return;
     // Egress gate. Blocks the weekly signed GET to rules.muga.app until this
     // device has a recorded acceptance at all.

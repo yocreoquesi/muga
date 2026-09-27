@@ -199,3 +199,66 @@ describe("maybeFetchRemoteRules — throttle survives real fetch outcomes across
     assert.ok(localStore.remoteRulesMeta?.fetchedAt, "the retry succeeds and records fetchedAt");
   });
 });
+
+// ── #1474: master disabled-state gate ────────────────────────────────────────
+// Audit repro: Chrome, enabled:false, onboardingDone:true, remoteRulesEnabled:
+// true, a fetch due (fetchedAt older than 7 days or absent), and a newer
+// signed payload on the channel. Before this gate, onStartup's applyDnrState
+// tears rule 1001 / the 3100-5099 scoped range / the allow rules down for a
+// disabled extension, and THEN this wake path re-added them, silently
+// stripping params at the network layer — allowlisted sites included — while
+// the user believed MUGA was off (#921 reopened). Skipping the fetch itself
+// (not only the DNR write) is the privacy-consistent choice: "disabled" must
+// mean no outbound requests, exactly like every other network-touching
+// feature, and this is the same consent-gated egress the onboarding check
+// right below it already blocks pre-consent.
+describe("maybeFetchRemoteRules — master disabled gate (#1474)", () => {
+  test("a disabled extension does not fetch at all, even when a fetch is due", async () => {
+    const { localStore } = installChromeStub(
+      { enabled: false, remoteRulesEnabled: true },
+      { mugaConsent: VALID_CONSENT_RECORD },
+    );
+    const trustedKeys = [testPubKeyBase64()];
+
+    let attempts = 0;
+    const fetchImpl = async (...args) => {
+      attempts++;
+      return makeSignedFetchImpl(["remote_tracker_while_disabled"])(...args);
+    };
+
+    const maybeFetch = await freshMaybeFetchRemoteRules();
+    await maybeFetch(makeProdShapedDeps({ fetchImpl, trustedKeys }));
+
+    assert.strictEqual(attempts, 0, "a disabled extension must not fetch remote rules at all (#1474)");
+    assert.strictEqual(localStore.remoteParams, undefined, "nothing was fetched, so nothing may be cached either");
+    assert.strictEqual(localStore.remoteRulesMeta, undefined, "fetchedAt must not be recorded — the throttle must re-check on the next wake, not wait 7 days");
+  });
+
+  test("re-enabling the extension lets a later wake perform the deferred fetch", async () => {
+    const { syncStore, localStore } = installChromeStub(
+      { enabled: false, remoteRulesEnabled: true },
+      { mugaConsent: VALID_CONSENT_RECORD },
+    );
+    const trustedKeys = [testPubKeyBase64()];
+
+    const maybeFetchDisabled = await freshMaybeFetchRemoteRules();
+    await maybeFetchDisabled(makeProdShapedDeps({
+      fetchImpl: async () => { throw new Error("must not be called while disabled"); },
+      trustedKeys,
+    }));
+
+    // Re-enable, then wake a fresh lifetime (module state resets, matching a
+    // real SW restart — the same idiom the cross-lifetime tests above use).
+    syncStore.enabled = true;
+    let attempts = 0;
+    const fetchImpl = async (...args) => {
+      attempts++;
+      return makeSignedFetchImpl(["remote_tracker_after_enable"])(...args);
+    };
+    const maybeFetchEnabled = await freshMaybeFetchRemoteRules();
+    await maybeFetchEnabled(makeProdShapedDeps({ fetchImpl, trustedKeys }));
+
+    assert.strictEqual(attempts, 1, "a later lifetime with the extension re-enabled must fetch");
+    assert.ok(localStore.remoteParams?.includes("remote_tracker_after_enable"), "the deferred fetch succeeds and populates the cache");
+  });
+});
