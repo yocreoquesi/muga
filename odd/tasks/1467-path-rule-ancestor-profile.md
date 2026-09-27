@@ -159,3 +159,11 @@ regenerated with byte-identical content once CRLF is ignored
 - `fix(rules): resolve path-scoped rule hostBase via nearest tailored ancestor (#1467)` — `tools/generate-rules.mjs`, `tests/unit/path-scoped-dnr-rules.test.mjs`.
 - `chore(rules): regenerate tracking-params.json for #1467` — `src/rules/tracking-params.json`.
 - `docs(odd): correct #1463's priority-tie note and track #1467` — `odd/tasks/1463-adguard-coverage.md`, `odd/tasks/1467-path-rule-ancestor-profile.md`.
+
+## Review assessment
+
+- e93ff0d (hand-written generator + test), assessed against origin/main with
+  `--committed-only`: risk medium, review_due false, under_budget (88 lines).
+- 2cba553 is regenerated output only.
+- Parent spot check: `node --test tests/unit/path-scoped-dnr-rules.test.mjs
+  tests/unit/dnr-rules-sync.test.mjs` passed 71 of 71.
