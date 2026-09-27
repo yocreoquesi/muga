@@ -35,6 +35,19 @@ const PREFS = {
   stripAllAffiliates: false,
 };
 
+/** An S3 SigV4 presigned URL, carrying one genuine tracking param (utm_source). */
+const S3_SIGV4 =
+  "https://bucket.s3.amazonaws.com/f.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256" +
+  "&X-Amz-Credential=a&X-Amz-Date=20260101T000000Z&X-Amz-Expires=300" +
+  "&X-Amz-SignedHeaders=host&X-Amz-Signature=0123456789abcdef0123456789abcdef" +
+  "&utm_source=x";
+
+// GITHUB_ARTIFACT_SAS alone has no strippable field (spr etc. are not in
+// TRACKING_PARAMS), so a test using it bare would pass even with the #1476
+// defect still present — it would prove nothing. Appending a genuine
+// tracking param is what makes the assertion meaningful.
+const AZURE_SAS_WITH_UTM = GITHUB_ARTIFACT_SAS + "&utm_source=newsletter";
+
 describe("#1200 — isSignedUrl detection", () => {
   it("detects an Azure Blob SAS URL (the GitHub artifact case)", () => {
     assert.equal(isSignedUrl(GITHUB_ARTIFACT_SAS), true);
@@ -188,17 +201,8 @@ describe("#1476 — signed-URL guard survives a redirect-wrapper unwrap", () => 
   // l.facebook.com/l.php, and the same class of the other 26 unwrapped
   // wrappers) skipped it entirely: unwrapAndExtract replaced rawUrl with the
   // real destination and nothing re-checked it before the strip steps ran.
-  const S3_SIGV4 =
-    "https://bucket.s3.amazonaws.com/f.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256" +
-    "&X-Amz-Credential=a&X-Amz-Date=20260101T000000Z&X-Amz-Expires=300" +
-    "&X-Amz-SignedHeaders=host&X-Amz-Signature=0123456789abcdef0123456789abcdef" +
-    "&utm_source=x";
-
-  // GITHUB_ARTIFACT_SAS alone has no strippable field (spr etc. are not in
-  // TRACKING_PARAMS), so a test using it bare would pass even with the #1476
-  // defect still present — it would prove nothing. Appending a genuine
-  // tracking param is what makes the assertion meaningful.
-  const AZURE_SAS_WITH_UTM = GITHUB_ARTIFACT_SAS + "&utm_source=newsletter";
+  // S3_SIGV4 and AZURE_SAS_WITH_UTM are module-scope (shared with the
+  // canonical-extractor/AMP-resolve/invariant describe blocks below, #1490).
 
   it("google.com/url wrapping an Azure SAS URL: cleaned (unwrapped), but the signed query survives", () => {
     const wrapped = "https://www.google.com/url?q=" + encodeURIComponent(AZURE_SAS_WITH_UTM) + "&sa=D";
@@ -243,6 +247,126 @@ describe("#1476 — signed-URL guard survives a redirect-wrapper unwrap", () => 
     assert.deepEqual(result.removedTracking, ["utm_source"]);
     assert.equal(result.cleanUrl, "https://shop.example/product?size=m");
     assert.equal(new URL(result.cleanUrl).hostname, "shop.example", "must actually land on the unwrapped destination host");
+  });
+});
+
+// ── #1490 items 4/5: the OTHER two paths that replace rawUrl in
+// unwrapAndExtract before the Step 1b re-check — canonical-extractor
+// (opaque wrapper + canonicalBundle) and the Google AMP detour resolver
+// (unwrapAmpUrl). #1476's own tests (above) only covered the explicit
+// redirect-wrapper (unwrap()) path; these two never had a test proving Step
+// 1b actually sees the value they substitute for rawUrl. ──────────────────
+
+describe("#1490 — signed-URL guard survives the canonical-extractor path (#442/#1476)", () => {
+  // t.co is an opaque wrapper: detectWrapper() matches it but unwrap() cannot
+  // extract a destination from the URL itself, so the canonical extractor
+  // tier (fed by canonicalBundle, e.g. <link rel="canonical">) is what
+  // replaces rawUrl here — never the explicit wrapper-engine unwrap() the
+  // #1476 tests above exercise.
+  const CANONICAL_PREFS = { ...PREFS };
+
+  it("a t.co link whose canonical destination is a signed S3 URL: cleaned, signature intact", () => {
+    const s3Signed =
+      "https://bucket.s3.amazonaws.com/f.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256" +
+      "&X-Amz-Credential=a&X-Amz-Date=20260101T000000Z&X-Amz-Expires=300" +
+      "&X-Amz-SignedHeaders=host&X-Amz-Signature=0123456789abcdef0123456789abcdef" +
+      "&utm_source=newsletter";
+    const bundle = { linkCanonical: s3Signed, jsonLdId: null };
+
+    const result = processUrl("https://t.co/OpaquePath", CANONICAL_PREFS, [], bundle, undefined, undefined);
+
+    assert.equal(result.action, "cleaned", "unwrap via canonical extraction must still apply");
+    assert.deepEqual(result.removedTracking ?? [], [], "the strip step must be skipped entirely for a signed destination");
+    assert.equal(result.cleanUrl, s3Signed, "cleanUrl must be the canonical destination byte-for-byte, signature untouched");
+    const params = new URL(result.cleanUrl).searchParams;
+    assert.ok(params.has("X-Amz-Signature"), "X-Amz-Signature was stripped after canonical extraction");
+    assert.ok(params.has("utm_source"), "utm_source must NOT be removed once the canonical destination is signed");
+  });
+
+  it("a t.co link whose canonical destination is an UNSIGNED URL is still cleaned normally", () => {
+    const bundle = {
+      linkCanonical: "https://shop.example/product?utm_source=twitter&size=m",
+      jsonLdId: null,
+    };
+    const result = processUrl("https://t.co/OpaquePath2", CANONICAL_PREFS, [], bundle, undefined, undefined);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking, ["utm_source"]);
+    assert.equal(result.cleanUrl, "https://shop.example/product?size=m");
+  });
+});
+
+describe("#1490 — signed-URL guard and the AMP-detour resolve path (#1441/#1476)", () => {
+  // unwrapAmpUrl() reconstructs the target as:
+  //   "https://" + <rest-of-pathname-after-/amp/s/> + url.search + url.hash
+  // — where `url.search` is the AMP URL's OWN query string, reused verbatim
+  // (see src/lib/amp-unwrap.js). Only the origin+pathname move from the
+  // pathname segment; the query string never changes at all.
+  //
+  // That makes this path structurally different from the wrapper-unwrap
+  // (#1476) and canonical-extractor (above) paths this file also tests: both
+  // of THOSE hide the destination's query string inside a single opaque,
+  // percent-encoded parameter value (`?q=<encoded dest>`) or an out-of-band
+  // canonicalBundle, so a `sig=`/`X-Amz-Signature=` field on the destination
+  // is invisible to Step 0b's regex scan of the pre-unwrap rawUrl — Step 1b
+  // (the #1476 fix) is what catches it.
+  //
+  // The AMP path cannot hide anything that way: isSignedUrl() matches on
+  // `[?&](sig|signature|...)=...` literally present in the query string, and
+  // the AMP target's query string is byte-identical to the AMP URL's own
+  // query string. So whenever the resolved AMP destination is signed, the
+  // ORIGINAL rawUrl the user navigated to already carries that exact signed
+  // query too, and Step 0b (not Step 1b) already returns "untouched" before
+  // unwrapAndExtract even runs. There is no rawUrl shape that reaches Step 1b
+  // carrying a signed AMP destination Step 0b did not already catch — this
+  // path genuinely cannot exercise Step 1b for a signed destination, so the
+  // test below pins the (still correct, still safe) "untouched via Step 0b"
+  // behavior instead of asserting a "cleaned" outcome that would never
+  // happen and would be faking Step-1b coverage this path cannot provide.
+
+  it("a google.com/amp/s/... URL carrying a signed destination query is caught by Step 0b, untouched", () => {
+    const [origin, query] = S3_SIGV4.split("?");
+    const publisherPart = origin.replace(/^https:\/\//, "");
+    const ampWrapped = `https://www.google.com/amp/s/${publisherPart}?${query}`;
+
+    const result = processUrl(ampWrapped, PREFS, [], undefined, undefined, undefined);
+
+    assert.equal(result.action, "untouched", "Step 0b must exempt this before any unwrap runs");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    assert.equal(result.cleanUrl, ampWrapped, "cleanUrl must be the ORIGINAL AMP URL — Step 0b returns before unwrap");
+  });
+
+  it("a google.com/amp/s/... detour resolving to an UNSIGNED destination is still cleaned normally", () => {
+    const ampWrapped = "https://www.google.com/amp/s/shop.example/product?utm_source=newsletter&size=m";
+    const result = processUrl(ampWrapped, PREFS, [], undefined, undefined, undefined);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking, ["utm_source"]);
+    assert.equal(result.cleanUrl, "https://shop.example/product?size=m");
+  });
+});
+
+// ── #1490 item 5: the invariant the Step 1b comment states but nothing
+// asserted — "when unwrap did NOT change anything, rawUrl here is identical
+// to the Step 0b input, which already returned 'untouched' above". Every
+// processUrl assertion below checks action, removedTracking AND cleanUrl
+// together, per this repo's testing rule (AGENTS.md).
+describe("#1490 — Step 0b/1b invariant: unchanged signed input is untouched, a wrapped one is cleaned with the unwrapped signed URL", () => {
+  it("an unwrapped, already-signed URL (no wrapper involved) returns action untouched with cleanUrl unchanged", () => {
+    const result = processUrl(GITHUB_ARTIFACT_SAS, PREFS, [], undefined, undefined, undefined);
+
+    assert.equal(result.action, "untouched");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    assert.equal(result.cleanUrl, GITHUB_ARTIFACT_SAS);
+  });
+
+  it("a signed URL reached through a wrapper returns action cleaned with cleanUrl === the unwrapped signed URL", () => {
+    const wrapped = "https://www.google.com/url?q=" + encodeURIComponent(AZURE_SAS_WITH_UTM) + "&sa=D";
+    const result = processUrl(wrapped, PREFS, [], undefined, undefined, undefined);
+
+    assert.equal(result.action, "cleaned");
+    assert.deepEqual(result.removedTracking ?? [], []);
+    assert.equal(result.cleanUrl, AZURE_SAS_WITH_UTM, "cleanUrl must be exactly the unwrapped signed URL, not further modified");
   });
 });
 
