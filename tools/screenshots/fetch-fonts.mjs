@@ -15,8 +15,46 @@ import { fileURLToPath } from "node:url";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 export const FONT_DIR = new URL("./fonts/", import.meta.url);
 
-const get = async (u) => (await fetch(u, { headers: { "User-Agent": UA } })).text();
-const save = async (src, name) => writeFileSync(new URL(name, FONT_DIR), Buffer.from(await (await fetch(src)).arrayBuffer()));
+// Every file fetchFonts() writes into FONT_DIR. Exported so render.mjs can
+// verify the cache is complete instead of trusting fonts.css alone (#1489):
+// a run interrupted after fonts.css was written but before every woff2 was
+// downloaded must be detected and re-fetched.
+export const FONT_FILES = [
+  "fonts.css",
+  "Archivo-var.woff2",
+  "Archivo-sym.woff2",
+  "IBMPlexMono-400.woff2",
+  "IBMPlexMono-500.woff2",
+  "IBMPlexMono-600.woff2",
+  "IBMPlexMono-sym.woff2",
+];
+
+/**
+ * Pure decision: does `existing` (basenames present in the font cache dir)
+ * contain every file fetchFonts() is expected to produce? (#1489)
+ * @param {string[]} existing
+ * @returns {boolean}
+ */
+export function isFontCacheComplete(existing) {
+  const have = new Set(existing);
+  return FONT_FILES.every((f) => have.has(f));
+}
+
+/**
+ * fetch() that fails loudly on a non-2xx response instead of letting an
+ * error body (404/500 HTML) be written to disk as CSS or a font file (#1489).
+ * @param {string} u
+ * @param {RequestInit} [opts]
+ * @returns {Promise<Response>}
+ */
+export async function fetchOk(u, opts) {
+  const res = await fetch(u, opts);
+  if (!res.ok) throw new Error(`fetch-fonts: ${res.status} ${res.statusText} fetching ${u}`);
+  return res;
+}
+
+const get = async (u) => (await fetchOk(u, { headers: { "User-Agent": UA } })).text();
+const save = async (src, name) => writeFileSync(new URL(name, FONT_DIR), Buffer.from(await (await fetchOk(src)).arrayBuffer()));
 const latin = (css) => css.split("/*").slice(1).filter((b) => b.slice(0, b.indexOf("*/")).trim() === "latin");
 const url = (b) => /url\((https:[^)]+)\)/.exec(b)[1];
 
