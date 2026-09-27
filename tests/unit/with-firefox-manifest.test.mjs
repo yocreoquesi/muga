@@ -157,3 +157,47 @@ test("with-firefox-manifest.sh: a normal run swaps in MV2 and restores the origi
     rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+test("with-firefox-manifest.sh: a TERM during the wrapped command restores the manifest exactly once", (t) => {
+  if (!hasBash()) {
+    t.skip("bash is not available in this environment");
+    return;
+  }
+
+  const scratch = mkdtempSync(join(tmpdir(), "muga-fx-manifest-term-"));
+  try {
+    mkdirSync(join(scratch, "src"), { recursive: true });
+    mkdirSync(join(scratch, "scripts"), { recursive: true });
+
+    const originalManifest = '{"marker":"ORIGINAL-MV3-MANIFEST"}\n';
+    writeFileSync(join(scratch, "src", "manifest.json"), originalManifest);
+    writeFileSync(join(scratch, "src", "manifest.v2.json"), '{"marker":"MV2-MANIFEST"}\n');
+    writeFileSync(
+      join(scratch, "scripts", "with-firefox-manifest.sh"),
+      readFileSync(SCRIPT_PATH, "utf8"),
+      { mode: 0o755 }
+    );
+
+    // The wrapped command signals its parent (the wrapper). The TERM trap runs
+    // cleanup() without exiting, then the EXIT trap runs it again: the second
+    // pass must be a no-op, or its `>` redirect truncates the manifest.
+    try {
+      execFileSync(
+        "bash",
+        ["scripts/with-firefox-manifest.sh", "bash", "-c", "kill -TERM $PPID; sleep 0.2"],
+        { cwd: scratch, stdio: "pipe" }
+      );
+    } catch {
+      // The wrapper may exit non-zero after the signal; only the file matters.
+    }
+
+    assert.equal(
+      readFileSync(join(scratch, "src", "manifest.json"), "utf8"),
+      originalManifest,
+      "src/manifest.json must keep its original content after a TERM: cleanup() has to be " +
+      "idempotent because the signal trap and the EXIT trap both call it (#1481 follow-up)."
+    );
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});

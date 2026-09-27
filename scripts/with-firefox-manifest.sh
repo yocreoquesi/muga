@@ -25,6 +25,11 @@ cleanup() {
     # src/manifest.json keeps its original permissions instead of picking
     # up mktemp's 0600.
     cat "$BACKUP" > "$SRC"
+    # The trap fires twice on an interrupt: once for INT/TERM/PIPE (the
+    # handler does not exit), then again on EXIT. Without this reset the
+    # second pass would truncate $SRC through the `>` redirect before cat
+    # fails on the already-deleted backup.
+    backed_up=0
   fi
   rm -f "$BACKUP"
 }
