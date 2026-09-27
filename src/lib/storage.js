@@ -161,12 +161,22 @@ export async function getDevMode() {
 
 /**
  * Writes the devMode flag to chrome.storage.local.
+ *
+ * Returns whether the write actually landed (never throws), matching
+ * setPrefs()'s convention (src/lib/prefs.js): callers that must react to a
+ * failed write — notably handleDevModeChange's checkbox-revert path
+ * (options.js) — gate on the return value instead of a try/catch, since
+ * this function swallows the storage error internally either way (#1491
+ * item 3: a previous version threw internally then re-caught its own
+ * rejection here, which meant it could never actually reject, and the
+ * caller's catch block was unreachable dead code).
+ *
  * @param {boolean} value
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} true if the write succeeded, false otherwise.
  */
 export async function setDevMode(value) {
   try {
-    return await new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       chrome.storage.local.set({ devMode: !!value }, () => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
@@ -175,8 +185,10 @@ export async function setDevMode(value) {
         }
       });
     });
+    return true;
   } catch (err) {
     console.error("[MUGA] setDevMode failed:", err);
+    return false;
   }
 }
 
