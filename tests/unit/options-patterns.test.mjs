@@ -645,7 +645,7 @@ describe("'Update now' button surfaces the disabled reason instead of going sile
   test("the click handler's else-if branch shows optionsRemoteRulesUpdateDisabled only for resp.reason === \"disabled\"", () => {
     const btnIdx = optionsJs.indexOf('getElementById("remote-rules-update-now")');
     assert.ok(btnIdx !== -1, "options.js must wire the remote-rules-update-now button");
-    const window_ = optionsJs.slice(btnIdx, btnIdx + 1700);
+    const window_ = optionsJs.slice(btnIdx, btnIdx + 2500);
     assert.ok(
       window_.includes('resp?.reason === "disabled"') &&
       window_.includes('showToast(t("optionsRemoteRulesUpdateDisabled"'),

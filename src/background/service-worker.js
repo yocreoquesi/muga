@@ -1278,16 +1278,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // egress while disabled" applies to this manual button too, so
         // disabled means no fetch and no misleading {ok:true}, consistent
         // with the wake path.
+        //
+        // #1474 follow-up (native review, round 2): three DIFFERENT gates
+        // used to collapse into the same reason:"disabled" string. That was
+        // fine for a caller that only checks resp.ok, but the options-page
+        // toast added in the previous round needs to say "MUGA is disabled"
+        // ONLY for the master toggle — the other two are quiet, rarely-
+        // reachable races (the button is normally hidden while
+        // remoteRulesEnabled is false, and onboarding-pending has no
+        // options-page path at all), and showing "MUGA is disabled" for
+        // either would be actively wrong. Distinct reason strings let the UI
+        // (options.js) tell them apart without guessing from prefs itself.
         if (!prefs.enabled) {
           try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
           return;
         }
         if (!prefs.remoteRulesEnabled) {
-          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          try { sendResponse({ ok: false, reason: "remote_rules_off" }); } catch { /* channel closed */ }
           return;
         }
         if (shouldOpenOnboarding(prefs)) {
-          try { sendResponse({ ok: false, reason: "disabled" }); } catch { /* channel closed */ }
+          try { sendResponse({ ok: false, reason: "onboarding" }); } catch { /* channel closed */ }
           return;
         }
         // #1474 follow-up (TOCTOU): the checks above only prove the gate was

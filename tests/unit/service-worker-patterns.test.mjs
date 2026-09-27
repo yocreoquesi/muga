@@ -736,20 +736,26 @@ describe("T2.3 — Message handler source patterns", () => {
 /**
  * Pure extraction of the FORCE_FETCH_REMOTE_RULES handler body for unit
  * testing. Mirrors the production logic in service-worker.js exactly:
- * same gate, same order, same response shapes.
+ * same gate, same order, same response shapes — INCLUDING the per-gate
+ * reason string (native review, round 2): "disabled" (master toggle),
+ * "remote_rules_off" (the feature's own pref), "onboarding" (consent
+ * pending). The options-page toast (options.js) keys off the EXACT
+ * "disabled" string, so a reason collapsing back to one shared value would
+ * silently make it show the wrong message for the other two gates.
  *
  * DRIFT GUARD: the source-existence test below only pins that the real
  * handler exists, NOT that its consent gate (prefs.enabled, then
  * remoteRulesEnabled, then shouldOpenOnboarding, in that order — #1474
- * added the leading prefs.enabled check) is intact. If you edit the real
- * handler's gate in service-worker.js, edit this mirror to match — otherwise
- * these behavioral tests keep passing against stale gate logic.
+ * added the leading prefs.enabled check) or its three distinct reason
+ * strings are intact. If you edit the real handler's gate or its reason
+ * strings in service-worker.js, edit this mirror to match — otherwise these
+ * behavioral tests keep passing against stale gate logic.
  */
 async function forceFetchRemoteRules(deps) {
   const prefs = await deps.getPrefs();
   if (!prefs.enabled) return { ok: false, reason: "disabled" };
-  if (!prefs.remoteRulesEnabled) return { ok: false, reason: "disabled" };
-  if (deps.shouldOpenOnboarding(prefs)) return { ok: false, reason: "disabled" };
+  if (!prefs.remoteRulesEnabled) return { ok: false, reason: "remote_rules_off" };
+  if (deps.shouldOpenOnboarding(prefs)) return { ok: false, reason: "onboarding" };
   await deps.runFetch(deps.fetchDeps);
   return { ok: true };
 }
@@ -777,7 +783,7 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
     assert.strictEqual(fetchCalled, false, "must not fetch while the extension is disabled");
   });
 
-  test("(a) disabled: remoteRulesEnabled false -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+  test("(a) disabled: remoteRulesEnabled false -> no fetch, responds {ok:false, reason:'remote_rules_off'}", async () => {
     let fetchCalled = false;
     const result = await forceFetchRemoteRules({
       getPrefs: async () => ({ enabled: true, remoteRulesEnabled: false }),
@@ -785,11 +791,11 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
-    assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.deepStrictEqual(result, { ok: false, reason: "remote_rules_off" });
     assert.strictEqual(fetchCalled, false, "must not fetch when the feature is disabled");
   });
 
-  test("(b) consent not accepted: shouldOpenOnboarding true -> no fetch, responds {ok:false, reason:'disabled'}", async () => {
+  test("(b) consent not accepted: shouldOpenOnboarding true -> no fetch, responds {ok:false, reason:'onboarding'}", async () => {
     let fetchCalled = false;
     const result = await forceFetchRemoteRules({
       getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
@@ -797,7 +803,7 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
       runFetch: async () => { fetchCalled = true; },
       fetchDeps: {},
     });
-    assert.deepStrictEqual(result, { ok: false, reason: "disabled" });
+    assert.deepStrictEqual(result, { ok: false, reason: "onboarding" });
     assert.strictEqual(fetchCalled, false, "must not fetch before consent is accepted");
   });
 
@@ -828,6 +834,46 @@ describe("FORCE_FETCH_REMOTE_RULES — manual Update now handler", () => {
     });
     assert.strictEqual(result.ok, false);
     assert.strictEqual(fetchCalled, false);
+  });
+
+  // Native review, round 2: the three gates used to collapse into one shared
+  // reason:"disabled" string. options.js's toast now keys off the EXACT
+  // string "disabled" (only the master toggle) — if a future edit merged two
+  // of these back together, the toast would fire (or stay silent) for the
+  // wrong gate. This pins them as three DISTINCT, stable values.
+  test("each of the three gates yields its OWN distinct reason string", async () => {
+    const disabled = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: false, remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+    const remoteRulesOff = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: false }),
+      shouldOpenOnboarding: () => false,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+    const onboarding = await forceFetchRemoteRules({
+      getPrefs: async () => ({ enabled: true, remoteRulesEnabled: true }),
+      shouldOpenOnboarding: () => true,
+      runFetch: async () => {},
+      fetchDeps: {},
+    });
+
+    assert.strictEqual(disabled.reason, "disabled");
+    assert.strictEqual(remoteRulesOff.reason, "remote_rules_off");
+    assert.strictEqual(onboarding.reason, "onboarding");
+
+    // All three must be pairwise distinct — a Set collapses duplicates.
+    const reasons = new Set([disabled.reason, remoteRulesOff.reason, onboarding.reason]);
+    assert.strictEqual(reasons.size, 3, "all three gates must report distinct reason strings");
+
+    // Only "disabled" is the string the options-page toast (options.js)
+    // shows optionsRemoteRulesUpdateDisabled for — the other two must NOT
+    // equal it, or the toast would wrongly fire for them too.
+    assert.notStrictEqual(remoteRulesOff.reason, "disabled");
+    assert.notStrictEqual(onboarding.reason, "disabled");
   });
 });
 

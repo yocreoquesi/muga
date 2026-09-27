@@ -3035,6 +3035,17 @@ async function initRemoteRules() {
           // nothing reads as broken, not as "consistent with disabled means
           // no egress." Never a misleading success toast: the branch above
           // only fires on resp.ok, so this can never overlap with it.
+          //
+          // reason is intentionally checked for the EXACT string "disabled",
+          // not just resp.ok === false: the handler now reports THREE
+          // distinct reasons (native review, round 2) — "disabled" (the
+          // master toggle, this toast), "remote_rules_off" and "onboarding"
+          // (both silent here on purpose). The latter two are rarely-
+          // reachable races rather than a normal click path — this whole
+          // "Update now" control lives inside #remote-rules-status, which
+          // initRemoteRules only shows while remoteRulesEnabled is true, and
+          // there is no options-page flow at all while onboarding is
+          // pending — so no accurate, non-invented copy exists for them yet.
           showToast(t("optionsRemoteRulesUpdateDisabled", _currentLang));
         }
       } catch (err) {

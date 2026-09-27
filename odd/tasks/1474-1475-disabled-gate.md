@@ -81,8 +81,11 @@ disabled it, violating AGENTS.md's "every user-facing feature must check
   DNR while disabled (#1474)
 - T2 (#1475): `714c419` — fix(sw): gate Firefox Referer suppression and
   beacon blocking on disabled/onboarding state (#1475)
-- T3 (#1474 follow-up, native review advisory findings): this commit —
-  see Follow-up section below.
+- T3 (#1474 follow-up, native review advisory findings): `e6c3981` —
+  fix(sw): require a live gate re-check for remote-rules DNR writes
+  (#1474 follow-up)
+- T4 (#1474 follow-up round 2, native review advisory): this commit —
+  see Follow-up round 2 section below.
 
 ## Follow-up (native review advisory findings, #1474 scope only)
 
@@ -137,3 +140,48 @@ and 65 -> 70 (its own dedicated drift-guard.test.mjs); `options-patterns.test.mj
 Node, so the new structural guards have no behavioral alternative — each
 was verified empirically to actually fail when the guarded invariant is
 broken, not merely to assert the code exists.
+
+## Follow-up round 2 (native review advisory, #1474 scope only)
+
+One advisory finding after native review approved the round-1 follow-up:
+`FORCE_FETCH_REMOTE_RULES` collapsed three different gates (master
+`enabled` off, `remoteRulesEnabled` off, onboarding pending) into the same
+`reason:"disabled"` string, so the round-1 "Update now" toast would have
+fired the wrong ("MUGA is disabled") message for the latter two.
+
+- [x] Distinct reason strings per gate in `FORCE_FETCH_REMOTE_RULES`
+  (`src/background/service-worker.js`): `"disabled"` (master toggle,
+  unchanged), `"remote_rules_off"` (the feature's own pref, was
+  `"disabled"`), `"onboarding"` (consent pending, was `"disabled"`).
+- [x] `options.js`'s toast condition (`resp?.reason === "disabled"`)
+  needed NO code change — it already checked the exact string, so it now
+  correctly fires ONLY for the master-disabled case. Comment updated to
+  explain why the other two stay silent: both are rarely-reachable races
+  (the button lives inside a section hidden while `remoteRulesEnabled` is
+  false; there is no options-page path at all while onboarding is
+  pending), and no accurate existing string was found for either — per
+  instruction, no new copy was invented for them.
+- [x] DRIFT-GUARD mirror `forceFetchRemoteRules()` in
+  `service-worker-patterns.test.mjs` updated to return the same three
+  distinct reasons; existing tests (a)/(b) updated to expect
+  `"remote_rules_off"` / `"onboarding"`; new test asserts all three gates
+  yield pairwise-distinct reasons and that only `"disabled"` matches what
+  the UI toast checks for. Confirmed RED (reverted the mirror's two
+  reasons back to `"disabled"`, both existing tests plus the new
+  distinctness test failed exactly as expected) then GREEN.
+- [x] Confirmed (report only, no code change needed): `_currentGateOpen`'s
+  prefs cache IS invalidated on `chrome.storage.onChanged` — the `area ===
+  "sync"` branch (service-worker.js ~line 759) unconditionally calls
+  `_invalidatePrefsCache()` on ANY sync change, which covers `prefs.enabled`
+  (a sync pref per `PREF_DEFAULTS` in `src/lib/prefs.js`); the `area ===
+  "local"` branch invalidates on `changes.mugaConsent` (~line 732-733),
+  which covers `onboardingDone` via the consent overlay. So a toggle
+  flipped mid-fetch is visible to the next `getPrefsWithCache()` call
+  inside `_currentGateOpen()`, confirming the TOCTOU fix (round 1) works
+  against the real caching layer, not just synthetic test prefs.
+
+No new source-grep ratchet increments this round (all new assertions in
+`service-worker-patterns.test.mjs` exercise the pure `forceFetchRemoteRules()`
+mirror, not `swSource` text). One structural-test window in
+`options-patterns.test.mjs` widened (1700 -> 2500 chars) after the
+click-handler comment grew — same window-drift pattern as earlier rounds.
