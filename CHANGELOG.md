@@ -2,6 +2,51 @@
 
 All notable changes to MUGA will be documented in this file.
 
+## [3.2.0] - 2026-09-28
+
+This cycle is mostly a maintainer-driven audit turned into fixes: three review
+passes over the popup, the disabled switch, and the cleaning pipeline
+(#1450-#1465) checked what MUGA actually does against what it claims to do,
+and closed the gaps they found. Alongside that, the extension is renamed to
+match the identity muga.app already carries, and Settings gets a real home
+for recorded activity instead of three separate corners of the popup
+(ADR-0011).
+
+### Features
+
+- **Settings has one home for what MUGA recorded, not three** (#1350, #1351, #1352, #1353, ADR-0011). Domain stats, the suspicious-params list and per-session activity used to live in separate popup panels, each with its own quirks. They are now Settings sections (Activity, Suspicious params) with their own recording switches placed next to the data they control, plus a "Report a problem" flow any user can reach without turning on Developer tools first. The popup keeps only what a two-second glance-and-act needs: the enable/pause toggle, lifetime stats, and a read-only entropy read; the reference document for that split is [ADR-0011](docs/adr/0011-popup-glance-and-act.md).
+- **Chrome's popup can now say a link was already cleaned before it loaded** (#1496, #1497). `declarativeNetRequest` strips tracking params at the network layer before any page script sees the dirty URL, so on Chrome the popup's "already clean" message used to be indistinguishable from a page that was never dirty. The popup now reads `getMatchedRules()` for the current top-level navigation and shows "MUGA cleaned this link before it loaded" when that is what actually happened. This does not fix the lifetime stats counters underneath, which still cannot see a DNR-only clean; a quiet note now appears under them on Chrome saying so, so the number stops silently implying it is exact.
+- **Path-anchored rules grow from Google search to 46 host and path groups** (#1326, #1368, #1369, #1370, building on [ADR-0010](docs/adr/0010-path-scoped-param-rules.md)). 3.1.0 could already clean a parameter only on some paths of a site, but used it for Google search alone. A reviewable importer now lands AdGuard's path-anchored facts, so 46 groups clean a parameter only on a specific path prefix of a specific host, for cases where the same name is safe on most of a site and a tracker on one section of it.
+
+### Changed
+
+- **MUGA is now "MUGA: URL Cleaner. Just the link." on both stores and everywhere else** (#1468, #1469, #1472, #1483). Reverses the earlier #1272 decision: tracking removal is one thing MUGA does, not the product's identity, and it moves to the short description as a secondary point. Manifests, the store listings, docs, README and the landing page all carry the new name. The release version guard now also checks `src/manifest.v2.json`'s `version_name`, which had gone stale at an old version once already and was previously unchecked on the Firefox side.
+- **AdGuard Filter 17 coverage widened, still anchored, never guessed** (#1463, #1466). 9 new host-scoped parameters land at their exact upstream anchor, and `ref` is now stripped at 79 host anchors under "remove all affiliate tags" (off by default). One anchor that would have widened past what the evidence actually supports was rejected rather than landed: an AppsFlyer `pid` anchor scoped to one app (`nikke.onelink.me`) that would otherwise have covered every OneLink subdomain. `domain-rules.json` grows from 252 to 374 host entries this cycle; `TRACKING_PARAMS` sits at 360 after `sscid` and `btag` moved out to preserved affiliate attribution (see Fixed).
+- **The popup got smaller as Settings absorbed what it carried**: the "referral kept" box is gone rather than fixed (see Fixed), the global-rule actions are retired (entropy stays read-only), `showReportButton` is retired now that Settings has its own report flow, and `hoverPreviewDelayMs` plus the standalone `dnrEnabled` control are retired along with two debug prefs that moved to Developer tools (#1355).
+- **`/clean` is retired as a landing destination.** muga.app/clean now redirects straight to the inline tool already on the homepage; a shared `?url=` link still starts the tool with that link pre-loaded (#1356).
+- **Settings export/import now carries every device-local flag**, not only the prefs that sync across devices, so a restored export matches what was actually exported (#1336).
+- Rules-channel and tooling maintenance, mostly invisible: the publish budget rose to 384 KB with the signed `params.json` channel, weekly auto-ingest keeps running, monthly reports now flag AdGuard-covered globals with no anchor evidence and anchored-only globals missing a home, and a round of test/build hardening (source-scan tokenizer, AMO signing guards, screenshot/font-fetcher tooling) backs all of the above.
+
+### Fixed
+
+- **On Firefox, the signed remote-rules channel was silently disabling MUGA's own built-in cleaning.** Firefox has only one network-layer cleaning path, a blocking `webRequest` listener; installing ANY remote-channel DNR rule there, global or host-scoped, stopped that listener's redirect from firing at all, even for the many parameters the DNR rule itself did not cover. Firefox no longer receives remote-channel DNR rules, matching how the built-in `tracking_params` ruleset already worked there (#1448, #1461, #1449). The Facebook unwrap wrapper's DNR redirect is also now bounded to the `u=` value only, instead of leaking the link-shim token appended after it (#1449).
+- **The disabled switch now turns everything off, on both browsers.** The weekly remote-rules fetch used to re-arm DNR rules right after a disabled-state teardown (#1474); Firefox's `Referer` suppression and beacon blocking never checked the disabled/onboarding gate Chrome's DNR teardown already honored (#1475). Both now check the same live gate, re-read after any in-flight network request, before touching anything.
+- **Signed URLs reached through a redirect wrapper are protected too.** The presigned-URL guard (Azure SAS, S3, GCS) only ran on the URL first navigated to; a signed link reached through `google.com/url`, an AMP page, or any other unwrap step still had its query stripped one hop later, breaking the signature. The guard now runs again right after the unwrap resolves (#1476).
+- **A custom param that collides with a host's preserved param is no longer stripped at the network layer.** DNR rule 1000 (Chrome custom-param strip) had no exclusion for a host whose own profile preserves that exact name, so a user-added custom param could silently override `preserveParams`, violating AGENTS.md. The whole host is now excluded from rule 1000 when a conflict exists, since Chrome fires at most one redirect rule per request (#1477).
+- **`btag` (Income Access affiliate tag) is preserved by default instead of stripped everywhere**, matching how every other verified affiliate/click-id parameter already works (#1482).
+- **The popup's "Looks like a creator referral. Kept." box showed on every page**, not only when a referral was actually detected: a CSS rule overrode the `[hidden]` attribute the JS was setting. Removed rather than fixed, since the maintainer decided the popup should not comment on referral state either way (#1465).
+- **Path-scoped DNR rules on an untailored subdomain now inherit their nearest tailored ancestor's full strip profile**, instead of falling back to the bare global list and silently dropping whatever extra parameters that ancestor's own profile adds (#1467, #1471).
+- **Settings fixes**: the "View Aggressive privacy settings" link went nowhere when Advanced settings were off, since the section it pointed at only exists once Advanced is revealed (#1479); the allowlist domain-only hint described only an affiliate-preservation effect when a domain-only entry actually pauses all cleaning on that site (#1480).
+- **`setDevMode()` now reports a real failure back to its caller.** A failed storage write used to resolve as if it had succeeded, so the Advanced-settings checkbox could show as checked after a write that never landed. It now returns whether the write succeeded, and the checkbox reverts when it did not (#1495).
+- **Firefox package hygiene**: dropped an optional data-collection permission declaration that no code path ever used, which contradicted MUGA's no-telemetry copy in Firefox's own install-time prompt (#1478); the AMO submission now signs the same stripped build Chrome ships instead of raw, unstripped source, which was leaking test fixtures and an unneutralized signing-key seam into the published Firefox package (#1481).
+- **ShareASale's `sscid`** (its Safari ITP / cookie-partitioning fallback click id) **is preserved instead of stripped globally**, the same defect class as `awc` before it (#1443).
+- The "Rate MUGA" link in the popup and Settings now points at MUGA's actual store listing instead of the store's generic homepage, which had no extension id in the URL (#1387).
+- Affiliate-tag and auto-inject toast prompts now reject synthetic, non-trusted clicks, so a hostile page can no longer script-click a user's whitelist/blacklist choice on their behalf (#1388).
+- A failed sync-storage write when adding or removing a list entry is now surfaced with a toast instead of looking identical to a successful one, and the debug-log export disclosure now states that visited domains, and full cleaned URLs with Advanced settings on, are part of every logged session (#1391, #1430).
+- **Cleaning-pipeline audit fixes**: the unwrap toggle is honored end to end and unwrap-only cleans are counted; mixed-case tracking parameters are stripped on Chrome; real AMP URLs resolve on both browsers and previews apply remote-channel parameters; host-scoped remote facts now apply on every `processUrl` path, not just some of them (#1456, #1457, #1458, #1459, #1460).
+- **i18n and accessibility audit fixes**: Settings hints now name the control they actually describe; tracking-category names are translated in every shipped language instead of a few; onboarding headings, its call-to-action, report copy, the popup hint and toast contrast were corrected (#1452, #1453, #1454).
+- **Documentation audit fixes**: privacy, transparency, landing and README claims now match the product as shipped; contact routes, FAQ proof links and an orphaned code reference were fixed (#1450, #1451).
+
 ## [3.1.0] - 2026-09-11
 
 This cycle is about MUGA learning **where** a tracking parameter applies, not just
@@ -1201,7 +1246,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chrome.storage.sync` for cross-device sync
 - MIT License, README
 
-[Unreleased]: https://github.com/yocreoquesi/muga/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/yocreoquesi/muga/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/yocreoquesi/muga/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/yocreoquesi/muga/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/yocreoquesi/muga/compare/v2.6.0...v3.0.0
 [2.6.0]: https://github.com/yocreoquesi/muga/compare/v2.5.0...v2.6.0
