@@ -196,24 +196,44 @@ export function shopPage({ theme = "light" } = {}) {
 }
 
 // ── Popup replica (src/popup/popup.html + popup.css) ────
-export function popup({ theme = "light", lang = "en", before = URLS.newsDirty, after = URLS.newsClean, removed = ["utm_source", "utm_medium", "utm_campaign", "fbclid", "mc_eid"], stats = [37, 112], unwrap = null } = {}) {
+//
+// mode "cleaned" (default): the popup's live JS-driven before/after + %
+// shorter state (src/popup/popup.js renderCountCelebration, count > 0) —
+// accurate on Firefox (its blocking webRequest stripper sees the original
+// URL) and on any browser for a navigation MUGA cleaned in JS.
+//
+// mode "dnr" (#1496): the Chrome-only "already clean" state where
+// chrome.declarativeNetRequest matched one of MUGA's own cleaning rules on
+// this tab BEFORE the page ever loaded. On Chrome this is what a real user
+// sees on an ordinary tracking link far more often than the "cleaned" mode
+// above, because DNR strips at the network layer before any JS (including
+// this popup's own check) ever observes the dirty URL — see
+// src/lib/dnr-visibility-view.js and popup.js's getDnrVisibilityView.
+export function popup({ theme = "light", lang = "en", mode = "cleaned", before = URLS.newsDirty, after = URLS.newsClean, removed = ["utm_source", "utm_medium", "utm_campaign", "fbclid", "mc_eid"], stats = [37, 112], unwrap = null, dnrCount = 3 } = {}) {
   const S = lang === "es"
-    ? { page: "Esta página", badge: "eliminados en esta pestaña", pause: "Pausar la limpieza en este sitio", count: `MUGA eliminó ${removed.length} bits de ruido de esta URL`, shorter: (n) => `Este enlace es un ${n}% más corto`, removed: "Eliminados:", s1: "URLs limpias", s2: "bits de ruido eliminados", settings: "Ajustes →", rate: "Valorar MUGA", support: "Apoyar ♥", terms: "Términos de uso", privacy: "Política de privacidad", unwrap: (h) => `Destino real revelado: ${h}` }
-    : { page: "This page", badge: "stripped in this tab", pause: "Pause cleaning on this site", count: `MUGA removed ${removed.length} bits of noise from this URL`, shorter: (n) => `This link is ${n}% shorter`, removed: "Removed:", s1: "URLs cleaned", s2: "bits of noise removed", settings: "Settings →", rate: "Rate MUGA", support: "Support ♥", terms: "Terms of use", privacy: "Privacy policy", unwrap: (h) => `Real destination revealed: ${h}` };
+    ? { page: "Esta página", badge: "eliminados en esta pestaña", badgeDnr: "limpiados en esta pestaña", pause: "Pausar la limpieza en este sitio", count: `MUGA eliminó ${removed.length} bits de ruido de esta URL`, dnrCleaned: "MUGA limpió este enlace antes de que se cargara", shorter: (n) => `Este enlace es un ${n}% más corto`, removed: "Eliminados:", s1: "URLs limpias", s2: "bits de ruido eliminados", settings: "Ajustes →", rate: "Valorar MUGA", support: "Apoyar ♥", terms: "Términos de uso", privacy: "Política de privacidad", unwrap: (h) => `Destino real revelado: ${h}` }
+    : { page: "This page", badge: "stripped in this tab", badgeDnr: "cleaned in this tab", pause: "Pause cleaning on this site", count: `MUGA removed ${removed.length} bits of noise from this URL`, dnrCleaned: "MUGA cleaned this link before it loaded", shorter: (n) => `This link is ${n}% shorter`, removed: "Removed:", s1: "URLs cleaned", s2: "bits of noise removed", settings: "Settings →", rate: "Rate MUGA", support: "Support ♥", terms: "Terms of use", privacy: "Privacy policy", unwrap: (h) => `Real destination revealed: ${h}` };
   const pct = pctShorter(before, after);
   const kept = 100 - pct;
-  return `<div class="pp ${theme}">
-  <header><div class="pp-brand">${markSVG({ height: 16, color: "var(--pp-accent)" })}<span class="pp-logo">MUGA</span></div><span class="pp-toggle on"><i></i></span></header>
-  <section class="pp-preview">
-    <div class="pp-ph"><span class="pp-plabel">${S.page}</span><span class="pp-badge">${removed.length} ${S.badge}</span></div>
-    <button class="pp-pause">${S.pause}</button>
-    <div class="pp-url before">${esc(before.replace(/^https:\/\//, ""))}</div>
+  const isDnr = mode === "dnr";
+  const badgeCount = isDnr ? dnrCount : removed.length;
+  const badgeLabel = isDnr ? S.badgeDnr : S.badge;
+  const previewBody = isDnr
+    ? `<div class="pp-url clean">${esc(after.replace(/^https:\/\//, ""))}</div>
+    <div class="pp-count is-clean">${S.dnrCleaned}</div>`
+    : `<div class="pp-url before">${esc(before.replace(/^https:\/\//, ""))}</div>
     <div class="pp-url after">${esc(after.replace(/^https:\/\//, ""))}</div>
     <div class="pp-count">${S.count}</div>
     <p class="pp-shorter">${S.shorter(pct)}</p>
     <div class="pp-bar"><i style="width:${kept}%"></i><b style="width:${pct}%"></b></div>
     ${unwrap ? `<p class="pp-unwrap">${esc(S.unwrap(unwrap))}</p>` : ""}
-    <div class="pp-removed">${S.removed} ${esc(removed.join(", "))}</div>
+    <div class="pp-removed">${S.removed} ${esc(removed.join(", "))}</div>`;
+  return `<div class="pp ${theme}">
+  <header><div class="pp-brand">${markSVG({ height: 16, color: "var(--pp-accent)" })}<span class="pp-logo">MUGA</span></div><span class="pp-toggle on"><i></i></span></header>
+  <section class="pp-preview">
+    <div class="pp-ph"><span class="pp-plabel">${S.page}</span><span class="pp-badge">${badgeCount} ${badgeLabel}</span></div>
+    <button class="pp-pause">${S.pause}</button>
+    ${previewBody}
   </section>
   <section class="pp-stats"><div><span class="v">${stats[0]}</span><span class="l">${S.s1}</span></div><div><span class="v">${stats[1]}</span><span class="l">${S.s2}</span></div></section>
   <footer><span>${S.settings}</span><span>${S.rate}</span><span>${S.support}</span></footer>

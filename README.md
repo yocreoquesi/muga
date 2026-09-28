@@ -80,7 +80,7 @@ Domain-specific rules for **374 domains** preserve functional query params (sear
 
 The popup shows what MUGA cleaned on the current page: which parameters were removed, and what the URL looks like now.
 
-![MUGA popup showing the link before and after, what came off and how much shorter it got](docs/assets/store-4-this-page-popup-1280x800.png)
+![MUGA popup showing this page was cleaned before it loaded, with the link before and after shown when cleaning happens in the browser](docs/assets/store-4-this-page-popup-1280x800.png)
 
 Settings give you full control: affiliate behavior, per-domain rules (Blocked domains, Protected tags & domains), and advanced features. The UI ships in 7 languages: English and Spanish are maintained by the author; Portuguese, German, French, Italian, and Japanese are AI-assisted translations, and corrections are welcome.
 
