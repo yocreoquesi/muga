@@ -108,7 +108,7 @@ green — see notes below).
 | `npx tsc -p jsconfig.json` (typecheck) | clean |
 | `npm run lint:js` (eslint) | clean |
 | `npm run check:i18n` | ok — no FIXME/stub/empty locale slots |
-| `npm test` (unit) | 9405/9406 pass, 1 pre-existing skip, 0 fail |
+| `npm test` (unit) | 9433/9434 pass, 1 pre-existing skip, 0 fail |
 | `npm run test:integration` | 233/233 pass |
 | `npx playwright test tests/e2e/url-cleaning.spec.mjs tests/e2e/popup.spec.mjs` | 14/14 pass |
 | `npx playwright test` (full suite) | 164 pass, 1 fail (`toolbar-badge.spec.mjs` "no digit is shown for a fresh tab"), 3 skipped. Re-ran that spec file alone: 10/10 pass. Pre-existing full-suite-order flake unrelated to this change — it fails only when run after unrelated earlier spec files in the same serial Playwright run, not when isolated, and it runs on unmodified toolbar-badge/onboarding-badge code this change never touches. |
@@ -116,6 +116,58 @@ green — see notes below).
 | `git status` | clean after each commit |
 | `git diff origin/main -- src/manifest.json src/manifest.v2.json` | empty — no permission change |
 | Known env failure | polyfill integrity check fails on Windows CRLF checkout (pre-existing, documented in AGENTS.md context, not triggered by this change) |
+
+### Round 2 — native-review advisories (5 items, all addressed)
+
+1. **`getMatchedRules` over-attribution (most important).** Fixed with two
+   independent filters, documented in `dnr-visibility-view.js`'s module doc
+   and pinned by tests: (a) TIME — `content/cleaner.js`'s existing
+   `GET_REFERRER` reply now also carries `performance.timeOrigin`; popup.js
+   threads it through as `minTimeStamp` to both the `getMatchedRules` filter
+   itself and a defensive re-check inside `planDnrVisibilityView` (a match
+   with a missing/non-numeric timestamp fails closed once `minTimeStamp` is
+   given). (b) RESOURCE TYPE — verified against the real shipped rule JSON
+   (`src/rules/*.json`) that every cleaning ruleset MUGA registers targets
+   `resourceTypes: ["main_frame"]` ONLY, except `wrapper_unwrap`
+   (`["main_frame", "sub_frame"]`) — a match there could be an iframe, not
+   the tab's own link, so it is now excluded from the new `linkCleaned`
+   field (which alone gates the `preview_dnr_cleaned` message) while still
+   counting toward the broader per-tab chip. A dedicated test suite
+   (`resourceTypes assumption pinned against the real shipped rule JSON`)
+   reads the actual rule files so a future rule change that widens any
+   trusted ruleset's resourceTypes gets caught.
+2. **Fail-closed dynamic classification.** Switched from denylisting known
+   non-cleaning id ranges to allowlisting known cleaning ones
+   (`DYNAMIC_CLEANING_RANGES`); an id in a gap between ranges (e.g. 1002) or
+   past every known range now returns `false` instead of silently `true`.
+   Regression test added (id 1002, and past every known range).
+3. **`waitForDnrPropagation(page)` called after `page.close()`.** Both
+   `beforeEach` blocks in `url-cleaning.spec.mjs` reordered to wait before
+   closing.
+4. **Fixed-wait-negative pattern.** The DNR-only negative test now leads
+   with a real, non-racy assertion (`page.url()` proves DNR actually
+   stripped the params) and keeps the stats-unchanged check explicitly
+   labeled as documenting CURRENT behavior (#1062/#1496), not a contract —
+   comment says explicitly that a future fix closing the gap should update
+   this assertion, not be treated as breaking it.
+5. **Popup-wiring tests for the acceptance criteria.** `planTabBadgeView`
+   (JS-over-DNR chip priority) and `shouldShowStatsDnrNote` (Chrome vs
+   Firefox vs fresh-install) extracted into the same pure module and fully
+   unit-tested (dnr-visibility-view.test.mjs). `preview_dnr_cleaned`'s
+   view-model gating (`linkCleaned`) is unit-tested at the pure-function
+   level. Since popup.js cannot be imported in Node and Playwright cannot
+   simulate a real `activeTab` grant for a content tab (confirmed:
+   `popup.html` opened as a plain tab makes `chrome.tabs.query({active:
+   true})` resolve to the popup's OWN tab, which `showUrlPreview`'s own
+   guard excludes — see the existing e2e test "preview section is hidden on
+   blank popup"), the WIRING itself is covered by a new structural guard,
+   `tests/unit/popup-dnr-visibility-wiring.test.mjs` — 5 focused assertions
+   (one per acceptance criterion, not one per implementation detail) added
+   to the `#824` source-grep ratchet baseline at its exact count (10),
+   with the exemption reasoning recorded in the baseline comment.
+
+Re-ran the full required check list after these fixes — see the table
+above (now reflects the post-fix numbers).
 
 ### Red → green note (SPA stats e2e test)
 
@@ -176,5 +228,14 @@ All tasks complete. Work-unit commits on `fix/1496-dnr-visibility`
    `tools/screenshots/*`, `docs/assets/*store-4*`, `README.md`,
    `landing/index.html`.
 5. `docs(odd): add #1496 DNR-visibility task doc` — this file.
+6. `fix(popup): scope DNR-cleaned-link claim to the current top-level nav (#1496)` —
+   `dnr-visibility-view.js` (minTimeStamp + resourceType filters, fail-closed
+   dynamic allowlist, `planTabBadgeView`, `shouldShowStatsDnrNote`),
+   `content/cleaner.js` (timeOrigin reply), `popup.js` wiring, new
+   `popup-dnr-visibility-wiring.test.mjs`, ratchet baseline entry.
+7. `test(e2e): fix closed-page wait and soften the DNR-only negative test (#1496)` —
+   `tests/e2e/url-cleaning.spec.mjs`.
 
-No push, no PR (per instructions).
+No push, no PR (per instructions). No copy/locale/store-image changes in the
+round-2 fixes — `preview_dnr_cleaned`/`tab_badge_dnr_label`/`stats_dnr_note`
+text is unchanged, only the logic deciding when to show it.
