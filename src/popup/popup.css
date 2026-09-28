@@ -738,3 +738,16 @@ footer .footer-link-btn:hover { color: var(--accent-strong); }
   background: var(--surface-2);
   border-bottom: 1px solid var(--border-1);
 }
+
+/* #1496: honest caveat under the stats block on Chrome, where DNR cleans at
+   the network layer without going through the counter that feeds it. Same
+   quiet treatment as .stats-empty — a footnote, not a warning. */
+.stats-note {
+  padding: 6px 14px 8px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: center;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-1);
+}

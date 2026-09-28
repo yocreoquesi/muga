@@ -104,6 +104,16 @@
     Nothing cleaned yet. Open a link with tracking on it and these counters start moving.
   </p>
 
+  <!-- #1496: on Chrome, DNR cleans a tracking link at the network layer
+       before the content-script counter that feeds these numbers ever runs,
+       so the totals above can under-count. Shown only when that gap can
+       actually apply (Chrome, feature-detected in popup.js) and hidden
+       during the zero-state message above, which already covers "nothing
+       counted yet" on its own. -->
+  <p id="stats-dnr-note" class="stats-note" data-i18n="stats_dnr_note" hidden>
+    These counters may not include every clean made at the network level.
+  </p>
+
   <!-- Domain-stats panel moved to Settings' Activity section (#1350,
        ADR-0011 Decision 3): a ranked table over time is a record, not a
        two-second glance. See src/options/options.html #section-activity. -->
