@@ -1,7 +1,7 @@
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.1.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-3.2.0-blue)](#)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#development)
 [![CAPS](https://img.shields.io/badge/CAPS-Basic%20%2B%20Contextual-2ea44f)](CONFORMANCE.md)
 # MUGA: URL Cleaner. Just the link.
@@ -17,7 +17,7 @@
 
 > **MUGA?** Minus Useless Garbage Appended. **MUGA.** My URLs, Gloriously Abridged. **MUGA!** Mostly Unneeded, Gone Automatically.
 
-> **3.1.0 shipped.** `Referer` suppression and `<a ping>` beacon blocking are enforced at the network layer, and short-link resolution is split so that resolving on click stays on while resolving on hover is opt-in. Presigned download links (GitHub artifacts, S3, Azure) are left untouched instead of broken. See [CHANGELOG](CHANGELOG.md) for the full release notes.
+> **3.2.0 shipped.** Settings gets a real home for recorded activity instead of three separate corners of the popup, Firefox's remote-rules channel stops silently disabling MUGA's own built-in cleaning, and the disabled switch now turns off remote fetches and Firefox's Referer/beacon protection too, not only the visible parts. See [CHANGELOG](CHANGELOG.md) for the full release notes.
 
 [Clean a URL in your browser](https://muga.app/#demo-tool) · [Transparency report](https://rules.muga.app/transparency.html) · [Privacy policy](https://rules.muga.app/privacy-page.html) · [FAQ](docs/faq.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Maintainer ops docs](docs/ops/README.md)
 
