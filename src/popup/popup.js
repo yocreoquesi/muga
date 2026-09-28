@@ -16,7 +16,7 @@ import { buildParamBreakdownView, buildParamIndex } from "../lib/param-breakdown
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
-import { planDnrVisibilityView } from "../lib/dnr-visibility-view.js";
+import { planDnrVisibilityView, planTabBadgeView, shouldShowStatsDnrNote } from "../lib/dnr-visibility-view.js";
 
 // #1352: the clipboard helpers that used to live here (_createClipboardSvg,
 // _setClipboardIcon, copyToClipboard, copyWithFeedback, getCopySafeCleanUrl)
@@ -111,15 +111,17 @@ async function init() {
   // #1496: on Chrome, chrome.declarativeNetRequest.getMatchedRules is the
   // same feature-detect the popup preview uses to know DNR can clean a URL
   // before any counter-feeding JS runs — so its presence is also the right
-  // signal for "these totals can under-count". Hidden on Firefox (no such
-  // API) and during the fresh-install zero-state above, which already says
-  // "nothing counted yet" on its own.
+  // signal for "these totals can under-count". Visibility decision lives in
+  // the pure shouldShowStatsDnrNote() (dnr-visibility-view.js) so it is
+  // unit-testable without a DOM: hidden on Firefox (no such API) and during
+  // the fresh-install zero-state above, which already says "nothing counted
+  // yet" on its own.
   const statsDnrNote = document.getElementById("stats-dnr-note");
   if (statsDnrNote) {
     const hasChromeDnrMatching =
       typeof chrome.declarativeNetRequest !== "undefined" &&
       typeof chrome.declarativeNetRequest.getMatchedRules === "function";
-    statsDnrNote.hidden = !hasChromeDnrMatching || isFreshInstall(local.stats);
+    statsDnrNote.hidden = !shouldShowStatsDnrNote({ hasDnrMatching: hasChromeDnrMatching, isFresh: isFreshInstall(local.stats) });
   }
 
   const enabledToggle = document.getElementById("enabled-toggle");
@@ -349,11 +351,22 @@ function renderPauseControl(url, prefs, lang) {
  * extra against the 20-calls/10-min quota either way: getMatchedRules calls
  * made from a user gesture (opening the popup is one) are exempt from it.
  *
+ * `minTimeStamp` (the current document's `performance.timeOrigin`, sourced
+ * from the content script — see showUrlPreview) is REQUIRED, not optional:
+ * without it, `getMatchedRules` can return matches from an earlier
+ * navigation in the same tab, and this module has no way to tell those
+ * apart from the current page (see dnr-visibility-view.js's module doc).
+ * Passed to Chrome as part of the filter (so the browser does the temporal
+ * filtering server-side) AND re-applied inside planDnrVisibilityView
+ * (defense in depth). A caller that could not source a timestamp gets `null`
+ * here rather than an untemporally-scoped result presented as current.
+ *
  * @param {number|undefined} tabId
- * @returns {Promise<{cleaned: boolean, count: number}|null>}
+ * @param {number|undefined} minTimeStamp
+ * @returns {Promise<{cleaned: boolean, count: number, linkCleaned: boolean}|null>}
  */
-async function getDnrVisibilityView(tabId) {
-  if (typeof tabId !== "number") return null;
+async function getDnrVisibilityView(tabId, minTimeStamp) {
+  if (typeof tabId !== "number" || typeof minTimeStamp !== "number") return null;
   if (
     typeof chrome.declarativeNetRequest === "undefined" ||
     typeof chrome.declarativeNetRequest.getMatchedRules !== "function"
@@ -361,8 +374,8 @@ async function getDnrVisibilityView(tabId) {
     return null; // Firefox MV2, or any host without the matching API.
   }
   try {
-    const { matchedRules } = await chrome.declarativeNetRequest.getMatchedRules({ tabId });
-    return planDnrVisibilityView(matchedRules);
+    const { matchedRules } = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp });
+    return planDnrVisibilityView(matchedRules, { minTimeStamp });
   } catch {
     // Quota exceeded, activeTab not granted for this open, or any other
     // host refusal — silently fall back to the generic clean message.
@@ -386,9 +399,12 @@ async function getDnrVisibilityView(tabId) {
  * @param {object} result - cleanForPreview() result
  * @param {string} url - the tab's current (pre-preview) URL
  * @param {string} lang
- * @param {{cleaned: boolean, count: number}|null} [dnrView] - #1496:
+ * @param {{cleaned: boolean, count: number, linkCleaned: boolean}|null} [dnrView] - #1496:
  *   pre-fetched DNR-visibility view for this tab (see getDnrVisibilityView),
- *   null on Firefox or when the Chrome check was inconclusive.
+ *   null on Firefox or when the Chrome check was inconclusive. Only
+ *   `linkCleaned` (not the broader `cleaned`/`count`) may gate the "MUGA
+ *   cleaned this link" message — see dnr-visibility-view.js's module doc for
+ *   why `cleaned`/`count` alone are not a safe claim about THIS link.
  */
 function renderCountCelebration(result, url, lang, dnrView) {
   const el = document.getElementById("preview-count");
@@ -430,10 +446,13 @@ function renderCountCelebration(result, url, lang, dnrView) {
     // #1496: on Chrome, "untouched" is ambiguous — it also covers a URL that
     // DNR already cleaned at the network layer before this check ever ran.
     // When the tab's matched-rule history says MUGA's own cleaning rules
-    // fired here, say so plainly instead of the generic "already clean"
-    // message (dnrView is null on Firefox, or when the check was
-    // inconclusive — see getDnrVisibilityView).
-    el.textContent = dnrView?.cleaned
+    // fired on the tab's OWN top-level navigation specifically — linkCleaned,
+    // not the broader cleaned/count, which can also include a stale match
+    // from an earlier page or a subresource/iframe on this one — say so
+    // plainly instead of the generic "already clean" message (dnrView is
+    // null on Firefox, or when the Chrome check was inconclusive — see
+    // getDnrVisibilityView).
+    el.textContent = dnrView?.linkCleaned
       ? t("preview_dnr_cleaned", lang)
       : t("preview_count_clean", lang);
     el.classList.add("is-clean");
@@ -543,28 +562,41 @@ async function showUrlPreview(prefs, lang) {
   // accumulate stale markup from the previous render.
   _resetPreviewDom();
 
-  // Show per-tab badge count (#89). #1496: fetched once here (not re-fetched
-  // later for the preview-count line) both to respect the quota and because
-  // this is the one place in the render that needs to decide the badge's
-  // source — dnrView is threaded through to renderCountCelebration below.
+  // B14 (#452): fetch the active tab's `document.referrer` from the content
+  // script so the cleaner can decide whether to honor the creator chain.
+  // #1496: the SAME message also carries `performance.timeOrigin` — the
+  // current document's navigation-start timestamp, needed to scope
+  // getMatchedRules() to THIS navigation (see getDnrVisibilityView) — fetched
+  // here, once, rather than as a second round trip, since this call already
+  // runs unconditionally on every render. Best-effort: missing/silent
+  // content scripts (chrome:// pages, popups, first-load before injection
+  // completes) collapse to no referrer / no timeOrigin, which disables
+  // creator-honoring and the DNR-visibility check respectively — same
+  // "degrade to the generic behavior" posture as the rest of this function.
+  let referrer = "";
   let dnrView = null;
+  if (tab?.id) {
+    try {
+      const resp = await chrome.tabs.sendMessage(tab.id, { type: "GET_REFERRER" });
+      if (resp && typeof resp.referrer === "string") referrer = resp.referrer;
+      if (resp && typeof resp.timeOrigin === "number") {
+        dnrView = await getDnrVisibilityView(tab.id, resp.timeOrigin);
+      }
+    } catch { /* content script not loaded — ignore */ }
+  }
+
+  // Show per-tab badge count (#89). Source priority (JS session count wins
+  // over the DNR-derived one) lives in the pure planTabBadgeView()
+  // (dnr-visibility-view.js) so it is unit-testable without a DOM; dnrView
+  // itself is also threaded through to renderCountCelebration below.
   if (tab?.id) {
     const key = `tab_${tab.id}`;
     const sessionData = await sessionStorage.get({ [key]: 0 });
-    const count = sessionData[key];
-    dnrView = await getDnrVisibilityView(tab.id);
-    if (count > 0) {
-      // JS-driven count (content-script / history-rewrite cleans): the more
-      // precise, already-proven signal, so it always wins when present.
+    const badgeView = planTabBadgeView(sessionData[key], dnrView);
+    if (badgeView) {
       const badge = document.getElementById("tab-badge");
-      badge.textContent = `${count} ${t("tab_badge_label", lang)}`;
-      badge.hidden = false;
-    } else if (dnrView?.count > 0) {
-      // #1496: nothing JS-driven happened in this tab, but Chrome's DNR
-      // matched MUGA's own cleaning rules — surface that instead of leaving
-      // the chip hidden, which used to read as "nothing was cleaned here".
-      const badge = document.getElementById("tab-badge");
-      badge.textContent = `${dnrView.count} ${t("tab_badge_dnr_label", lang)}`;
+      const labelKey = badgeView.source === "js" ? "tab_badge_label" : "tab_badge_dnr_label";
+      badge.textContent = `${badgeView.count} ${t(labelKey, lang)}`;
       badge.hidden = false;
     }
   }
@@ -600,19 +632,8 @@ async function showUrlPreview(prefs, lang) {
   // what it will produce.
   const cleaningContext = await loadCleaningContext();
 
-  // B14 (#452): fetch the active tab's `document.referrer` from the content
-  // script so the cleaner can decide whether to honor the creator chain.
-  // Best-effort: missing/silent content scripts (chrome:// pages, popups,
-  // first-load before injection completes) collapse to no referrer, which
-  // disables honoring entirely — same as background-only contexts.
-  let referrer = "";
-  if (tab?.id) {
-    try {
-      const resp = await chrome.tabs.sendMessage(tab.id, { type: "GET_REFERRER" });
-      if (resp && typeof resp.referrer === "string") referrer = resp.referrer;
-    } catch { /* content script not loaded — ignore */ }
-  }
-
+  // referrer was already fetched above (bundled with the #1496 timeOrigin
+  // request) so cleanForPreview reuses it here without a second round trip.
   const result = cleanForPreview(url, prefs, cleaningContext, { referrer });
 
   // B14 (#452): honored-creator badge. Surfaced when the wrapper URL was
