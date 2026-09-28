@@ -16,6 +16,7 @@ import { buildParamBreakdownView, buildParamIndex } from "../lib/param-breakdown
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
+import { planDnrVisibilityView } from "../lib/dnr-visibility-view.js";
 
 // #1352: the clipboard helpers that used to live here (_createClipboardSvg,
 // _setClipboardIcon, copyToClipboard, copyWithFeedback, getCopySafeCleanUrl)
@@ -106,6 +107,20 @@ async function init() {
   // all still zero.
   const statsEmpty = document.getElementById("stats-empty");
   if (statsEmpty) statsEmpty.hidden = !isFreshInstall(local.stats);
+
+  // #1496: on Chrome, chrome.declarativeNetRequest.getMatchedRules is the
+  // same feature-detect the popup preview uses to know DNR can clean a URL
+  // before any counter-feeding JS runs — so its presence is also the right
+  // signal for "these totals can under-count". Hidden on Firefox (no such
+  // API) and during the fresh-install zero-state above, which already says
+  // "nothing counted yet" on its own.
+  const statsDnrNote = document.getElementById("stats-dnr-note");
+  if (statsDnrNote) {
+    const hasChromeDnrMatching =
+      typeof chrome.declarativeNetRequest !== "undefined" &&
+      typeof chrome.declarativeNetRequest.getMatchedRules === "function";
+    statsDnrNote.hidden = !hasChromeDnrMatching || isFreshInstall(local.stats);
+  }
 
   const enabledToggle = document.getElementById("enabled-toggle");
   enabledToggle.checked = prefs.enabled;
@@ -323,17 +338,59 @@ function renderPauseControl(url, prefs, lang) {
   };
 }
 
+/**
+ * Chrome-only network-layer visibility (#1496): asks
+ * chrome.declarativeNetRequest.getMatchedRules for this tab and classifies
+ * the result via the pure dnr-visibility-view module (src/lib/dnr-visibility
+ * -view.js). Feature-detected — Firefox's MV2 build has no matching API —
+ * and fully silent on any failure or quota hit: this is a nice-to-have
+ * visibility signal, not a load-bearing one, so any refusal just falls back
+ * to the popup's existing generic "already clean" message. Costs nothing
+ * extra against the 20-calls/10-min quota either way: getMatchedRules calls
+ * made from a user gesture (opening the popup is one) are exempt from it.
+ *
+ * @param {number|undefined} tabId
+ * @returns {Promise<{cleaned: boolean, count: number}|null>}
+ */
+async function getDnrVisibilityView(tabId) {
+  if (typeof tabId !== "number") return null;
+  if (
+    typeof chrome.declarativeNetRequest === "undefined" ||
+    typeof chrome.declarativeNetRequest.getMatchedRules !== "function"
+  ) {
+    return null; // Firefox MV2, or any host without the matching API.
+  }
+  try {
+    const { matchedRules } = await chrome.declarativeNetRequest.getMatchedRules({ tabId });
+    return planDnrVisibilityView(matchedRules);
+  } catch {
+    // Quota exceeded, activeTab not granted for this open, or any other
+    // host refusal — silently fall back to the generic clean message.
+    return null;
+  }
+}
+
 /** Resets preview-related DOM so repeated renders are idempotent. */
 /**
  * Renders the "MUGA removed N trackers" celebration line, the "URL was
- * already clean" positive signal, or nothing — depending on the cleaner
- * result. The number gets wrapped in its own span so CSS can target it for
- * a one-shot pulse animation (gated on prefers-reduced-motion: no-preference).
+ * already clean" positive signal (optionally upgraded to the #1496
+ * "MUGA cleaned this before it loaded" message when Chrome's DNR matched
+ * one of MUGA's own cleaning rules on this tab), or nothing — depending on
+ * the cleaner result. The number gets wrapped in its own span so CSS can
+ * target it for a one-shot pulse animation (gated on
+ * prefers-reduced-motion: no-preference).
  *
  * Plurals are picked via Intl.PluralRules so the en/es/pt/de variants stay
  * grammatical without hard-coded count===1 forks.
+ *
+ * @param {object} result - cleanForPreview() result
+ * @param {string} url - the tab's current (pre-preview) URL
+ * @param {string} lang
+ * @param {{cleaned: boolean, count: number}|null} [dnrView] - #1496:
+ *   pre-fetched DNR-visibility view for this tab (see getDnrVisibilityView),
+ *   null on Firefox or when the Chrome check was inconclusive.
  */
-function renderCountCelebration(result, url, lang) {
+function renderCountCelebration(result, url, lang, dnrView) {
   const el = document.getElementById("preview-count");
   if (!el) return;
   const count = result.removedTracking?.length ?? 0;
@@ -366,11 +423,19 @@ function renderCountCelebration(result, url, lang) {
     return;
   }
 
-  // count === 0: only show the "already clean" line when the URL was truly
-  // untouched. Path-cleanup / blacklist-only cases leave the URL diff to
-  // communicate the change without a count headline.
+  // count === 0: only show a "clean" line when the URL was truly untouched.
+  // Path-cleanup / blacklist-only cases leave the URL diff to communicate
+  // the change without a count headline.
   if (result.cleanUrl === url && result.action === "untouched") {
-    el.textContent = t("preview_count_clean", lang);
+    // #1496: on Chrome, "untouched" is ambiguous — it also covers a URL that
+    // DNR already cleaned at the network layer before this check ever ran.
+    // When the tab's matched-rule history says MUGA's own cleaning rules
+    // fired here, say so plainly instead of the generic "already clean"
+    // message (dnrView is null on Firefox, or when the check was
+    // inconclusive — see getDnrVisibilityView).
+    el.textContent = dnrView?.cleaned
+      ? t("preview_dnr_cleaned", lang)
+      : t("preview_count_clean", lang);
     el.classList.add("is-clean");
     el.removeAttribute("data-animating");
     el.hidden = false;
@@ -478,14 +543,28 @@ async function showUrlPreview(prefs, lang) {
   // accumulate stale markup from the previous render.
   _resetPreviewDom();
 
-  // Show per-tab badge count (#89)
+  // Show per-tab badge count (#89). #1496: fetched once here (not re-fetched
+  // later for the preview-count line) both to respect the quota and because
+  // this is the one place in the render that needs to decide the badge's
+  // source — dnrView is threaded through to renderCountCelebration below.
+  let dnrView = null;
   if (tab?.id) {
     const key = `tab_${tab.id}`;
     const sessionData = await sessionStorage.get({ [key]: 0 });
     const count = sessionData[key];
+    dnrView = await getDnrVisibilityView(tab.id);
     if (count > 0) {
+      // JS-driven count (content-script / history-rewrite cleans): the more
+      // precise, already-proven signal, so it always wins when present.
       const badge = document.getElementById("tab-badge");
       badge.textContent = `${count} ${t("tab_badge_label", lang)}`;
+      badge.hidden = false;
+    } else if (dnrView?.count > 0) {
+      // #1496: nothing JS-driven happened in this tab, but Chrome's DNR
+      // matched MUGA's own cleaning rules — surface that instead of leaving
+      // the chip hidden, which used to read as "nothing was cleaned here".
+      const badge = document.getElementById("tab-badge");
+      badge.textContent = `${dnrView.count} ${t("tab_badge_dnr_label", lang)}`;
       badge.hidden = false;
     }
   }
@@ -578,12 +657,14 @@ async function showUrlPreview(prefs, lang) {
   }
 
   // Tracker count celebration: surface the value MUGA delivered on this URL.
-  // Three states:
+  // Four states:
   //  - count > 0   → "MUGA removed N trackers" (the dopamine moment).
+  //  - count === 0, untouched, dnrView.cleaned → #1496 "MUGA cleaned this
+  //    before it loaded" (Chrome DNR matched at the network layer).
   //  - count === 0 and the URL was untouched → "URL was already clean".
   //  - count === 0 with path cleanup / blacklist only → no count line; the
   //    visible URL diff already communicates what happened.
-  renderCountCelebration(result, url, lang);
+  renderCountCelebration(result, url, lang, dnrView);
 
   // #1062 slice 1: honest length-reduction insight. A LENGTH-only claim
   // (never "N% of trackers") — see src/lib/length-reduction.js. Rendered
