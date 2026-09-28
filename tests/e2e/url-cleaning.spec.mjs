@@ -31,10 +31,15 @@ test.describe("URL cleaning — real navigation", () => {
         );
       });
     });
-    await page.close();
     // DNR rule propagation has no observable signal after storage.set resolves.
     // Centralised in waitForDnrPropagation so the debt is greppable (#824).
+    // Waited on BEFORE closing the page (#1496 review): waitForDnrPropagation's
+    // `_page` param is currently unused (see its own doc comment), so passing
+    // a closed page happens to be harmless today, but it is still the wrong
+    // thing to write — a future implementation that actually polls the page
+    // would break silently on a closed one.
     await waitForDnrPropagation(page);
+    await page.close();
   });
 
   test("strips utm_source from URL via DNR", async ({ context }) => {
@@ -126,8 +131,9 @@ test.describe("URL cleaning — stats tracking (#1496)", () => {
         chrome.storage.sync.set({ onboardingDone: true, enabled: true, dnrEnabled: true }, resolve);
       });
     });
-    await page.close();
+    // Waited on BEFORE closing the page — see the sibling beforeEach above.
     await waitForDnrPropagation(page);
+    await page.close();
   });
 
   /** Reads {urlsCleaned, junkRemoved} from chrome.storage.local via an extension page. */
@@ -143,7 +149,7 @@ test.describe("URL cleaning — stats tracking (#1496)", () => {
     return stats;
   }
 
-  test("DNR-only direct navigation does NOT increment the stats counter on Chrome (documented limitation)", async ({ context, extensionId }) => {
+  test("DNR-only direct navigation: DNR strips it at the network layer, and — documenting a known limitation (#1062/#1496) — the stats counter does not see it on Chrome", async ({ context, extensionId }) => {
     const statsBefore = await readStats(context, extensionId);
 
     // Navigate to a dirty URL — intercepted locally so no network egress.
@@ -156,16 +162,29 @@ test.describe("URL cleaning — stats tracking (#1496)", () => {
     await page.goto("https://httpbin.org/get?utm_source=test&utm_medium=email");
     await page.waitForLoadState("domcontentloaded");
 
-    // No storage/DOM signal exists for "the content script's self-clean pass
-    // ran and found nothing to do" — waitForDnrPropagation centralises this
-    // debt (#824).
+    // PRIMARY, non-racy proof: DNR genuinely cleaned this navigation at the
+    // network layer. page.url() reflects the post-redirect address once the
+    // page has loaded — a real synchronization signal, unlike the wait below.
+    const url = page.url();
+    expect(url).not.toContain("utm_source");
+    expect(url).not.toContain("utm_medium");
+
+    // SECONDARY, best-effort observation: the stats counter does not see this
+    // clean (#1062, 2026-07-12: the maintainer decided against
+    // webRequest/webNavigation/declarativeNetRequestFeedback, all three of
+    // which would close this gap but add the "Read your browsing history"
+    // permission warning). There is no positive signal to wait on for
+    // "nothing happened" — this is a fixed-wait absence check, which is
+    // inherently unable to distinguish "genuinely never happens" from "just
+    // hasn't happened yet by the time we looked". Kept anyway, deliberately,
+    // because it is the one thing in this suite that would catch a future
+    // change silently starting to count this path (worth knowing either
+    // way) — but this assertion documents CURRENT behavior, it is not a
+    // requirement: if a future fix makes this path count (closing the
+    // #1062/#1496 gap), update or delete this assertion rather than treating
+    // a newly-passing count as a regression.
     await waitForDnrPropagation(page);
-
     const statsAfter = await readStats(context, extensionId);
-
-    // Honest assertion (#1496): DNR already cleaned this before any counted
-    // JS path ever saw the URL, so the counter must stay EXACTLY unchanged —
-    // not "greater or equal", which also passes when nothing happened.
     expect(statsAfter.urlsCleaned).toBe(statsBefore.urlsCleaned);
 
     await page.close();
