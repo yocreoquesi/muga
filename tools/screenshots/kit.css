@@ -130,7 +130,12 @@ body { overflow: hidden; }
 .pp-url.before { color: var(--strip); text-decoration: line-through; text-decoration-thickness: 1.5px; background: var(--strip-bg); border-color: transparent; }
 .pp-url.after { background: var(--succ-s); border-color: transparent; }
 .pp-url.after::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--succ); }
+/* #1496: the Chrome "DNR already cleaned this" state — a plain, neutral
+   reference (not struck-through like .before, not spotlighted like .after),
+   mirroring src/popup/popup.css .preview-url.before.clean-url. */
+.pp-url.clean { color: var(--t1); background: var(--s2); border-color: var(--b1); }
 .pp-count { font-size: 13px; font-weight: 600; color: var(--acs); margin-top: 8px; line-height: 1.3; }
+.pp-count.is-clean { color: var(--t2); font-weight: 500; }
 .pp-shorter { font-size: 12.5px; color: var(--t2); margin-top: 8px; }
 .pp-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--s2); border: 1px solid var(--b1); margin-top: 6px; }
 .pp-bar i { background: var(--keep); } .pp-bar b { background: var(--strip); }

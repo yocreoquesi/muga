@@ -493,9 +493,19 @@
     // the cleaner can decide whether to honor the creator's referral chain.
     // No prefs gate — returning an empty string when nothing is known is
     // safe (the cleaner treats no-referrer as "do not honor").
+    //
+    // #1496: also carries `performance.timeOrigin` — the CURRENT document's
+    // navigation-start timestamp, in the same epoch-ms unit
+    // chrome.declarativeNetRequest.getMatchedRules() uses for its own
+    // per-match `timeStamp` — so the popup can scope its DNR-visibility
+    // check to this navigation specifically and never attribute a stale
+    // match from an earlier page in the same tab to the current one (see
+    // src/lib/dnr-visibility-view.js and popup.js's getDnrVisibilityView).
+    // Standard Web API, available in the isolated world like any other
+    // content-script global.
     if (message.type === "GET_REFERRER") {
       try {
-        sendResponse({ ok: true, referrer: document.referrer || "" });
+        sendResponse({ ok: true, referrer: document.referrer || "", timeOrigin: performance.timeOrigin });
       } catch { /* channel closed */ }
       return true;
     }

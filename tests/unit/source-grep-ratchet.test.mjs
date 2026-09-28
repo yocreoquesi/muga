@@ -288,6 +288,7 @@ const BASELINE = {
   "popup-aria-i18n.test.mjs": 9,
   "popup-autoinject-badge.test.mjs": 16,
   "popup-count-celebration.test.mjs": 15,
+  "popup-dnr-visibility-wiring.test.mjs": 10, // new file (#1496 review): popup.js is not importable in Node (top-level document/chrome.tabs access) and Playwright cannot simulate the real activeTab grant this feature depends on (opening popup.html as a plain tab makes chrome.tabs.query({active:true}) resolve to the popup's OWN tab, which showUrlPreview's own guard excludes). All decision logic is behaviorally tested in dnr-visibility-view.test.mjs; these 10 source-string assertions only confirm popup.js WIRES those pure functions in at the points the acceptance criteria depend on (JS-over-DNR badge priority, linkCleaned-gated message, minTimeStamp threading, stats-note delegation, content-script timeOrigin reply) rather than reimplementing the same decisions inline where they could silently drift.
   "popup-honored-creator-badge.test.mjs": 7,
   "popup-length-bar-guard.test.mjs": 7,
   "popup-rerender-leaks.test.mjs": 2,

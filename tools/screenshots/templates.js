@@ -100,13 +100,24 @@ export const TEMPLATES = {
   }),
 
   // 4. Popup: what changed on this page
+  //
+  // #1496: the popup mock branches by browser. On Chrome, DNR strips
+  // tracking params at the network layer before the page ever loads, so a
+  // real Chrome user opening the popup on an ordinary cleaned link sees the
+  // "MUGA cleaned this before it loaded" state (mode: "dnr") far more often
+  // than a live before/after — the JS-driven before/after only fires when
+  // MUGA cleans in JS (Firefox's blocking webRequest stripper, or a
+  // same-document SPA navigation DNR never saw). Firefox keeps the
+  // before/after mock (mode: "cleaned", the default) since its stripper
+  // genuinely sees the original dirty URL. The lede below is written to be
+  // true for both: it no longer promises the % appears on every page.
   ss4: (p) => storeShot(p, {
     n: 4, eyebrow: "This page",
     title: `See what changed <span class="sig">on this page.</span>`,
-    lede: "Open the popup for the link before and after, what came off and how much shorter it got. Pause cleaning on any site with one click.",
+    lede: "Open the popup to see what MUGA did here: the before and after when a link had tracking to remove, or a plain note that it was already clean. Pause cleaning on any site with one click.",
     window: browserFrame({ browser: B(p), url: URLS.newsClean, tab: "City adds 40 km of cycling lanes", w: 700, h: 620, activeExt: true,
       content: articlePage({}),
-      overlay: `<div class="pop-anchor" style="right:${popRight(p)}px">${popup({})}</div>` }),
+      overlay: `<div class="pop-anchor" style="right:${popRight(p)}px">${popup({ mode: B(p) === "chrome" ? "dnr" : "cleaned" })}</div>` }),
   }),
 
   // 5. Settings that stay out of the way
