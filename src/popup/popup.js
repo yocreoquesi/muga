@@ -16,7 +16,7 @@ import { buildParamBreakdownView, buildParamIndex } from "../lib/param-breakdown
 import { computeLengthReduction, computeLengthBar } from "../lib/length-reduction.js";
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
-import { planDnrVisibilityView, planTabBadgeView, shouldShowStatsDnrNote } from "../lib/dnr-visibility-view.js";
+import { planDnrVisibilityView, DNR_CLOCK_SKEW_MS, planTabBadgeView, shouldShowStatsDnrNote } from "../lib/dnr-visibility-view.js";
 
 // #1352: the clipboard helpers that used to live here (_createClipboardSvg,
 // _setClipboardIcon, copyToClipboard, copyWithFeedback, getCopySafeCleanUrl)
@@ -374,8 +374,9 @@ async function getDnrVisibilityView(tabId, minTimeStamp) {
     return null; // Firefox MV2, or any host without the matching API.
   }
   try {
-    const { matchedRules } = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp });
-    return planDnrVisibilityView(matchedRules, { minTimeStamp });
+    const since = minTimeStamp - DNR_CLOCK_SKEW_MS;
+    const { matchedRules } = await chrome.declarativeNetRequest.getMatchedRules({ tabId, minTimeStamp: since });
+    return planDnrVisibilityView(matchedRules, { minTimeStamp: since });
   } catch {
     // Quota exceeded, activeTab not granted for this open, or any other
     // host refusal — silently fall back to the generic clean message.

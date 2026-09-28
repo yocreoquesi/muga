@@ -294,6 +294,8 @@ describe("planTabBadgeView — chip source priority (#1496 review)", () => {
   test("negative/NaN JS count is treated as zero, never throws", () => {
     assert.deepStrictEqual(planTabBadgeView(NaN, { count: 4 }), { count: 4, source: "dnr" });
     assert.deepStrictEqual(planTabBadgeView("not-a-number", { count: 4 }), { count: 4, source: "dnr" });
+    assert.deepStrictEqual(planTabBadgeView(-3, { count: 4 }), { count: 4, source: "dnr" });
+    assert.strictEqual(planTabBadgeView(-3, null), null);
   });
 });
 

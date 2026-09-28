@@ -188,6 +188,16 @@ export function isMainFrameSafeCleaningMatch(match) {
 }
 
 /**
+ * Slack applied to `minTimeStamp` before scoping matches (#1496 review).
+ * performance.timeOrigin comes from the renderer clock and getMatchedRules
+ * timestamps from the browser process; a main_frame redirect can land within
+ * a millisecond of navigation start, so a strict `>=` across two clocks could
+ * drop the very match that proves this navigation was cleaned. 250 ms absorbs
+ * that skew while staying far below the gap between two real navigations.
+ */
+export const DNR_CLOCK_SKEW_MS = 250;
+
+/**
  * Reduces a `chrome.declarativeNetRequest.getMatchedRules()` response into
  * the popup's DNR-visibility view model.
  *

@@ -56,10 +56,13 @@ describe("#1496 popup wiring (structural — see file doc for why)", () => {
   });
 
   test("getDnrVisibilityView requires a numeric minTimeStamp and forwards it to getMatchedRules", () => {
+    // One assertion over the three lines: widen by DNR_CLOCK_SKEW_MS (timeOrigin is
+    // the renderer clock, match timestamps the browser clock), then use that same
+    // bound for both the API filter and the defensive re-filter.
     assert.match(
       popupSrc,
-      /getMatchedRules\(\s*\{\s*tabId\s*,\s*minTimeStamp\s*\}\s*\)/,
-      "must call getMatchedRules({ tabId, minTimeStamp }), not { tabId } alone"
+      /const since = minTimeStamp - DNR_CLOCK_SKEW_MS;\s*const \{ matchedRules \} = await chrome\.declarativeNetRequest\.getMatchedRules\(\{ tabId, minTimeStamp: since \}\);\s*return planDnrVisibilityView\(matchedRules, \{ minTimeStamp: since \}\);/,
+      "must call getMatchedRules({ tabId, minTimeStamp: since }) with since = minTimeStamp - DNR_CLOCK_SKEW_MS, and re-filter with the same bound"
     );
   });
 
