@@ -1,6 +1,6 @@
 {
-  "version": 19,
-  "published": "2026-10-11T10:40:16.737Z",
+  "version": 20,
+  "published": "2026-10-18T08:41:01.438Z",
   "params": [
     "_branch_match_id",
     "_hsenc",
@@ -239,6 +239,9 @@
     {"param":"asc_source","hosts":["aboutamazon.com","amzn.to"]},
     {"param":"asid","hosts":["newegg.com"]},
     {"param":"asubid","hosts":["newegg.com"]},
+    {"param":"at_brand","hosts":["bfmtv.com"]},
+    {"param":"at_compte","hosts":["bfmtv.com"]},
+    {"param":"at_plateforme","hosts":["bfmtv.com"]},
     {"param":"atlorigin","hosts":["atlassian.net"]},
     {"param":"ats","hosts":["brazzers.com","realitykings.com"]},
     {"param":"attr_track","hosts":["slickdeals.net"]},
@@ -616,6 +619,7 @@
     {"param":"mpr","hosts":["minfin.com.ua"]},
     {"param":"mpshare","hosts":["mp.weixin.qq.com"]},
     {"param":"mr","hosts":["livesex.com"]},
+    {"param":"mrfcid","hosts":["elcomercio.es"]},
     {"param":"mrk_rec","hosts":["temu.com"]},
     {"param":"ms_rnd","hosts":["livesex.com"]},
     {"param":"msktc","hosts":["www.lidl.de"]},
