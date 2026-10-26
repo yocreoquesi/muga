@@ -83,6 +83,36 @@
       </div>
     </div>
 
+    <!-- Creator affiliate choice (#1503): makes the shipped default (creator
+         tags are kept) visible, with "remove them too" one click away. The
+         radios are a view over the EXISTING stripAllAffiliates pref, wired by
+         lib/onboarding-affiliate-choice.js. "keep" is checked in markup so the
+         page shows the default even before the stored value is read. -->
+    <div class="section" id="affiliate-choice-section">
+      <h2 class="section-title" data-i18n="ob_affiliate_title">Creator affiliate tags</h2>
+      <div class="affiliate-body">
+        <p id="affiliate-choice-desc" data-i18n="ob_affiliate_desc">When a link carries a creator's affiliate tag, MUGA strips the tracking from the URL and keeps the tag, so the creator who sent you there still gets the credit. MUGA never adds a tag of its own.</p>
+        <fieldset class="choice-group" aria-describedby="affiliate-choice-desc">
+          <legend class="sr-only" data-i18n="ob_affiliate_legend">What should MUGA do with creators' affiliate tags?</legend>
+          <label class="choice-option" for="affiliate-keep">
+            <input type="radio" name="affiliate-choice" id="affiliate-keep" value="keep" checked>
+            <span class="choice-text">
+              <strong data-i18n="ob_affiliate_keep_label">Keep creators' affiliate tags</strong>
+              <small data-i18n="ob_affiliate_keep_hint">The default. Tracking is still removed from the URL.</small>
+            </span>
+          </label>
+          <label class="choice-option" for="affiliate-remove">
+            <input type="radio" name="affiliate-choice" id="affiliate-remove" value="remove">
+            <span class="choice-text">
+              <strong data-i18n="ob_affiliate_remove_label">Remove them too</strong>
+              <small data-i18n="ob_affiliate_remove_hint">MUGA also removes the affiliate tags it recognises. You can change this anytime in Settings.</small>
+            </span>
+          </label>
+        </fieldset>
+        <p class="choice-error" id="affiliate-choice-error" role="alert" hidden data-i18n="ob_affiliate_save_error">Your choice could not be saved. Please try again.</p>
+      </div>
+    </div>
+
     <!-- Following shortener redirects natively (ADR-0004 #699) -->
     <div class="section">
       <h2 class="section-title" data-i18n="ob_shorteners_title">Short links, resolved locally</h2>

@@ -24,6 +24,8 @@
 
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
+import { getPrefs, setPrefs } from "../lib/prefs.js";
+import { bindAffiliateChoice } from "../lib/onboarding-affiliate-choice.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const startBtn = document.getElementById("start-btn");
@@ -39,6 +41,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   // delta/material re-onboard) and closes this informational tab. There is
   // no aria-disabled state, no updateButton()/flashTosGate() flow, and the
   // checkbox is optional.
+
+  // #1503: the creator-affiliate choice. It writes stripAllAffiliates through
+  // setPrefs on change (the same path as the Settings toggle), not on "Got
+  // it", so the choice sticks even if the user closes this tab instead. Awaited
+  // so the stored value is on screen before the page reports itself ready.
+  const keepInput = document.getElementById("affiliate-keep");
+  const removeInput = document.getElementById("affiliate-remove");
+  if (keepInput && removeInput) {
+    await bindAffiliateChoice({
+      keepInput,
+      removeInput,
+      errorEl: document.getElementById("affiliate-choice-error"),
+      readPrefs: getPrefs,
+      writePrefs: setPrefs,
+    });
+  }
 
   // Signal that DOMContentLoaded setup is complete — tests wait for this flag
   // before interacting with the page (same pattern as options.html; avoids

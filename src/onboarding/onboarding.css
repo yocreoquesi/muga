@@ -26,8 +26,7 @@
     /* Preventive guard (audit 2026-09-24, see popup.css/options.css for the
        real-world breakage this pattern caused elsewhere): keeps any future
        `hidden` element from being shown by a same-selector `display`
-       override. onboarding.html has no `hidden` elements today; this is a
-       cheap no-op safeguard. Covered by tests/unit/hidden-display-guard.test.mjs. */
+       override. The affiliate-choice save error (#1503) relies on it. Covered by tests/unit/hidden-display-guard.test.mjs. */
     [hidden] { display: none !important; }
     body {
       font-family: var(--font-sans);
@@ -110,6 +109,30 @@
       font-size: 13.5px; color: var(--text-2); line-height: 1.65; margin-bottom: 16px;
     }
     .affiliate-body strong { color: var(--text-1); font-weight: 500; }
+
+    /* Creator affiliate choice (#1503). Two full-width radio rows; the whole
+       row is the label so the alternative is one click anywhere on it. */
+    .choice-group { border: none; display: flex; flex-direction: column; gap: 8px; }
+    .choice-option {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    }
+    .choice-option:hover { background: var(--surface-2); }
+    .choice-option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+    .choice-option input {
+      flex-shrink: 0; margin-top: 2px;
+      accent-color: var(--accent-strong);
+    }
+    .choice-option input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .choice-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+    .choice-text small { color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+    .affiliate-body .choice-error {
+      margin: 12px 0 0; font-size: 12.5px; color: var(--text-1); font-weight: 500;
+    }
 
     /* #932: browser-sync clarification note. Mirrors .affiliate-body p's
        muted-text treatment at a slightly smaller size, since it reads as a
