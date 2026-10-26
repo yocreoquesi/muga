@@ -6,9 +6,10 @@
 import { applyTranslations, getStoredLang, t } from "../lib/i18n.js";
 import { isSiteFullyExempt, isDomainAllowlisted, setDomainAllowlisted } from "../lib/cleaner.js";
 import { loadCleaningContext, cleanForPreview } from "../lib/cleaning-context.js";
-import { getPrefs, sessionStorage } from "../lib/storage.js";
+import { getPrefs, sessionStorage, getActiveDays, setStats } from "../lib/storage.js";
 import { TRACKING_PARAM_CATEGORIES, isAutoInjectedTagPresent } from "../lib/affiliates.js";
 import { getRateUrl } from "../lib/store-links.js";
+import { createActiveDayRecorder, shouldShowRateNudge } from "../lib/rate-nudge.js";
 import { createMigrationPrompt } from "../lib/migration-prompt.js";
 import { getTestFixtures } from "../lib/test-fixtures.js";
 import { findSuspiciousParams } from "../lib/entropy-heuristic.js";
@@ -23,6 +24,13 @@ import { planDnrVisibilityView, DNR_CLOCK_SKEW_MS, planTabBadgeView, shouldShowS
 // existed ONLY for the "This session" / "Recent activity" ledgers, which
 // moved to Settings' unified Activity ledger panel — see options.js, which
 // now owns these helpers.
+
+// ── Rate nudge ────────────────────────────────────────────────────────────────
+
+// Opening the popup counts as an active day for the rate nudge (#1508). Same
+// recorder the service worker uses: its write is absolute, so the popup and the
+// worker counting the same day cannot double it.
+const _popupActiveDayRecorder = createActiveDayRecorder({ read: getActiveDays, write: setStats });
 
 // ── Param breakdown ───────────────────────────────────────────────────────────
 
@@ -177,38 +185,59 @@ async function init() {
     if (milestone) logoEl.title = milestone[1];
   }
 
-  // Rate nudge: 200+ URLs AND 7+ days since install, max 3 nudges,
-  // at least 3 days apart, then permanent silence.
+  // Rate nudge (#1508): gated on active days, not on urlsCleaned, which
+  // Chrome's DNR layer never moves (#1496). Opening the popup is itself an
+  // active day, so count it first and let the gate see today. The gate lives
+  // in lib/rate-nudge.js; this block only reads state and wires the buttons.
+  if (prefs.enabled && prefs.onboardingDone) {
+    await _popupActiveDayRecorder.record();
+  }
   const nudgeData = await chrome.storage.local.get({
-    firstUsed: null, nudgeDismissed: false, nudgeShownCount: 0, nudgeLastShown: 0,
+    firstUsed: null, activeDaysCount: 0, nudgeDismissed: false, nudgeShownCount: 0, nudgeLastShown: 0,
   });
   const nudgeSession = await sessionStorage.get({ nudgeSessionSeen: false });
-  const daysSinceFirst = nudgeData.firstUsed ? (Date.now() - nudgeData.firstUsed) / 86400000 : 0;
-  const daysSinceLastNudge = nudgeData.nudgeLastShown ? (Date.now() - nudgeData.nudgeLastShown) / 86400000 : 999;
-
-  const shouldNudge = urlsCleaned >= 200
-    && daysSinceFirst >= 7
-    && daysSinceLastNudge >= 3
-    && !nudgeData.nudgeDismissed
-    && nudgeData.nudgeShownCount < 3
-    && !nudgeSession.nudgeSessionSeen;
+  const nowMs = Date.now();
+  const shouldNudge = shouldShowRateNudge({
+    enabled: prefs.enabled,
+    onboardingDone: prefs.onboardingDone,
+    firstUsed: nudgeData.firstUsed,
+    activeDaysCount: nudgeData.activeDaysCount,
+    nudgeDismissed: nudgeData.nudgeDismissed,
+    nudgeShownCount: nudgeData.nudgeShownCount,
+    nudgeLastShown: nudgeData.nudgeLastShown,
+    sessionSeen: nudgeSession.nudgeSessionSeen,
+  }, nowMs);
 
   if (shouldNudge) {
+    const rateDismissBtn = document.getElementById("rate-dismiss-btn");
     growthBar.hidden = false;
     rateBtn.hidden = false;
+    if (rateDismissBtn) rateDismissBtn.hidden = false;
     const rateBtnLabel = rateBtn.querySelector("[data-i18n='rate_muga_short']") || rateBtn;
     rateBtnLabel.textContent = t("rate_nudge_btn_short", lang);
-    sessionStorage.set({ nudgeSessionSeen: true }).catch(() => {}); // best-effort; nudge still shows
+    sessionStorage.set({ nudgeSessionSeen: true }).catch(() => { /* best-effort; nudge still shows */ });
     chrome.storage.local.set({
-      nudgeShownCount: nudgeData.nudgeShownCount + 1,
-      nudgeLastShown: Date.now(),
-    }).catch(() => {}); // best-effort; count is non-critical
+      nudgeShownCount: (Number(nudgeData.nudgeShownCount) || 0) + 1,
+      nudgeLastShown: nowMs,
+    }).catch((err) => console.error("[MUGA] save nudge shown:", err));
+    // One click on the nudge, or dismissing it, silences it for good.
+    const silenceNudge = () => {
+      // Async rejection can't be caught by a sync try/catch, so use .catch (#728 item 27).
+      chrome.storage.local.set({ nudgeDismissed: true }).catch((err) => console.error("[MUGA] save nudge dismiss:", err));
+    };
     const storeUrl = getRateUrl();
     rateBtn.addEventListener("click", () => {
-      // Async rejection can't be caught by a sync try/catch — use .catch (#728 item 27).
-      chrome.storage.local.set({ nudgeDismissed: true }).catch((err) => console.error("[MUGA] save nudge dismiss:", err));
+      silenceNudge();
       chrome.tabs.create({ url: storeUrl });
     });
+    if (rateDismissBtn) {
+      rateDismissBtn.addEventListener("click", () => {
+        silenceNudge();
+        growthBar.hidden = true;
+        // Return focus somewhere stable instead of losing it with the bar.
+        document.getElementById("enabled-toggle")?.focus();
+      });
+    }
   }
 
   // #1352: the URLs-cleaned stat no longer toggles anything — the "This
