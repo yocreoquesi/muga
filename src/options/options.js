@@ -22,6 +22,7 @@ import { addUserCustomRule } from "../lib/user-custom-rules.js";
 import { buildTrackerFlagDeepLinkUrl } from "../lib/tracker-flag-deeplink.js";
 import { hasCommands } from "../lib/browser-detect.js";
 import { getRateUrl } from "../lib/store-links.js";
+import { RATE_NUDGE_MAX_SHOWS } from "../lib/rate-nudge.js";
 import { isValidListEntry, isValidCustomParam, IMPORT_LIST_CAPS } from "../lib/validation.js";
 import { REMOTE_RULES_URL } from "../lib/remote-rules.js";
 import { planChangelogView } from "../lib/remote-rules-changelog-view.js";
@@ -2481,7 +2482,7 @@ function initDevTools() {
 
       const dismissBtn = document.createElement("button");
       dismissBtn.style.cssText = btnStyle + ";color:#9A9A9A";
-      dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${localData.nudgeShownCount}/3)`;
+      dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${localData.nudgeShownCount}/${RATE_NUDGE_MAX_SHOWS})`;
 
       const resetBtn = document.createElement("button");
       resetBtn.style.cssText = btnStyle + ";color:#f59e0b;font-size:10px";
@@ -2507,7 +2508,7 @@ function initDevTools() {
       dismissBtn.addEventListener("click", async () => {
         const fresh = await chrome.storage.local.get({ nudgeShownCount: 0 });
         const newCount = fresh.nudgeShownCount + 1;
-        if (newCount > 3) {
+        if (newCount > RATE_NUDGE_MAX_SHOWS) {
           await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
           info.textContent = t("dev_nudge_reset_fresh", _currentLang);
         } else {
@@ -2517,13 +2518,13 @@ function initDevTools() {
             .replace("%s2", newCount)
             .replace("%s3", "now");
         }
-        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${newCount > 3 ? 0 : newCount}/3)`;
+        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (${newCount > RATE_NUDGE_MAX_SHOWS ? 0 : newCount}/${RATE_NUDGE_MAX_SHOWS})`;
       });
 
       resetBtn.addEventListener("click", async () => {
         await chrome.storage.local.set({ nudgeShownCount: 0, nudgeDismissed: false, nudgeLastShown: 0 });
         info.textContent = t("dev_nudge_reset_done", _currentLang);
-        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (0/3)`;
+        dismissBtn.textContent = `${t("dev_nudge_dismiss_btn", _currentLang)} (0/${RATE_NUDGE_MAX_SHOWS})`;
       });
     });
   }
