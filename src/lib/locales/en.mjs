@@ -292,7 +292,7 @@ export default Object.freeze({
   shortener_regrant_denied: "Permission was not granted. Shorteners stay as they are.",
   ob_shorteners_title: "Short links, resolved locally",
   ob_shorteners_desc: "<strong>Short links hide where they go.</strong> Links like bit.ly or t.co don't show their real destination. MUGA follows them right in your browser (no server in the middle) and strips the noise off wherever they land. It only applies to a short, known list of shorteners, and you stay in control from settings.",
-  ob_affiliate_title: "Creator affiliate tags",
+  ob_affiliate_title: "Affiliate & creators",
   ob_affiliate_desc: "When a link carries a creator's affiliate tag, MUGA strips the tracking from the URL and keeps the tag, so the creator who sent you there still gets the credit. MUGA never adds a tag of its own.",
   ob_affiliate_legend: "What should MUGA do with creators' affiliate tags?",
   ob_affiliate_keep_label: "Keep creators' affiliate tags",

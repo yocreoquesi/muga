@@ -292,7 +292,7 @@ export default Object.freeze({
   shortener_regrant_denied: "La permission n'a pas été accordée. Les raccourcisseurs restent tels quels.",
   ob_shorteners_title: "Liens courts, résolus localement",
   ob_shorteners_desc: "<strong>Les liens courts cachent leur destination.</strong> Des liens comme bit.ly ou t.co ne montrent pas leur vraie destination. MUGA les suit directement dans votre navigateur (sans serveur au milieu) et retire le bruit là où ils mènent. Cela ne s'applique qu'à une courte liste connue de raccourcisseurs, et vous gardez le contrôle depuis les paramètres.",
-  ob_affiliate_title: "Tags d'affiliation des créateurs",
+  ob_affiliate_title: "Affiliation et créateurs",
   ob_affiliate_desc: "Quand un lien contient le tag d'affiliation d'un créateur, MUGA retire le pistage de l'URL et conserve le tag, pour que le créateur qui vous y a envoyé en garde le mérite. MUGA n'ajoute jamais son propre tag.",
   ob_affiliate_legend: "Que doit faire MUGA des tags d'affiliation des créateurs ?",
   ob_affiliate_keep_label: "Conserver les tags d'affiliation des créateurs",

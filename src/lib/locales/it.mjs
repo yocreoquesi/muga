@@ -292,7 +292,7 @@ export default Object.freeze({
   shortener_regrant_denied: "Permesso non concesso. Gli abbreviatori restano invariati.",
   ob_shorteners_title: "Link brevi, risolti localmente",
   ob_shorteners_desc: "<strong>I link brevi nascondono dove portano.</strong> Link come bit.ly o t.co non mostrano la loro vera destinazione. MUGA li segue direttamente nel tuo browser (senza server nel mezzo) e rimuove il rumore da dove arrivano. Si applica solo a un breve elenco noto di abbreviatori, e mantieni il controllo dalle impostazioni.",
-  ob_affiliate_title: "Tag di affiliazione dei creator",
+  ob_affiliate_title: "Affiliazione e creator",
   ob_affiliate_desc: "Quando un link contiene il tag di affiliazione di un creator, MUGA rimuove il tracciamento dall'URL e mantiene il tag, così il creator che ti ci ha portato riceve comunque il merito. MUGA non aggiunge mai un tag proprio.",
   ob_affiliate_legend: "Cosa deve fare MUGA con i tag di affiliazione dei creator?",
   ob_affiliate_keep_label: "Mantieni i tag di affiliazione dei creator",

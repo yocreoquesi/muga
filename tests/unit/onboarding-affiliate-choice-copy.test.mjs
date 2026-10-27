@@ -36,6 +36,18 @@ describe("#1503 — affiliate choice copy", () => {
     });
   }
 
+  // The onboarding section must read as the same place the user will find
+  // the toggle later, so its title mirrors the Settings section name.
+  test("the section title matches the Settings section name in every locale", () => {
+    for (const { code } of SUPPORTED_LANGS) {
+      assert.equal(
+        TRANSLATIONS.ob_affiliate_title[code],
+        TRANSLATIONS.section_affiliate_settings[code],
+        `ob_affiliate_title.${code} must match section_affiliate_settings.${code}`,
+      );
+    }
+  });
+
   test("the description says why tags are kept and that MUGA never adds its own", () => {
     const en = TRANSLATIONS.ob_affiliate_desc.en;
     assert.match(en, /credit/i);

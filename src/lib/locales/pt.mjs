@@ -292,7 +292,7 @@ export default Object.freeze({
   shortener_regrant_denied: "Permissão não concedida. Os encurtadores permanecem como estão.",
   ob_shorteners_title: "Links curtos, resolvidos localmente",
   ob_shorteners_desc: "<strong>Links curtos escondem para onde vão.</strong> Links como bit.ly ou t.co não mostram seu destino real. O MUGA os segue diretamente no seu navegador (sem servidor no meio) e limpa o ruído de onde eles chegam. Aplica-se apenas a uma lista curta e conhecida de encurtadores, e você mantém o controle nas configurações.",
-  ob_affiliate_title: "Tags de afiliado de criadores",
+  ob_affiliate_title: "Afiliados e criadores",
   ob_affiliate_desc: "Quando um link traz a tag de afiliado de um criador, o MUGA remove o rastreamento da URL e mantém a tag, para que o criador que indicou o link continue recebendo o crédito. O MUGA nunca adiciona uma tag própria.",
   ob_affiliate_legend: "O que o MUGA deve fazer com as tags de afiliado dos criadores?",
   ob_affiliate_keep_label: "Manter as tags de afiliado dos criadores",

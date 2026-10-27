@@ -292,7 +292,7 @@ export default Object.freeze({
   shortener_regrant_denied: "Berechtigung wurde nicht erteilt. Die Kurz-URL-Dienste bleiben unverändert.",
   ob_shorteners_title: "Kurzlinks, lokal aufgelöst",
   ob_shorteners_desc: "<strong>Kurzlinks verbergen ihr Ziel.</strong> Links wie bit.ly oder t.co zeigen ihr echtes Ziel nicht. MUGA folgt ihnen direkt in deinem Browser (ohne Server dazwischen) und entfernt das Rauschen dort, wo sie landen. Es gilt nur für eine kurze, bekannte Liste von Kurzlink-Diensten, und du behältst die Kontrolle über die Einstellungen.",
-  ob_affiliate_title: "Affiliate-Tags von Creatorn",
+  ob_affiliate_title: "Affiliate & Creator",
   ob_affiliate_desc: "Wenn ein Link das Affiliate-Tag eines Creators enthält, entfernt MUGA das Tracking aus der URL und behält das Tag, damit der Creator, der dich dorthin geschickt hat, die Anerkennung bekommt. MUGA fügt nie ein eigenes Tag hinzu.",
   ob_affiliate_legend: "Was soll MUGA mit den Affiliate-Tags von Creatorn machen?",
   ob_affiliate_keep_label: "Affiliate-Tags von Creatorn behalten",

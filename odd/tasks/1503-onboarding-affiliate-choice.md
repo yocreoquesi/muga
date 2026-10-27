@@ -64,3 +64,9 @@ Delegated direct, single bounded writer (4+ non-trivial files).
   the read is in flight" case was RED against the first draft (`stored`
   initialised to keep skipped the write), fixed by initialising it to null.
 - T2: RED copy test 9/9 fail (keys missing), GREEN after adding keys.
+
+## Copy coherence pass (maintainer decision 2026-10-27)
+
+- Section title now mirrors the Settings section name (`section_affiliate_settings`) in all 7 locales, pinned by a copy test.
+- Spanish uses "eliminar" consistently (onboarding and the Settings strip-all hint), "por defecto" (repo convention), and "Ajustes" as the page name.
+- Verified: npm test 9498 pass / 0 fail, lint:js clean, check:i18n ok.
