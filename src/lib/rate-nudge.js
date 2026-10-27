@@ -56,8 +56,9 @@ export function toLocalDayIndex(ms) {
 export function planActiveDayUpdate(state, nowMs) {
   const today = toLocalDayIndex(nowMs);
   if (state?.activeDaysLastDay === today) return null;
-  const count = Number.isInteger(state?.activeDaysCount) && state.activeDaysCount > 0
-    ? state.activeDaysCount
+  const stored = state?.activeDaysCount;
+  const count = typeof stored === "number" && Number.isInteger(stored) && stored > 0
+    ? stored
     : 0;
   return { activeDaysCount: count + 1, activeDaysLastDay: today };
 }
