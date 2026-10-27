@@ -252,6 +252,14 @@ Decision 1 lets the popup carry. Settings' "Report a problem" opens the same
 form through the same builder, and its "Include the full URL" opt-in was
 removed so both surfaces behave the same.
 
+The button stays visible while MUGA is disabled, before onboarding is
+done, or while the site is paused (maintainer decision, 2026-10-27). This is
+a deliberate exception to the `prefs.enabled && prefs.onboardingDone` guard
+in AGENTS.md: the guard exists so MUGA never *acts* while off, and the
+button acts on nothing. It only opens a GitHub form. Hiding it would hide it
+exactly when a user turned MUGA off because a site broke. The report states
+the state instead (`action=muga-disabled` or `site-paused`).
+
 ## Alternatives considered
 
 **A — Gate rule coverage behind more settings. Rejected.** This came up while
