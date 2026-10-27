@@ -216,6 +216,16 @@ describe("cleanForPreview sees the signed channel's global params (#1442)", () =
     assert.deepStrictEqual(ctx.scopedFacts, facts);
   });
 
+  test("#1507: carries the payload version in use, so a report can name it", async () => {
+    const resolveUrl = realRuleLoader();
+    const { read } = remoteReader([REMOTE_ONLY]);
+    const ctx = await loadCleaningContext({ resolveUrl, readRemote: read });
+    assert.strictEqual(ctx.remoteRulesVersion, 16);
+
+    const none = await loadCleaningContext({ resolveUrl, readRemote: async () => ({}) });
+    assert.strictEqual(none.remoteRulesVersion, 0);
+  });
+
   test("the remote half is re-read on every load (it changes; the packaged rules do not)", async () => {
     const resolveUrl = realRuleLoader();
     const reader = remoteReader([REMOTE_ONLY]);

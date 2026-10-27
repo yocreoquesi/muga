@@ -6,10 +6,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. You may include the full page URL below if it helps reproduce
-        the problem, but first confirm it has no personal or sensitive data (tokens, emails,
-        account IDs). Hostname alone is also fine and is the default from the popup / options
-        report buttons unless you explicitly opt in to sharing the full URL.
+        Thanks for reporting. The "Report this page" button in the MUGA popup and
+        Settings > Report a problem both open this form prefilled, including the full page
+        URL and a snapshot of your MUGA settings. Nothing is published until you click
+        Submit: review every field first and remove anything personal or sensitive
+        (tokens, emails, account IDs).
   - type: input
     id: hostname
     attributes:
@@ -27,6 +28,17 @@ body:
     validations:
       required: true
   - type: input
+    id: url
+    attributes:
+      label: Full page URL
+      description: >-
+        Check this URL has no personal data before submitting. Remove or edit
+        tokens, emails, account IDs or anything else private, or clear the field
+        if the domain alone is enough.
+      placeholder: https://example.com/path?query=...
+    validations:
+      required: false
+  - type: input
     id: browser
     attributes:
       label: Browser
@@ -36,8 +48,14 @@ body:
     id: version
     attributes:
       label: MUGA version
-      description: Visible in `chrome://extensions` or `about:addons`. The popup prefill includes it automatically.
-      placeholder: 1.13.2
+      description: Visible in `chrome://extensions` or `about:addons`. The extension's report prefills it automatically.
+      placeholder: 3.2.0
+  - type: input
+    id: action
+    attributes:
+      label: Action MUGA took (auto-filled)
+      description: What MUGA did to this page's URL, e.g. `cleaned` or `untouched`. Leave blank if it was not prefilled.
+      placeholder: cleaned
   - type: textarea
     id: params
     attributes:
@@ -50,22 +68,23 @@ body:
       label: Host-scoped params (auto-filled)
       description: >-
         Params MUGA applies only on this host, from its host-anchored rules.
-        Prefilled by the extension — these are the first suspects when a site
+        Prefilled by the extension. These are the first suspects when a site
         stops working, because each was admitted on one upstream source's word
         for this host alone. Leave blank if it was not prefilled.
       placeholder: _r, igsh
-  - type: input
-    id: url
+  - type: textarea
+    id: settings
     attributes:
-      label: Full page URL (optional)
-      description: Only if it helps reproduce the problem. Omit any personal or sensitive data (tokens, emails, account IDs) before pasting.
-      placeholder: https://example.com/path?query=...
-    validations:
-      required: false
+      label: Settings (auto-filled)
+      description: >-
+        Your MUGA settings that differ from the defaults, so the problem can be
+        reproduced. Lists appear as entry counts, plus only the entries that
+        match this page. Leave blank if it was not prefilled.
+      placeholder: "Remote rules: on, payload version 16"
   - type: checkboxes
     id: privacy-ack
     attributes:
       label: Privacy acknowledgement
       options:
-        - label: I confirm any URL or details I've included contain no personal or sensitive data (no tokens, emails, or account IDs).
+        - label: I checked the URL, settings and every other field above, and they contain no personal or sensitive data (no tokens, emails, or account IDs).
           required: true
