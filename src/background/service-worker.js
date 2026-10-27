@@ -6,7 +6,8 @@
 
 import { computeNavigationStrip, parseListEntry, isSiteFullyExempt, isSiteFullyBlacklisted } from "../lib/cleaner.js";
 import { getAffiliateDomains } from "../lib/affiliates.js";
-import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, migrateDropDnrEnabledPref, migrateExperimentalParamClassesOff, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams } from "../lib/storage.js";
+import { getPrefs, setPrefs, incrementStat, getStats, setStats, migrateStatsToLocal, migrateLegacyProxyPref, migratePerSiteDisableToAllowlist, migrateDropCookieConsent, migrateFollowShortenersSplit, migrateDropDnrEnabledPref, migrateExperimentalParamClassesOff, sessionStorage, incrementDomainStat, cacheDomainRules, getCachedDomainRules, getRemoteParams, getActiveDays } from "../lib/storage.js";
+import { createActiveDayRecorder, isActiveDayDecision } from "../lib/rate-nudge.js";
 import { migrateConsentToLocal } from "../lib/sync-migration.js";
 import { setConsent, TERMS_VERSION } from "../lib/consent-storage.js";
 import { isValidListEntry } from "../lib/validation.js";
@@ -59,6 +60,29 @@ const _firstUsedBootstrap = createFirstUsedBootstrap({ getStats, setStats });
 
 async function _initFirstUsed() {
   await _firstUsedBootstrap.ensure();
+}
+
+// Active-day counter for the popup rate nudge (#1508). A day counts when MUGA
+// is on and made a decision on a page. The recorder memoizes the day it last
+// counted, so on this hot path every call after the first of the day is a
+// free comparison, and its absolute (not "+1") write keeps the popup and
+// overlapping handlers from double-counting a day.
+const _activeDayRecorder = createActiveDayRecorder({ read: getActiveDays, write: setStats });
+
+/**
+ * Counts today as an active day when `result` is a real decision and MUGA is
+ * enabled with onboarding done. Fire-and-forget: the nudge is a nicety, never
+ * worth delaying or failing a clean.
+ * @param {object} result - Cleaner result (action, preservedAffiliate, ...).
+ */
+function noteActiveDay(result) {
+  if (!isActiveDayDecision(result)) return;
+  getPrefsWithCache()
+    .then((prefs) => {
+      if (prefs.enabled && prefs.onboardingDone) return _activeDayRecorder.record();
+      return undefined;
+    })
+    .catch(() => { /* prefs unavailable: skip, the next decision retries */ });
 }
 
 // B4: fetch domain-rules dynamically (import assertions incompatible with Firefox;
@@ -385,6 +409,8 @@ function recordNetworkClean(tabId, originalUrl, result) {
   if (action === "detected_foreign") {
     incrementStat("referralsSpotted");
   }
+
+  noteActiveDay(result);
 }
 
 // --- Firefox network-layer stripper (blocking webRequest) ---
@@ -1053,6 +1079,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleProcessUrl(message.url, { skipNotify: message.skipNotify, source: message.skipNotify ? "copy_selection" : "navigation", skipStats: !!message.skipStats, skipSideEffects: !!message.skipSideEffects, referrer: typeof message.referrer === "string" ? message.referrer : "" })
       .then(result => {
         updateTabBadge(tabId, result.junkRemoved ?? 0);
+        noteActiveDay(result);
         if (typeof tabId === "number" && (result.preservedAffiliate || result.creatorReferralPreserved)) {
           toolbarBus.emit({ type: "creatorReferralPreserved", tabId });
         }

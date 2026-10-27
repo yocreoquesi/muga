@@ -147,6 +147,9 @@
        (audit 2026-09-24 reorder). -->
   <div class="growth-bar" id="growth-bar" hidden>
     <button class="growth-btn" id="rate-btn" hidden><span aria-hidden="true">⭐ </span><span data-i18n="rate_muga_short">Rate MUGA</span></button>
+    <!-- #1508: dismissing silences the nudge for good, same as clicking it.
+         Reuses the migration banner's close-button style. -->
+    <button type="button" id="rate-dismiss-btn" class="migration-banner-dismiss" data-i18n-aria-label="toast_dismiss" hidden><span aria-hidden="true">×</span></button>
   </div>
 
   </main>

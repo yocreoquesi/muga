@@ -132,6 +132,24 @@ export async function setStats(partial) {
   }
 }
 
+/**
+ * Reads the active-day counter used by the rate nudge (#1508). Kept out of
+ * STAT_DEFAULTS on purpose: it is not a stat the user sees or resets, and
+ * "reset stats" must not re-arm the nudge.
+ * @returns {Promise<{activeDaysCount: number, activeDaysLastDay: number|null}>}
+ */
+export async function getActiveDays() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get({ activeDaysCount: 0, activeDaysLastDay: null }, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
 // ── devMode: device-local flag (chrome.storage.local, not sync) ──────────────
 //
 // devMode is a developer-only setting that should NOT sync across devices.
