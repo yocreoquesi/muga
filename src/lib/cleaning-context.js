@@ -83,17 +83,22 @@ async function readRules(path, resolveUrl) {
  * never a failed context.
  *
  * @param {() => Promise<any>} readRemote resolves to getRemoteParams()'s shape
- * @returns {Promise<{remoteParams: string[], scopedFacts: Array}>}
+ * The payload version rides along for the broken-site report's settings
+ * snapshot (#1507); 0 is remote-rules.js's "no payload ever accepted".
+ *
+ * @returns {Promise<{remoteParams: string[], scopedFacts: Array, remoteRulesVersion: number}>}
  */
 async function readRemoteChannel(readRemote) {
   try {
     const { remoteParams, remoteRulesMeta } = (await readRemote()) ?? {};
+    const version = Number(remoteRulesMeta?.version);
     return {
       remoteParams: Array.isArray(remoteParams) ? remoteParams : [],
       scopedFacts: Array.isArray(remoteRulesMeta?.scopedFacts) ? remoteRulesMeta.scopedFacts : [],
+      remoteRulesVersion: Number.isFinite(version) && version > 0 ? version : 0,
     };
   } catch {
-    return { remoteParams: [], scopedFacts: [] };
+    return { remoteParams: [], scopedFacts: [], remoteRulesVersion: 0 };
   }
 }
 
@@ -106,7 +111,7 @@ async function readRemoteChannel(readRemote) {
  *
  * @param {{ resolveUrl?: (p: string) => string, readRemote?: () => Promise<any> }} [opts]
  *   injection seams for tests
- * @returns {Promise<{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams: string[], scopedFacts: Array}>}
+ * @returns {Promise<{domainRules: Array, pathStripRules: Array, pathAffiliateRules: Array, remoteParams: string[], scopedFacts: Array, remoteRulesVersion: number}>}
  */
 export async function loadCleaningContext(opts = {}) {
   const resolveUrl = opts.resolveUrl ?? ((p) => chrome.runtime.getURL(p));

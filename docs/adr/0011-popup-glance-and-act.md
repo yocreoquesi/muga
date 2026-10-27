@@ -234,6 +234,32 @@ basic as whether they travel in an export. The value of the bucket is that a
 future change no longer has to re-litigate whether a given toggle was ever
 meant to be a user-facing promise.
 
+## Note (#1507, 2026-10-15): the popup report returns as a link-out
+
+Decision 3 moved the report flow out of the popup because it was a *flow*: a
+form with a full-URL consent checkbox that a user should read carefully, the
+opposite of the popup's two-second budget. #1507 brings back a single
+"Report this page" button, which is a **link-out, not a flow**: one click
+opens the `broken-site.yml` GitHub issue form prefilled for the current
+tab (hostname, version, browser, action taken, params removed, host-scoped
+params, the full URL in its own field, and a settings snapshot) and closes
+the popup. Nothing is published until the reporter clicks Submit on GitHub,
+and the form's required privacy checkbox plus the URL field's "check this URL
+has no personal data" hint are where the review happens. The consent step
+therefore lives on GitHub, not in the popup, so Decision 3's reason still
+holds. It is an act that needs no thought here, which is the only kind of act
+Decision 1 lets the popup carry. Settings' "Report a problem" opens the same
+form through the same builder, and its "Include the full URL" opt-in was
+removed so both surfaces behave the same.
+
+The button stays visible while MUGA is disabled, before onboarding is
+done, or while the site is paused (maintainer decision, 2026-10-27). This is
+a deliberate exception to the `prefs.enabled && prefs.onboardingDone` guard
+in AGENTS.md: the guard exists so MUGA never *acts* while off, and the
+button acts on nothing. It only opens a GitHub form. Hiding it would hide it
+exactly when a user turned MUGA off because a site broke. The report states
+the state instead (`action=muga-disabled` or `site-paused`).
+
 ## Alternatives considered
 
 **A — Gate rule coverage behind more settings. Rejected.** This came up while

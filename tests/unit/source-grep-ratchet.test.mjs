@@ -298,7 +298,7 @@ const BASELINE = {
   "redirect-unwrap.test.mjs": 26,
   "referer-beacon-privacy-foundation.test.mjs": 1,
   "remote-rules-status.test.mjs": 1,
-  "report-button.test.mjs": 18,
+  "report-button.test.mjs": 22, // 18 -> 22 (#1507): popup.js and options.js are browser-only, so the popup link-out wiring is pinned by source: the #report-page-btn markup, both surfaces calling buildPageReportLink, and the deleted issues/new?title path. The link itself is tested behaviorally in broken-site-report.test.mjs.
   "sanitize-import.test.mjs": 43,
   "service-worker-autoinject-passthrough.test.mjs": 1,
   "session-storage-race-1097.test.mjs": 2,

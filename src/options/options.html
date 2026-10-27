@@ -266,7 +266,11 @@
        both existing surfaces already share (src/lib/broken-site-report.js)
        and the same GitHub issue deep-link — no new egress, no new pref.
        Settings has no "current tab" context the way the popup does, so —
-       like the QA tester — the user pastes the URL they had trouble with. -->
+       like the QA tester — the user pastes the URL they had trouble with.
+       #1507: the report button opens the same prefilled broken-site.yml
+       form as the popup's "Report this page" (full URL and settings
+       snapshot included); the "Include the full URL" opt-in is gone, the
+       form's required privacy checkbox on GitHub is the review step. -->
   <section id="section-report">
     <h2 data-i18n="section_report">Report a problem</h2>
     <div class="card">
@@ -283,13 +287,6 @@
           <div id="report-url-clean"></div>
           <div id="report-url-removed" class="result-removed"></div>
           <button class="report-btn report-btn-inline" id="report-url-report-btn" hidden data-i18n="dev_url_report_btn">Report a problem with this URL</button>
-          <div class="report-include-url-row" id="report-url-include-url-row" hidden>
-            <label>
-              <input type="checkbox" id="report-url-include-url">
-              <span data-i18n="report_include_full_url_label">Include the full URL</span>
-            </label>
-            <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
-          </div>
         </div>
       </div>
     </div>
@@ -664,13 +661,6 @@
             <div id="dev-url-clean"></div>
             <div id="dev-url-removed" class="result-removed"></div>
             <button class="report-btn report-btn-inline" id="dev-url-report-btn" hidden data-i18n="dev_url_report_btn">Report a problem with this URL</button>
-            <div class="report-include-url-row" id="url-report-include-url-row" hidden>
-              <label>
-                <input type="checkbox" id="url-report-include-url">
-                <span data-i18n="report_include_full_url_label">Include the full URL</span>
-              </label>
-              <small class="report-include-url-hint" data-i18n="report_include_full_url_hint">I confirm it has no personal or sensitive data</small>
-            </div>
           </div>
         </div>
       </div>

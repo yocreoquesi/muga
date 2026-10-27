@@ -35,7 +35,7 @@ import { GUARDED_PREFS } from "../lib/synced-affiliate-pref-guard.js";
 import { reconcileOverrideForExplicitChoice } from "../lib/per-device-prefs.js";
 import { createMutex, withSyncMutation } from "./sync-mutation.js";
 import { snapToastDuration, buildExportPayload, planImport, diffImport } from "../lib/settings-schema.js";
-import { buildBrokenSiteReportBody, isReportableUrl } from "../lib/broken-site-report.js";
+import { buildPageReportLink, isReportableUrl } from "../lib/broken-site-report.js";
 import { scopedParamsForHost } from "../lib/remote-rules.js";
 import { shouldRevealAffiliateNudge, shouldShowBlocklistMigrationNotice, shouldHideMigrationNoticeOnStorageChange } from "../lib/aggressive-privacy-ui.js";
 
@@ -2617,7 +2617,7 @@ function initDevTools() {
  * @param {string} url
  * @param {{cleanEl: HTMLElement|null, removedEl: HTMLElement|null}} els
  * @param {() => boolean} [isStale] a superseded run stops before touching the DOM
- * @returns {Promise<{result: object, scopedParams: string[], url: string}|null>}
+ * @returns {Promise<{result: object, scopedParams: string[], url: string, prefs: object, remoteRulesVersion: number}|null>}
  *   null when the run went stale
  */
 async function checkPastedUrl(url, { cleanEl, removedEl }, isStale = () => false) {
@@ -2647,7 +2647,7 @@ async function checkPastedUrl(url, { cleanEl, removedEl }, isStale = () => false
   } catch {
     scopedParams = [];
   }
-  return { result, scopedParams, url };
+  return { result, scopedParams, url, prefs, remoteRulesVersion: cleaningContext.remoteRulesVersion };
 }
 
 /**
@@ -2655,13 +2655,18 @@ async function checkPastedUrl(url, { cleanEl, removedEl }, isStale = () => false
  * id and replaced by a clone, so repeated checks never accumulate listeners
  * and a previous run's node is never reused.
  *
+ * #1507: opens the same prefilled broken-site.yml form as the popup's
+ * "Report this page" (buildPageReportLink), full URL and settings snapshot
+ * included. The hand-built issues/new?title&body path and its "Include the
+ * full URL" opt-in are gone: the form's required privacy checkbox on GitHub
+ * is the review step, exactly as for the popup.
+ *
  * @param {string} buttonId
- * @param {string} includeCheckboxId opt-in full-URL checkbox for this card
  * @param {string} url
- * @param {{result: object, scopedParams: string[]}} checked
+ * @param {{result: object, scopedParams: string[], prefs: object, remoteRulesVersion: number}} checked
  * @returns {boolean} whether a button was wired
  */
-function wireReportButton(buttonId, includeCheckboxId, url, { result, scopedParams }) {
+function wireReportButton(buttonId, url, { result, scopedParams, prefs, remoteRulesVersion }) {
   const currentBtn = document.getElementById(buttonId);
   if (!currentBtn) return false;
   const newBtn = currentBtn.cloneNode(true);
@@ -2669,24 +2674,16 @@ function wireReportButton(buttonId, includeCheckboxId, url, { result, scopedPara
   newBtn.hidden = false;
 
   newBtn.addEventListener("click", () => {
-    try {
-      const hostname = new URL(url).hostname;
-      const includeCheckbox = document.getElementById(includeCheckboxId);
-      const body = buildBrokenSiteReportBody({
-        url,
-        includeFullUrl: includeCheckbox?.checked === true,
-        hostname,
-        version: chrome.runtime.getManifest().version,
-        browser: navigator.userAgent,
-        action: result.action,
-        removedParams: result.removedTracking,
-        scopedParams,
-      });
-      const title = encodeURIComponent(`[URL Report] ${hostname}`);
-      window.open(`https://github.com/yocreoquesi/muga/issues/new?title=${title}&body=${encodeURIComponent(body)}`, "_blank", "noopener,noreferrer");
-    } catch {
-      // Invalid URL, ignore
-    }
+    const link = buildPageReportLink({
+      url,
+      prefs,
+      result,
+      scopedParams,
+      remoteRulesVersion,
+      version: chrome.runtime.getManifest().version,
+      browser: navigator.userAgent,
+    });
+    window.open(link, "_blank", "noopener,noreferrer");
   });
   return true;
 }
@@ -2700,26 +2697,12 @@ async function testUrl() {
   const reportBtn = document.getElementById("dev-url-report-btn");
   // #858: use hidden attribute instead of inline style (CSP style-src without 'unsafe-inline')
   if (reportBtn) reportBtn.hidden = true;
-  // The opt-in full-URL consent is PER-URL: the "I confirm no personal or
-  // sensitive data" attestation applies to the URL the user just attested to,
-  // not the next one. Reset the row + checkbox on every test so a box left
-  // ticked for a previous URL can never silently carry its consent over to a
-  // different URL's report.
-  const includeUrlRow = document.getElementById("url-report-include-url-row");
-  if (includeUrlRow) includeUrlRow.hidden = true;
-  const includeUrlCheckbox = document.getElementById("url-report-include-url");
-  if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
   if (!input) return;
   try {
     const checked = await checkPastedUrl(input, { cleanEl, removedEl });
     // #858: use hidden attribute to reveal result (no inline style)
     resultDiv.hidden = false;
-
-    // Opt-in full-URL checkbox row (unchecked by default — hostname-only
-    // stays the default report contract).
-    if (wireReportButton("dev-url-report-btn", "url-report-include-url", input, checked) && includeUrlRow) {
-      includeUrlRow.hidden = false;
-    }
+    wireReportButton("dev-url-report-btn", input, checked);
   } catch (e) {
     cleanEl.textContent = t("dev_url_error", _currentLang) + " " + e.message;
     removedEl.textContent = "";
@@ -2740,8 +2723,8 @@ async function testUrl() {
  * Settings has no current-tab context the way the popup does — there is no
  * "this page" to report on without asking the user which URL they mean.
  *
- * Reuses the exact same pure funnel (buildBrokenSiteReportBody) and GitHub
- * issue deep-link the QA tester uses: no new egress, no new pref. The one
+ * Reuses the exact same pure funnel (buildPageReportLink) and GitHub
+ * issue-form link the QA tester and the popup use: no new egress, no new pref. The one
  * addition is isReportableUrl(), which gives friendly inline validation
  * before the cleaner ever runs, instead of surfacing a raw exception
  * message for a URL that was never going to parse.
@@ -2779,12 +2762,6 @@ function initReportFlow() {
     const removedEl = document.getElementById("report-url-removed");
     const reportBtn = document.getElementById("report-url-report-btn");
     if (reportBtn) reportBtn.hidden = true;
-    // The opt-in full-URL consent is PER-URL: reset the row + checkbox on
-    // every check, same reasoning as testUrl() above (#1229 comment there).
-    const includeUrlRow = document.getElementById("report-url-include-url-row");
-    if (includeUrlRow) includeUrlRow.hidden = true;
-    const includeUrlCheckbox = document.getElementById("report-url-include-url");
-    if (includeUrlCheckbox) includeUrlCheckbox.checked = false;
 
     try {
       // The shared check (#1444) bails out, before writing any result, when
@@ -2795,9 +2772,7 @@ function initReportFlow() {
 
       // wireReportButton re-reads the button by id: a previous run may
       // already have replaced the node captured before the awaits.
-      if (wireReportButton("report-url-report-btn", "report-url-include-url", url, checked) && includeUrlRow) {
-        includeUrlRow.hidden = false;
-      }
+      wireReportButton("report-url-report-btn", url, checked);
     } catch (e) {
       if (cleanEl) cleanEl.textContent = "";
       if (removedEl) removedEl.textContent = `${t("dev_url_error", _currentLang)} ${e.message}`;
