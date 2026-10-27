@@ -391,36 +391,25 @@ header {
   line-height: 1.35;
 }
 
-.report-link {
+/* #1507: one-click link-out to the prefilled broken-site issue form. Quiet
+   on purpose: it is an escape hatch under the page's result, not the glance
+   itself (ADR-0011). The opt-in full-URL row it once carried is gone; the
+   form's privacy checkbox on GitHub is the review step. */
+.report-page-btn {
   display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
   font-size: 10.5px;
   color: var(--text-2);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
   margin-top: 8px;
+  transition: color 0.2s;
 }
-.report-link:hover { color: var(--accent-strong); }
-
-.report-include-url-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-  font-size: 10.5px;
-  color: var(--text-2);
-}
-.report-include-url-row label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.report-include-url-hint {
-  font-size: 10px;
-  color: var(--text-2);
-  opacity: 0.8;
-}
+.report-page-btn:hover { color: var(--accent-strong); }
 
 /* Domain-stats panel moved to Settings' Activity section (#1350). Session
    history ("This session") and the recent-activity ledger both moved to

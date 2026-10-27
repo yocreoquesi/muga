@@ -76,11 +76,13 @@
     <div class="preview-honored" id="preview-honored" hidden aria-live="polite"></div>
     <div class="preview-autoinject" id="preview-autoinject" hidden aria-live="polite"></div>
     <div class="preview-url clean" id="preview-clean" hidden></div>
-    <!-- #1355/#1354 (ADR-0011 internal-with-a-default): showReportButton and
-         its popup report flow are retired. Reporting a problem now lives in
-         Settings (#1353, section-report), which every user can reach —
-         unlike this popup flow, which required devToolsMode to see its
-         Settings counterpart at all. -->
+    <!-- #1507: one-click "Report this page". A link-out, not a flow: it
+         opens the broken-site.yml issue form on GitHub prefilled for this
+         tab (full URL in its own field, settings snapshot), and the form's
+         required privacy checkbox is where the reporter reviews it. The
+         retired popup report (#1355/#1354) carried a consent form here,
+         which is what ADR-0011 removed; see its #1507 note. -->
+    <button type="button" class="report-page-btn" id="report-page-btn" hidden data-i18n="popup_report_page">Report this page</button>
   </section>
 
   <section class="stats">

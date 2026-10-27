@@ -44,9 +44,13 @@ Route: delegated direct (one bounded writer; 2+ non-trivial files).
   `disabledCategories`, list counts + page-matching entries only, remote
   rules on/off + payload version)
 - [x] T2 Fields builder + link builder with length cap; template fields
-- [ ] T3 Popup "Report this page" wiring + copy in 7 locales
-- [ ] T4 Settings report on the same builder; opt-in checkbox removed
-- [ ] T5 ADR-0011 note
+- [x] T3 Popup "Report this page" wiring + copy in 7 locales
+- [x] T4 Settings report on the same builder (`buildPageReportLink`); opt-in
+  checkbox, its per-URL reset and `issues/new?title&body` deleted
+- [x] T5 ADR-0011 note
+- [ ] T6 (out of allowed surface, follow-up) `CONTRIBUTING.md:11` should name
+  the popup button too; dead `.report-include-url-*` rules in
+  `src/options/options.css`
 
 ## Acceptance criteria
 
@@ -69,7 +73,20 @@ Route: delegated direct (one bounded writer; 2+ non-trivial files).
   until the template gained `action`/`settings`/the URL hint. GREEN: all pass.
 - T2 RED: `cleaning-context.test.mjs` "#1507: carries the payload version"
   failed; GREEN after `remoteRulesVersion` was added.
+- T3/T4 RED: `broken-site-report.test.mjs` → `does not provide an export
+  named 'buildPageReportLink'`. GREEN: 52/52 with the snapshot tests.
+- Popup wiring is pinned structurally in `report-button.test.mjs` (popup.js
+  is browser-only); ratchet baseline 18 → 22 with rationale.
+- Task close: `npm test` 9449 tests, 9448 pass, 0 fail, 1 skipped;
+  `npm run lint:js` clean; `npm run test:integration` 233/233;
+  `npm run check:i18n` ok; `npm run typecheck` clean.
+
+## Commits
+
+- 9083bb7 feat(report): prefill the broken-site form with full URL and settings snapshot (#1507)
+- (this commit) feat(popup): one-click Report this page via the broken-site form (#1507)
 
 ## Next step
 
-T3/T4 wiring.
+Push + PR are the maintainer's call. Follow-up T6 needs `CONTRIBUTING.md`
+and `src/options/options.css` edits outside this writer's surface.

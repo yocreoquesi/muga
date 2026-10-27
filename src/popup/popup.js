@@ -17,6 +17,8 @@ import { computeLengthReduction, computeLengthBar } from "../lib/length-reductio
 import { computeUnwrapView } from "../lib/unwrap-view.js";
 import { isFreshInstall } from "../lib/stats-zero-state.js";
 import { planDnrVisibilityView, DNR_CLOCK_SKEW_MS, planTabBadgeView, shouldShowStatsDnrNote } from "../lib/dnr-visibility-view.js";
+import { buildPageReportLink, isReportableUrl } from "../lib/broken-site-report.js";
+import { scopedParamsForHost } from "../lib/remote-rules.js";
 
 // #1352: the clipboard helpers that used to live here (_createClipboardSvg,
 // _setClipboardIcon, copyToClipboard, copyWithFeedback, getCopySafeCleanUrl)
@@ -141,6 +143,12 @@ async function init() {
   document.getElementById("open-options").addEventListener("click", (e) => {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
+  });
+
+  // #1507: wired once here, not per render. Every showUrlPreview() call
+  // refreshes _reportContext, so the click always reports the latest render.
+  document.getElementById("report-page-btn")?.addEventListener("click", () => {
+    openPageReport().catch((err) => console.error("[MUGA] report this page:", err));
   });
 
   // #1417: the suspicious-params list is read-only; acting on a param
@@ -537,8 +545,11 @@ function _resetPreviewDom() {
     tabBadge.hidden = true;
     tabBadge.textContent = "";
   }
-  // #1355/#1354: the popup's own report-broken link + opt-in full-URL row
-  // are retired along with showReportButton — reporting moved to Settings.
+  // #1507: "Report this page" is re-shown by showUrlPreview() for a
+  // reportable page; hidden here so a render that bails early never leaves a
+  // button bound to a previous page's context.
+  const reportPageBtn = el("report-page-btn");
+  if (reportPageBtn) reportPageBtn.hidden = true;
   // #705 fix: remove any `.preview-breakdown` <details> appended by a
   // prior render. The breakdown is dynamic (per-URL), so the
   // reset path must clear it the same way it clears the static slots
@@ -562,6 +573,17 @@ async function showUrlPreview(prefs, lang) {
   // Reset DOM state so repeated calls (on toggle change / storage change) don't
   // accumulate stale markup from the previous render.
   _resetPreviewDom();
+
+  // #1507: the report context for this render. Refined below once the
+  // cleaner has run; the early returns (MUGA off, site paused) keep it with
+  // an explicit action, because a paused site is the most likely thing a
+  // user wants to report. This is why the button is not behind the
+  // enabled/onboardingDone guard: it is a link-out that acts on nothing, and
+  // hiding it while MUGA is off would hide it exactly when a user turned
+  // MUGA off because a site broke.
+  _reportContext = { url, prefs, action: "", result: null, cleaningContext: null };
+  const reportPageBtn = document.getElementById("report-page-btn");
+  if (reportPageBtn) reportPageBtn.hidden = !isReportableUrl(url);
 
   // B14 (#452): fetch the active tab's `document.referrer` from the content
   // script so the cleaner can decide whether to honor the creator chain.
@@ -611,6 +633,7 @@ async function showUrlPreview(prefs, lang) {
     previewClean.hidden = false;
     previewClean.textContent = t("muga_disabled", lang);
     previewClean.style.color = "var(--text2)";
+    _reportContext.action = "muga-disabled";
     return;
   }
 
@@ -623,6 +646,7 @@ async function showUrlPreview(prefs, lang) {
     previewClean.hidden = false;
     previewClean.textContent = t("muga_disabled_for_domain", lang);
     previewClean.style.color = "var(--text2)";
+    _reportContext.action = "site-paused";
     return;
   }
 
@@ -636,6 +660,8 @@ async function showUrlPreview(prefs, lang) {
   // referrer was already fetched above (bundled with the #1496 timeOrigin
   // request) so cleanForPreview reuses it here without a second round trip.
   const result = cleanForPreview(url, prefs, cleaningContext, { referrer });
+  _reportContext.result = result;
+  _reportContext.cleaningContext = cleaningContext;
 
   // B14 (#452): honored-creator badge. Surfaced when the wrapper URL was
   // passed through unmodified to honor a creator referral chain. The
@@ -758,6 +784,45 @@ async function showUrlPreview(prefs, lang) {
       previewSection.appendChild(details);
     }
   }
+}
+
+// ── Report this page (#1507) ──────────────────────────────────────────────
+
+/**
+ * The state the last showUrlPreview() render saw, so the report describes
+ * what the user is looking at. null until the first render of a real page.
+ */
+let _reportContext = null;
+
+/**
+ * Opens the broken-site.yml issue form prefilled for the current tab. The
+ * popup only gathers state; buildPageReportLink owns every field, the
+ * settings snapshot and the length cap, shared with Settings.
+ */
+async function openPageReport() {
+  const ctx = _reportContext;
+  if (!ctx || !isReportableUrl(ctx.url)) return;
+  // The early returns in showUrlPreview never loaded the context; the
+  // snapshot still wants the payload version and the host-scoped params.
+  const cleaningContext = ctx.cleaningContext ?? await loadCleaningContext();
+  let host = "";
+  try { host = new URL(ctx.url).hostname; } catch { /* isReportableUrl passed; unreachable */ }
+  const link = buildPageReportLink({
+    url: ctx.url,
+    prefs: ctx.prefs,
+    result: ctx.result,
+    action: ctx.action,
+    scopedParams: scopedParamsForHost(host, cleaningContext.scopedFacts),
+    remoteRulesVersion: cleaningContext.remoteRulesVersion,
+    version: chrome.runtime.getManifest?.()?.version ?? "",
+    browser: navigator.userAgent,
+  });
+  if (typeof chrome.tabs?.create === "function") {
+    await chrome.tabs.create({ url: link });
+  } else {
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+  window.close();
 }
 
 /** Formats a number with locale-appropriate thousand separators. */

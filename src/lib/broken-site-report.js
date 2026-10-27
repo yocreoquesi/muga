@@ -53,26 +53,6 @@ function _parseReportUrl(url) {
 }
 
 /**
- * Decides whether the full URL is safe to include: the user must have
- * opted in AND the URL must be a valid http(s) URL within the length cap.
- * Any single failed gate omits the full URL — no partial/best-effort
- * inclusion.
- *
- * @param {string|null|undefined} url
- * @param {boolean|undefined} includeFullUrl
- * @param {boolean} isValidHttpUrl
- * @returns {boolean}
- */
-function _canIncludeFullUrl(url, includeFullUrl, isValidHttpUrl) {
-  return (
-    includeFullUrl === true &&
-    isValidHttpUrl &&
-    typeof url === "string" &&
-    url.length <= MAX_REPORT_URL_LENGTH
-  );
-}
-
-/**
  * Public validation gate for a Settings-reachable report flow (#1353):
  * true only for a well-formed http(s) URL. Wraps the module's private
  * `_parseReportUrl` gate — the popup and the QA URL tester both learn
@@ -239,65 +219,6 @@ export function buildBrokenSiteReportUrl(input, opts = {}) {
   return link;
 }
 
-/**
- * Builds the markdown body for the options page's free-text GitHub issue
- * report. Includes a `**Full URL:**` line ONLY when the caller opted in AND
- * the URL is a valid http(s) URL within the length cap; otherwise falls
- * back to the current `**Domain:**` line (hostname only).
- *
- * @param {object} input
- * @param {string} input.url - the page URL being reported
- * @param {boolean} [input.includeFullUrl] - user opt-in checkbox state
- * @param {string} [input.hostname] - precomputed hostname (falls back to deriving from url)
- * @param {string} [input.version] - MUGA version
- * @param {string} [input.browser] - browser identifier
- * @param {string} [input.action] - cleaner action taken (e.g. "cleaned")
- * @param {string[]} [input.removedParams] - tracking params MUGA removed
- * @param {string[]} [input.scopedParams] - host-anchored params MUGA applies here (#1229)
- * @returns {string} markdown body
- */
-export function buildBrokenSiteReportBody(input) {
-  // Defensive: destructuring defaults (`= {}`) only cover `undefined`, not an
-  // explicit `null` argument — normalise both to an empty object up front.
-  const { url, includeFullUrl, hostname, version, browser, action, removedParams, scopedParams } =
-    input || {};
-  const parsed = _parseReportUrl(url);
-  const safeHostname = hostname == null || hostname === "" ? parsed.hostname : String(hostname);
-  const safeVersion = version == null ? "" : String(version);
-  const safeBrowser = browser == null ? "" : String(browser);
-  const safeAction = action == null || action === "" ? "none" : String(action);
-  const safeRemoved =
-    Array.isArray(removedParams) && removedParams.length > 0
-      ? removedParams.join(", ")
-      : "none";
-
-  const locationLine = _canIncludeFullUrl(url, includeFullUrl, parsed.isValidHttpUrl)
-    ? `**Full URL:** ${url}\n`
-    : `**Domain:** ${safeHostname}\n`;
-
-  // #1229: omitted rather than rendered as "none", so a report from a host with
-  // no scoped facts produces exactly the body it produced before.
-  const scopedLine =
-    Array.isArray(scopedParams) && scopedParams.length > 0
-      ? `**Host-scoped params:** ${scopedParams.join(", ")}\n`
-      : "";
-
-  return (
-    `## URL Report\n\n` +
-    locationLine +
-    `**MUGA version:** ${safeVersion}\n` +
-    `**Browser:** ${safeBrowser}\n` +
-    `**Action taken:** ${safeAction}\n` +
-    `**Params removed:** ${safeRemoved}\n` +
-    scopedLine +
-    `\n` +
-    `## Problem\n\n` +
-    `<!-- Describe what went wrong: params that should have been removed but weren't, or params that were removed but shouldn't have been -->\n\n` +
-    `## Expected behavior\n\n` +
-    `<!-- What should MUGA do with this URL? -->\n`
-  );
-}
-
 // ── Settings snapshot (#1507) ─────────────────────────────────────────────
 
 /**
@@ -421,4 +342,37 @@ export function buildSettingsSnapshot(input) {
     `disabledCategories: ${categories.length > 0 ? categories.join(", ") : "none"}`,
     ...lists,
   ].join("\n");
+}
+
+// ── Page report (#1507) ───────────────────────────────────────────────────
+
+/**
+ * The one entry point every report surface calls: the popup's "Report this
+ * page", Settings' "Report a problem" and the Developer tools URL tester.
+ * Each passes the state it already has; this assembles the snapshot and the
+ * form link, so the three surfaces cannot drift apart again (#1502).
+ *
+ * @param {object} input
+ * @param {string} input.url - the page being reported
+ * @param {object} [input.prefs] - the user's current prefs (getPrefs())
+ * @param {{action?: string, removedTracking?: string[]}|null} [input.result]
+ *   the cleaner's result for `url`, when one was computed
+ * @param {string} [input.action] - overrides result.action (e.g. "site-paused")
+ * @param {string[]} [input.scopedParams] - scopedParamsForHost() for the host
+ * @param {number} [input.remoteRulesVersion] - payload version in use
+ * @param {string} [input.version] - MUGA version (manifest)
+ * @param {string} [input.browser] - navigator.userAgent
+ * @returns {string} the prefilled issue-form link; never throws
+ */
+export function buildPageReportLink(input) {
+  const { url, prefs, result, action, scopedParams, remoteRulesVersion, version, browser } = input || {};
+  return buildBrokenSiteReportUrl({
+    url,
+    version,
+    browser,
+    action: typeof action === "string" && action !== "" ? action : result?.action,
+    removedParams: result?.removedTracking,
+    scopedParams,
+    settings: buildSettingsSnapshot({ prefs, url, remoteRulesVersion }),
+  });
 }

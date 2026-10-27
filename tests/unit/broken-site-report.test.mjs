@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import {
   buildBrokenSiteReportFields,
   buildBrokenSiteReportUrl,
-  buildBrokenSiteReportBody,
+  buildPageReportLink,
   isReportableUrl,
   MAX_REPORT_LINK_LENGTH,
   REPORT_ISSUE_BASE,
@@ -254,79 +254,6 @@ describe("isReportableUrl", () => {
   });
 });
 
-describe("buildBrokenSiteReportBody", () => {
-  test("default (includeFullUrl unset) uses **Domain:** line, no Full URL line", () => {
-    const body = buildBrokenSiteReportBody({
-      url: "https://example.com/secret",
-      version: "1.0.0",
-      browser: "Chrome/1.0",
-      action: "cleaned",
-      removedParams: ["utm_source"],
-    });
-    assert.match(body, /\*\*Domain:\*\* example\.com/);
-    assert.doesNotMatch(body, /\*\*Full URL:\*\*/);
-  });
-
-  test("includeFullUrl: true + valid http(s) URL includes Full URL line", () => {
-    const body = buildBrokenSiteReportBody({
-      url: "https://example.com/path?a=1",
-      includeFullUrl: true,
-    });
-    assert.match(body, /\*\*Full URL:\*\* https:\/\/example\.com\/path\?a=1/);
-    assert.doesNotMatch(body, /\*\*Domain:\*\*/);
-  });
-
-  test("includeFullUrl: true + invalid URL falls back to Domain line", () => {
-    const body = buildBrokenSiteReportBody({
-      url: "not a url",
-      includeFullUrl: true,
-      hostname: "",
-    });
-    assert.doesNotMatch(body, /\*\*Full URL:\*\*/);
-    assert.match(body, /\*\*Domain:\*\*/);
-  });
-
-  test("includeFullUrl: true + non-http(s) scheme falls back to Domain line", () => {
-    const body = buildBrokenSiteReportBody({
-      url: "javascript:alert(1)",
-      includeFullUrl: true,
-    });
-    assert.doesNotMatch(body, /\*\*Full URL:\*\*/);
-  });
-
-  test("includeFullUrl: true + URL over 2000 chars falls back to Domain line", () => {
-    const body = buildBrokenSiteReportBody({
-      url: LONG_URL,
-      includeFullUrl: true,
-    });
-    assert.doesNotMatch(body, /\*\*Full URL:\*\*/);
-    assert.match(body, /\*\*Domain:\*\* example\.com/);
-  });
-
-  test("hostname param is used when provided, without re-deriving from url", () => {
-    const body = buildBrokenSiteReportBody({
-      url: "https://example.com/secret",
-      hostname: "example.com",
-    });
-    assert.match(body, /\*\*Domain:\*\* example\.com/);
-  });
-
-  test("params omitted from body defaults to 'none'", () => {
-    const body = buildBrokenSiteReportBody({ url: "https://example.com" });
-    assert.match(body, /\*\*Params removed:\*\* none/);
-  });
-
-  test("never throws on null/undefined/garbage input", () => {
-    assert.doesNotThrow(() => buildBrokenSiteReportBody());
-    assert.doesNotThrow(() => buildBrokenSiteReportBody(null));
-    assert.doesNotThrow(() => buildBrokenSiteReportBody({ url: null, includeFullUrl: true }));
-    assert.doesNotThrow(() => buildBrokenSiteReportBody({ removedParams: "not-an-array" }));
-    const body = buildBrokenSiteReportBody(undefined);
-    assert.equal(typeof body, "string");
-    assert.match(body, /\*\*Domain:\*\*/);
-  });
-});
-
 // ── #1229 step 4: the correction loop names its suspects ─────────────────────
 //
 // A host-anchored fact is admitted on ONE upstream source's word, for a host
@@ -437,29 +364,6 @@ describe("#1229 — the report attributes host-scoped params", () => {
     }
   });
 
-  test("the markdown body carries a Host-scoped params line", async () => {
-    const { buildBrokenSiteReportBody } = await import("../../src/lib/broken-site-report.js");
-    const body = buildBrokenSiteReportBody({
-      url: "https://tiktok.com/@x",
-      hostname: "tiktok.com",
-      removedParams: ["_r"],
-      scopedParams: ["_r"],
-    });
-
-    assert.match(body, /\*\*Host-scoped params:\*\* _r/);
-  });
-
-  test("the body is unchanged when there are no scoped params", async () => {
-    const { buildBrokenSiteReportBody } = await import("../../src/lib/broken-site-report.js");
-    const base = { url: "https://example.com/", hostname: "example.com", removedParams: ["utm_source"] };
-
-    assert.strictEqual(
-      buildBrokenSiteReportBody({ ...base, scopedParams: [] }),
-      buildBrokenSiteReportBody(base),
-    );
-    assert.ok(!buildBrokenSiteReportBody(base).includes("Host-scoped"));
-  });
-
   test("the scoped field id matches the issue template's", async () => {
     // The prefill is by field ID: a rename on either side silently drops the
     // most useful line in the report, with no error anywhere.
@@ -471,5 +375,74 @@ describe("#1229 — the report attributes host-scoped params", () => {
       "utf8",
     );
     assert.match(template, /id: scoped/);
+  });
+});
+
+// ── #1507: the one link every report surface opens ──────────────────────────
+//
+// The popup's "Report this page", Settings' "Report a problem" and the
+// Developer tools URL tester all hand their state to buildPageReportLink, so
+// the three can never drift apart again the way the Settings markdown body
+// drifted away from the issue form (#1502).
+
+describe("#1507 buildPageReportLink", () => {
+  const PAGE = "https://shop.example.com/item?utm_source=news&ref_code=1";
+  const PREFS = {
+    enabled: true,
+    blockBeacons: true,
+    remoteRulesEnabled: true,
+    whitelist: ["shop.example.com", "private.example.org"],
+    blacklist: [],
+    customParams: [],
+    userCustomRules: [],
+    creatorAllowlist: [],
+    disabledCategories: [],
+  };
+
+  function linkFor(overrides = {}) {
+    return new URL(buildPageReportLink({
+      url: PAGE,
+      prefs: PREFS,
+      result: { action: "cleaned", removedTracking: ["utm_source"] },
+      scopedParams: ["ref_code"],
+      remoteRulesVersion: 16,
+      version: "3.2.0",
+      browser: "Mozilla/5.0 Test",
+      ...overrides,
+    }));
+  }
+
+  test("prefills every field the issue asks for, for the current page", () => {
+    const q = linkFor().searchParams;
+    assert.equal(q.get("template"), "broken-site.yml");
+    assert.equal(q.get("hostname"), "shop.example.com");
+    assert.equal(q.get("url"), PAGE);
+    assert.equal(q.get("version"), "3.2.0");
+    assert.equal(q.get("browser"), "Mozilla/5.0 Test");
+    assert.equal(q.get("action"), "cleaned");
+    assert.equal(q.get("params"), "utm_source");
+    assert.equal(q.get("scoped"), "ref_code");
+  });
+
+  test("carries the settings snapshot without leaking non-matching list entries", () => {
+    const settings = linkFor().searchParams.get("settings");
+    assert.match(settings, /Remote rules: on, payload version 16/);
+    assert.match(settings, /blockBeacons=true/);
+    assert.match(settings, /whitelist: 2 entries; matching this page: shop\.example\.com/);
+    assert.ok(!settings.includes("private.example.org"));
+  });
+
+  test("an explicit action (MUGA off, site paused) wins over a missing result", () => {
+    const q = linkFor({ result: null, action: "site-paused" }).searchParams;
+    assert.equal(q.get("action"), "site-paused");
+    assert.equal(q.get("params"), null);
+  });
+
+  test("never throws on garbage and still returns the form link", () => {
+    for (const bad of [undefined, null, {}, { url: "javascript:alert(1)", prefs: null }]) {
+      assert.doesNotThrow(() => buildPageReportLink(bad));
+      assert.ok(buildPageReportLink(bad).startsWith(REPORT_ISSUE_BASE));
+    }
+    assert.equal(new URL(buildPageReportLink({ url: "javascript:alert(1)" })).searchParams.get("url"), null);
   });
 });

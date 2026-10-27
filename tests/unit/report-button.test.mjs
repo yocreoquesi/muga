@@ -8,6 +8,13 @@
  * entirely: no #report-broken link, no #report-include-url-row, no
  * showReportButton pref, no report_dirty_url i18n key.
  *
+ * #1507 brings a report back to the popup as a one-click LINK-OUT, not a
+ * flow: #report-page-btn opens the broken-site.yml issue form prefilled for
+ * the tab, and the consent step is the form's required privacy checkbox on
+ * GitHub. Settings' report uses the same builder, so the "Include the full
+ * URL" opt-in rows and their i18n keys are retired too. The link itself is
+ * tested through its public builder in broken-site-report.test.mjs.
+ *
  * Formerly (superseded by this file, kept as history):
  *   T2-1: Flag `showReportButton` exists in PREF_DEFAULTS and defaults to true
  *   T2-4: popup.js source does NOT gate #report-broken visibility on prefs.devMode
@@ -75,9 +82,39 @@ test("report_dirty_url i18n key is retired (it named only the removed popup link
   );
 });
 
-test("report_include_full_url_label/hint survive (still used by the Settings/dev report flow)", () => {
-  assert.ok(Object.prototype.hasOwnProperty.call(TRANSLATIONS, "report_include_full_url_label"));
-  assert.ok(Object.prototype.hasOwnProperty.call(TRANSLATIONS, "report_include_full_url_hint"));
+test("#1507: report_include_full_url_label/hint are retired with the opt-in checkbox", () => {
+  assert.ok(!Object.prototype.hasOwnProperty.call(TRANSLATIONS, "report_include_full_url_label"));
+  assert.ok(!Object.prototype.hasOwnProperty.call(TRANSLATIONS, "report_include_full_url_hint"));
+});
+
+test("#1507: popup_report_page is translated in every locale", () => {
+  const entry = TRANSLATIONS.popup_report_page;
+  assert.ok(entry, "popup_report_page must exist");
+  for (const [lang, text] of Object.entries(entry)) {
+    assert.ok(typeof text === "string" && text.length > 0, `${lang} is empty`);
+    assert.ok(!text.includes("—"), `${lang} must not use an em-dash`);
+  }
+  assert.equal(entry.en, "Report this page");
+  assert.equal(entry.es, "Reportar esta página");
+});
+
+// ── #1507: popup link-out wiring ─────────────────────────────────────────────
+
+describe("#1507 — the popup's one-click Report this page", () => {
+  const optionsJs = readFileSync(join(root, "src/options/options.js"), "utf8");
+
+  it("popup.html carries a translated, initially hidden #report-page-btn button", () => {
+    assert.match(popupHtml, /<button type="button" class="report-page-btn" id="report-page-btn" hidden data-i18n="popup_report_page">/);
+  });
+
+  it("popup.js and Settings both open the shared buildPageReportLink link", () => {
+    assert.ok(popupJs.includes("buildPageReportLink({"));
+    assert.ok(optionsJs.includes("buildPageReportLink({"));
+  });
+
+  it("Settings no longer hand-builds an issues/new?title&body link", () => {
+    assert.doesNotMatch(optionsJs, /issues\/new\?title=/);
+  });
 });
 
 // ── import tolerance ─────────────────────────────────────────────────────────
